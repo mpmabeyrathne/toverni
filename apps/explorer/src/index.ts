@@ -5,9 +5,22 @@ import {
   PlaywrightBrowserController,
 } from './browser/index.js';
 
-import { parseTargetUrl } from './cli/parse-target.js';
-import { environment } from './configuration/environment.js';
-import { logger } from './configuration/logger.js';
+import {
+  parseTargetUrl,
+} from './cli/parse-target.js';
+
+import {
+  environment,
+} from './configuration/environment.js';
+
+import {
+  logger,
+} from './configuration/logger.js';
+
+import {
+  DeterministicExplorationPlanner,
+} from './exploration/index.js';
+
 import {
   ApplicationStateModel,
 } from './state/index.js';
@@ -21,18 +34,30 @@ async function main(): Promise<void> {
         'artifacts',
     });
 
-    const stateModel =
-  new ApplicationStateModel();
+  const stateModel =
+    new ApplicationStateModel();
+
+  const planner =
+    new DeterministicExplorationPlanner(
+      stateModel,
+      {
+        maxActions: 50,
+        maxActionsPerState: 10,
+        maxStates: 100,
+      },
+    );
 
   try {
-    const job = parseTargetUrl(
-      process.argv.slice(2),
-    );
+    const job =
+      parseTargetUrl(
+        process.argv.slice(2),
+      );
 
     logger.info(
       {
         targetUrl:
           job.targetUrl,
+
         environment:
           environment.NODE_ENV,
       },
@@ -48,7 +73,6 @@ async function main(): Promise<void> {
     const session =
       await browser.createSession();
 
-    // 1. Navigate first
     await session.navigate(
       job.targetUrl,
     );
@@ -57,13 +81,13 @@ async function main(): Promise<void> {
       {
         url:
           session.getUrl(),
+
         title:
           await session.getTitle(),
       },
       'Target application loaded',
     );
 
-    // 2. Observe only after navigation
     const observation =
       await session.observe();
 
@@ -73,28 +97,80 @@ async function main(): Promise<void> {
       },
       'Page observation captured',
     );
+
     const stateResult =
-  stateModel.registerObservation(
-    observation,
-  );
+      stateModel.registerObservation(
+        observation,
+      );
 
-logger.info(
-  {
-    stateId:
-      stateResult.state.id,
+    logger.info(
+      {
+        stateId:
+          stateResult.state.id,
 
-    routePattern:
-      stateResult.state
-        .routePattern,
+        routePattern:
+          stateResult.state
+            .routePattern,
 
-    isNew:
-      stateResult.isNew,
+        isNew:
+          stateResult.isNew,
 
-    visits:
-      stateResult.state.visits,
-  },
-  'Application state identified',
-);
+        visits:
+          stateResult.state.visits,
+      },
+      'Application state identified',
+    );
+
+    const explorationDecision =
+      planner.plan({
+        state:
+          stateResult.state,
+
+        observation,
+      });
+
+    logger.info(
+      {
+        selectedAction:
+          explorationDecision.selected
+            ? {
+                label:
+                  explorationDecision
+                    .selected
+                    .label,
+
+                score:
+                  explorationDecision
+                    .selected
+                    .score,
+
+                target:
+                  explorationDecision
+                    .selected
+                    .target,
+
+                reasons:
+                  explorationDecision
+                    .selected
+                    .reasons,
+              }
+            : null,
+
+        shouldStop:
+          explorationDecision
+            .shouldStop,
+
+        stopReason:
+          explorationDecision
+            .stopReason,
+
+        candidateCount:
+          explorationDecision
+            .rankedCandidates
+            .length,
+      },
+      'Next exploration action planned',
+    );
 
     await session.close();
 
