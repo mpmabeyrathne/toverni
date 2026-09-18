@@ -8,6 +8,9 @@ import {
 import { parseTargetUrl } from './cli/parse-target.js';
 import { environment } from './configuration/environment.js';
 import { logger } from './configuration/logger.js';
+import {
+  ApplicationStateModel,
+} from './state/index.js';
 
 async function main(): Promise<void> {
   const browser =
@@ -17,6 +20,9 @@ async function main(): Promise<void> {
       artifactsDirectory:
         'artifacts',
     });
+
+    const stateModel =
+  new ApplicationStateModel();
 
   try {
     const job = parseTargetUrl(
@@ -67,6 +73,28 @@ async function main(): Promise<void> {
       },
       'Page observation captured',
     );
+    const stateResult =
+  stateModel.registerObservation(
+    observation,
+  );
+
+logger.info(
+  {
+    stateId:
+      stateResult.state.id,
+
+    routePattern:
+      stateResult.state
+        .routePattern,
+
+    isNew:
+      stateResult.isNew,
+
+    visits:
+      stateResult.state.visits,
+  },
+  'Application state identified',
+);
 
     await session.close();
 
