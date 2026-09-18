@@ -10,12 +10,21 @@ import {
 } from './cli/parse-target.js';
 
 import {
+  getDatabaseUrl,
+} from './configuration/database.js';
+
+import {
   environment,
 } from './configuration/environment.js';
 
 import {
   logger,
 } from './configuration/logger.js';
+
+import {
+  createDatabase,
+  ExplorationRepository,
+} from './database/index.js';
 
 import {
   DeterministicExplorationPlanner,
@@ -47,22 +56,105 @@ async function main(): Promise<void> {
       },
     );
 
+  let databaseConnection:
+    | ReturnType<
+        typeof createDatabase
+      >
+    | null = null;
+
+  let repository:
+    | ExplorationRepository
+    | null = null;
+
+  let currentRunId:
+    | string
+    | null = null;
+
+  let runCompleted = false;
+
   try {
     const job =
       parseTargetUrl(
         process.argv.slice(2),
       );
 
+    // --------------------------------
+    // Database
+    // --------------------------------
+
+    const databaseUrl =
+      getDatabaseUrl();
+
+    databaseConnection =
+      createDatabase(
+        databaseUrl,
+      );
+
+    repository =
+      new ExplorationRepository(
+        databaseConnection.db,
+      );
+
+    // --------------------------------
+    // Application
+    // --------------------------------
+
+    const targetUrl =
+      new URL(
+        job.targetUrl,
+      );
+
+    const application =
+      await repository
+        .ensureApplication({
+          name:
+            targetUrl.hostname,
+
+          baseUrl:
+            targetUrl.origin,
+        });
+
+    // --------------------------------
+    // Exploration run
+    // --------------------------------
+
+    const run =
+      await repository.startRun({
+        applicationId:
+          application.id,
+
+        entryUrl:
+          job.targetUrl,
+
+        context: {
+          environment:
+            environment.NODE_ENV,
+        },
+      });
+
+    currentRunId =
+      run.id;
+
     logger.info(
       {
         targetUrl:
           job.targetUrl,
+
+        applicationId:
+          application.id,
+
+        runId:
+          run.id,
 
         environment:
           environment.NODE_ENV,
       },
       'Starting Toverni Application Explorer',
     );
+
+    // --------------------------------
+    // Browser
+    // --------------------------------
 
     await browser.start();
 
@@ -88,6 +180,10 @@ async function main(): Promise<void> {
       'Target application loaded',
     );
 
+    // --------------------------------
+    // Observation
+    // --------------------------------
+
     const observation =
       await session.observe();
 
@@ -97,6 +193,10 @@ async function main(): Promise<void> {
       },
       'Page observation captured',
     );
+
+    // --------------------------------
+    // State identification
+    // --------------------------------
 
     const stateResult =
       stateModel.registerObservation(
@@ -120,6 +220,31 @@ async function main(): Promise<void> {
       },
       'Application state identified',
     );
+
+    // --------------------------------
+    // Persist state
+    // --------------------------------
+
+    const persistedState =
+      await repository.saveState(
+        application.id,
+        stateResult.state,
+      );
+
+    // --------------------------------
+    // Persist evidence
+    // --------------------------------
+
+    await repository
+      .saveObservationEvidence(
+        run.id,
+        persistedState.id,
+        observation,
+      );
+
+    // --------------------------------
+    // Exploration planning
+    // --------------------------------
 
     const explorationDecision =
       planner.plan({
@@ -172,24 +297,134 @@ async function main(): Promise<void> {
       'Next exploration action planned',
     );
 
+    // --------------------------------
+    // Persist planner decision/actions
+    // --------------------------------
+
+    await repository.saveDecision(
+      run.id,
+      persistedState.id,
+      explorationDecision,
+    );
+
+    // --------------------------------
+    // Complete exploration run
+    // --------------------------------
+
+    await repository.completeRun(
+      run.id,
+      'completed',
+    );
+
+    runCompleted = true;
+
+    // --------------------------------
+    // Query complete application graph
+    // --------------------------------
+
+    const flow =
+      await repository
+        .getApplicationFlow(
+          application.id,
+        );
+
+    logger.info(
+      {
+        applicationId:
+          application.id,
+
+        runId:
+          run.id,
+
+        runs:
+          flow?.runs.length ??
+          0,
+
+        states:
+          flow?.states.length ??
+          0,
+
+        actions:
+          flow?.actions.length ??
+          0,
+
+        transitions:
+          flow?.transitions
+            .length ??
+          0,
+
+        decisions:
+          flow?.decisions
+            .length ??
+          0,
+
+        networkEvents:
+          flow?.networkEvents
+            .length ??
+          0,
+
+        consoleEvents:
+          flow?.consoleEvents
+            .length ??
+          0,
+
+        artifacts:
+          flow?.artifacts
+            .length ??
+          0,
+      },
+      'Application graph persisted',
+    );
+
     await session.close();
 
     logger.info(
       'Browser session closed',
     );
   } catch (error: unknown) {
+    // If the run started but something failed,
+    // persist the failed state of the run.
     if (
-      error instanceof ZodError
+      repository &&
+      currentRunId &&
+      !runCompleted
+    ) {
+      try {
+        await repository.completeRun(
+          currentRunId,
+          'failed',
+        );
+      } catch (
+        persistenceError:
+          unknown
+      ) {
+        logger.error(
+          {
+            error:
+              persistenceError,
+
+            runId:
+              currentRunId,
+          },
+          'Failed to mark exploration run as failed',
+        );
+      }
+    }
+
+    if (
+      error instanceof
+      ZodError
     ) {
       logger.error(
         {
           issues:
             error.issues,
         },
-        'Invalid exploration target',
+        'Invalid exploration configuration',
       );
 
       process.exitCode = 1;
+
       return;
     }
 
@@ -203,6 +438,7 @@ async function main(): Promise<void> {
       );
 
       process.exitCode = 1;
+
       return;
     }
 
@@ -215,7 +451,16 @@ async function main(): Promise<void> {
 
     process.exitCode = 1;
   } finally {
-    await browser.close();
+    try {
+      await browser.close();
+    } finally {
+      if (
+        databaseConnection
+      ) {
+        await databaseConnection
+          .close();
+      }
+    }
   }
 }
 
