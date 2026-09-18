@@ -18,6 +18,10 @@ import {
 } from './configuration/environment.js';
 
 import {
+  getKnowledgeConfiguration,
+} from './configuration/knowledge.js';
+
+import {
   logger,
 } from './configuration/logger.js';
 
@@ -29,6 +33,11 @@ import {
 import {
   DeterministicExplorationPlanner,
 } from './exploration/index.js';
+
+import {
+  linkNetworkEventsToOperations,
+  loadKnowledge,
+} from './knowledge/index.js';
 
 import {
   ApplicationStateModel,
@@ -73,10 +82,88 @@ async function main(): Promise<void> {
   let runCompleted = false;
 
   try {
+    // --------------------------------
+    // Exploration target
+    // --------------------------------
+
     const job =
       parseTargetUrl(
         process.argv.slice(2),
       );
+
+    // --------------------------------
+    // Product knowledge
+    // --------------------------------
+
+    const knowledgeConfiguration =
+      getKnowledgeConfiguration();
+
+    const knowledge =
+      await loadKnowledge(
+        knowledgeConfiguration,
+      );
+
+    logger.info(
+      {
+        requirementsLoaded:
+          knowledge.requirements !==
+          null,
+
+        requirementsSource:
+          knowledge.requirements
+            ?.sourcePath ??
+          null,
+
+        acceptanceCriteria:
+          knowledge.requirements
+            ?.acceptanceCriteria
+            .length ??
+          0,
+
+        userRoles:
+          knowledge.requirements
+            ?.userRoles.length ??
+          0,
+
+        capabilities:
+          knowledge.requirements
+            ?.capabilities.length ??
+          0,
+
+        constraints:
+          knowledge.requirements
+            ?.constraints.length ??
+          0,
+
+        domainTerms:
+          knowledge.requirements
+            ?.domainTerms.length ??
+          0,
+
+        openApiLoaded:
+          knowledge.openApi !==
+          null,
+
+        openApiSource:
+          knowledge.openApi
+            ?.sourcePath ??
+          null,
+
+        apiOperations:
+          knowledge.openApi
+            ?.operations.length ??
+          0,
+
+        apiSchemas:
+          knowledge.openApi
+            ? Object.keys(
+                knowledge.openApi
+                  .schemas,
+              ).length
+            : 0,
+      },
+      'Product knowledge loaded',
+    );
 
     // --------------------------------
     // Database
@@ -129,6 +216,19 @@ async function main(): Promise<void> {
         context: {
           environment:
             environment.NODE_ENV,
+
+          requirementsLoaded:
+            knowledge.requirements !==
+            null,
+
+          openApiLoaded:
+            knowledge.openApi !==
+            null,
+
+          apiOperationCount:
+            knowledge.openApi
+              ?.operations.length ??
+            0,
         },
       });
 
@@ -195,6 +295,59 @@ async function main(): Promise<void> {
     );
 
     // --------------------------------
+    // Runtime network → OpenAPI
+    // --------------------------------
+
+    const apiLinks =
+      knowledge.openApi
+        ? linkNetworkEventsToOperations(
+            observation
+              .networkEvents,
+
+            knowledge.openApi
+              .operations,
+          )
+        : [];
+
+    logger.info(
+      {
+        networkEventCount:
+          observation
+            .networkEvents.length,
+
+        linkedOperationCount:
+          apiLinks.length,
+
+        linkedApiOperations:
+          apiLinks.map(
+            (link) => ({
+              networkEventId:
+                link.networkEventId,
+
+              method:
+                link.method,
+
+              url:
+                link.url,
+
+              operationId:
+                link.operationId,
+
+              operationPath:
+                link.operationPath,
+
+              confidence:
+                link.confidence,
+
+              reason:
+                link.reason,
+            }),
+          ),
+      },
+      'Runtime network evidence linked to API context',
+    );
+
+    // --------------------------------
     // State identification
     // --------------------------------
 
@@ -232,7 +385,7 @@ async function main(): Promise<void> {
       );
 
     // --------------------------------
-    // Persist evidence
+    // Persist observation evidence
     // --------------------------------
 
     await repository
@@ -252,12 +405,25 @@ async function main(): Promise<void> {
           stateResult.state,
 
         observation,
+
+        productContext: {
+          priorityTerms: [
+            ...(knowledge.requirements
+              ?.capabilities ??
+              []),
+
+            ...(knowledge.requirements
+              ?.domainTerms ??
+              []),
+          ],
+        },
       });
 
     logger.info(
       {
         selectedAction:
-          explorationDecision.selected
+          explorationDecision
+            .selected
             ? {
                 label:
                   explorationDecision
@@ -376,24 +542,31 @@ async function main(): Promise<void> {
       'Application graph persisted',
     );
 
+    // --------------------------------
+    // Close session
+    // --------------------------------
+
     await session.close();
 
     logger.info(
       'Browser session closed',
     );
   } catch (error: unknown) {
-    // If the run started but something failed,
-    // persist the failed state of the run.
+    // --------------------------------
+    // Mark failed run
+    // --------------------------------
+
     if (
       repository &&
       currentRunId &&
       !runCompleted
     ) {
       try {
-        await repository.completeRun(
-          currentRunId,
-          'failed',
-        );
+        await repository
+          .completeRun(
+            currentRunId,
+            'failed',
+          );
       } catch (
         persistenceError:
           unknown
@@ -410,6 +583,10 @@ async function main(): Promise<void> {
         );
       }
     }
+
+    // --------------------------------
+    // Zod error
+    // --------------------------------
 
     if (
       error instanceof
@@ -428,6 +605,10 @@ async function main(): Promise<void> {
       return;
     }
 
+    // --------------------------------
+    // Browser error
+    // --------------------------------
+
     if (
       error instanceof
       BrowserControllerError
@@ -441,6 +622,10 @@ async function main(): Promise<void> {
 
       return;
     }
+
+    // --------------------------------
+    // Unknown error
+    // --------------------------------
 
     logger.error(
       {
