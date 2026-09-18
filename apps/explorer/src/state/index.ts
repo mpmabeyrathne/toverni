@@ -1,7 +1,7 @@
 export {
     ApplicationStateModel,
   } from './application-state-model.js';
-  
+
   export type {
     RecordTransitionInput,
     RecordTransitionResult,
