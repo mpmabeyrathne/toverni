@@ -7,18 +7,34 @@ import {
   } from 'playwright';
   
   import type {
+    PageObservation,
+  } from '../contracts/page-observation.js';
+  
+  import {
+    PlaywrightPageObserver,
+  } from '../observation/playwright-page-observer.js';
+  
+  import type {
     BrowserController,
     BrowserControllerOptions,
   } from './browser-controller.js';
   
-  import { BrowserControllerError } from './browser-error.js';
+  import {
+    BrowserControllerError,
+  } from './browser-error.js';
   
-  import type { BrowserSession } from './browser-session.js';
-  import type { BrowserTarget } from './browser-target.js';
+  import type {
+    BrowserSession,
+  } from './browser-session.js';
+  
+  import type {
+    BrowserTarget,
+  } from './browser-target.js';
   
   const DEFAULT_TIMEOUT_MS = 15_000;
   
-  type PlaywrightRole = Parameters<Page['getByRole']>[0];
+  type PlaywrightRole =
+    Parameters<Page['getByRole']>[0];
   
   export class PlaywrightBrowserController
     implements BrowserController
@@ -26,12 +42,25 @@ import {
     private browser: Browser | null = null;
   
     private readonly headless: boolean;
+  
     private readonly timeoutMs: number;
   
-    constructor(options: BrowserControllerOptions = {}) {
-      this.headless = options.headless ?? true;
+    private readonly artifactsDirectory:
+      | string
+      | undefined;
+  
+    constructor(
+      options: BrowserControllerOptions = {},
+    ) {
+      this.headless =
+        options.headless ?? true;
+  
       this.timeoutMs =
-        options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        options.timeoutMs ??
+        DEFAULT_TIMEOUT_MS;
+  
+      this.artifactsDirectory =
+        options.artifactsDirectory;
     }
   
     async start(): Promise<void> {
@@ -47,13 +76,15 @@ import {
         throw new BrowserControllerError({
           code: 'BROWSER_LAUNCH_FAILED',
           operation: 'launch',
-          message: 'Failed to launch Chromium',
+          message:
+            'Failed to launch Chromium',
           cause: error,
         });
       }
     }
   
-    async createSession(): Promise<BrowserSession> {
+    async createSession():
+      Promise<BrowserSession> {
       if (!this.browser) {
         throw new BrowserControllerError({
           code: 'BROWSER_NOT_STARTED',
@@ -75,11 +106,13 @@ import {
           this.timeoutMs,
         );
   
-        const page = await context.newPage();
+        const page =
+          await context.newPage();
   
         return new PlaywrightBrowserSession(
           context,
           page,
+          this.artifactsDirectory,
         );
       } catch (error: unknown) {
         throw new BrowserControllerError({
@@ -99,12 +132,14 @@ import {
   
       try {
         await this.browser.close();
+  
         this.browser = null;
       } catch (error: unknown) {
         throw new BrowserControllerError({
           code: 'BROWSER_CLOSE_FAILED',
           operation: 'close',
-          message: 'Failed to close browser',
+          message:
+            'Failed to close browser',
           cause: error,
         });
       }
@@ -116,23 +151,45 @@ import {
   {
     private closed = false;
   
-    constructor(
-      private readonly context: BrowserContext,
-      private readonly page: Page,
-    ) {}
+    private readonly observer:
+      PlaywrightPageObserver;
   
-    async navigate(url: string): Promise<void> {
+    constructor(
+      private readonly context:
+        BrowserContext,
+  
+      private readonly page:
+        Page,
+  
+      artifactsDirectory?:
+        string,
+    ) {
+      this.observer =
+        new PlaywrightPageObserver(
+          this.page,
+          artifactsDirectory,
+        );
+    }
+  
+    async navigate(
+      url: string,
+    ): Promise<void> {
       this.ensureOpen();
   
       try {
-        await this.page.goto(url, {
-          waitUntil: 'domcontentloaded',
-        });
+        await this.page.goto(
+          url,
+          {
+            waitUntil:
+              'domcontentloaded',
+          },
+        );
       } catch (error: unknown) {
         throw new BrowserControllerError({
           code: 'NAVIGATION_FAILED',
           operation: 'navigate',
-          message: `Failed to navigate to ${url}`,
+          message:
+            `Failed to navigate to ${url}`,
           cause: error,
         });
       }
@@ -144,9 +201,9 @@ import {
       this.ensureOpen();
   
       try {
-        await this.resolveTarget(
-          target,
-        ).click();
+        await this
+          .resolveTarget(target)
+          .click();
       } catch (error: unknown) {
         throw this.createActionError(
           'click',
@@ -163,9 +220,9 @@ import {
       this.ensureOpen();
   
       try {
-        await this.resolveTarget(
-          target,
-        ).fill(value);
+        await this
+          .resolveTarget(target)
+          .fill(value);
       } catch (error: unknown) {
         throw this.createActionError(
           'fill',
@@ -177,14 +234,16 @@ import {
   
     async select(
       target: BrowserTarget,
-      value: string | string[],
+      value:
+        | string
+        | string[],
     ): Promise<void> {
       this.ensureOpen();
   
       try {
-        await this.resolveTarget(
-          target,
-        ).selectOption(value);
+        await this
+          .resolveTarget(target)
+          .selectOption(value);
       } catch (error: unknown) {
         throw this.createActionError(
           'select',
@@ -203,20 +262,25 @@ import {
         const locator =
           this.resolveTarget(target);
   
-        await locator.evaluate((element) => {
-          const form =
-            element instanceof HTMLFormElement
-              ? element
-              : element.closest('form');
+        await locator.evaluate(
+          (element) => {
+            const form =
+              element instanceof
+                HTMLFormElement
+                ? element
+                : element.closest(
+                    'form',
+                  );
   
-          if (!form) {
-            throw new Error(
-              'Target is not a form and is not inside a form',
-            );
-          }
+            if (!form) {
+              throw new Error(
+                'Target is not a form and is not inside a form',
+              );
+            }
   
-          form.requestSubmit();
-        });
+            form.requestSubmit();
+          },
+        );
       } catch (error: unknown) {
         throw this.createActionError(
           'submit',
@@ -231,7 +295,8 @@ import {
   
       try {
         await this.page.goBack({
-          waitUntil: 'domcontentloaded',
+          waitUntil:
+            'domcontentloaded',
         });
       } catch (error: unknown) {
         throw new BrowserControllerError({
@@ -249,7 +314,8 @@ import {
   
       try {
         await this.page.goForward({
-          waitUntil: 'domcontentloaded',
+          waitUntil:
+            'domcontentloaded',
         });
       } catch (error: unknown) {
         throw new BrowserControllerError({
@@ -267,13 +333,15 @@ import {
   
       try {
         await this.page.reload({
-          waitUntil: 'domcontentloaded',
+          waitUntil:
+            'domcontentloaded',
         });
       } catch (error: unknown) {
         throw new BrowserControllerError({
           code: 'ACTION_FAILED',
           operation: 'reload',
-          message: 'Failed to reload page',
+          message:
+            'Failed to reload page',
           cause: error,
         });
       }
@@ -285,7 +353,9 @@ import {
       this.ensureOpen();
   
       if (
-        !Number.isFinite(milliseconds) ||
+        !Number.isFinite(
+          milliseconds,
+        ) ||
         milliseconds < 0
       ) {
         throw new BrowserControllerError({
@@ -296,9 +366,14 @@ import {
         });
       }
   
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, milliseconds);
-      });
+      await new Promise<void>(
+        (resolve) => {
+          setTimeout(
+            resolve,
+            milliseconds,
+          );
+        },
+      );
     }
   
     getUrl(): string {
@@ -307,10 +382,18 @@ import {
       return this.page.url();
     }
   
-    async getTitle(): Promise<string> {
+    async getTitle():
+      Promise<string> {
       this.ensureOpen();
   
       return this.page.title();
+    }
+  
+    async observe():
+      Promise<PageObservation> {
+      this.ensureOpen();
+  
+      return this.observer.observe();
     }
   
     async close(): Promise<void> {
@@ -320,6 +403,7 @@ import {
   
       try {
         await this.context.close();
+  
         this.closed = true;
       } catch (error: unknown) {
         throw new BrowserControllerError({
@@ -338,11 +422,20 @@ import {
       switch (target.by) {
         case 'role': {
           const options = {
-            ...(target.name !== undefined
-              ? { name: target.name }
+            ...(target.name !==
+            undefined
+              ? {
+                  name:
+                    target.name,
+                }
               : {}),
-            ...(target.exact !== undefined
-              ? { exact: target.exact }
+  
+            ...(target.exact !==
+            undefined
+              ? {
+                  exact:
+                    target.exact,
+                }
               : {}),
           };
   
@@ -382,10 +475,14 @@ import {
   
     private buildExactOptions(
       exact?: boolean,
-    ): { exact?: boolean } {
+    ): {
+      exact?: boolean;
+    } {
       return exact === undefined
         ? {}
-        : { exact };
+        : {
+            exact,
+          };
     }
   
     private ensureOpen(): void {
@@ -405,7 +502,9 @@ import {
         | 'fill'
         | 'select'
         | 'submit',
+  
       target: BrowserTarget,
+  
       cause: unknown,
     ): BrowserControllerError {
       return new BrowserControllerError({
