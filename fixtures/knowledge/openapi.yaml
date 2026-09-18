@@ -1,0 +1,70 @@
+openapi: 3.1.0
+
+info:
+  title: Booking API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/rooms:
+    get:
+      operationId: listRooms
+      summary: List available rooms
+      responses:
+        "200":
+          description: Rooms returned
+          content:
+            application/json: {}
+
+  /api/rooms/{roomId}:
+    get:
+      operationId: getRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Room returned
+        "404":
+          description: Room not found
+
+  /api/bookings:
+    post:
+      operationId: createBooking
+      summary: Create booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+
+      responses:
+        "201":
+          description: Booking created
+        "400":
+          description: Invalid booking
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+
+        roomId:
+          type: string
