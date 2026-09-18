@@ -10,10 +10,13 @@ import { environment } from './configuration/environment.js';
 import { logger } from './configuration/logger.js';
 
 async function main(): Promise<void> {
-  const browser = new PlaywrightBrowserController({
-    headless: false,
-    timeoutMs: 15_000,
-  });
+  const browser =
+    new PlaywrightBrowserController({
+      headless: false,
+      timeoutMs: 15_000,
+      artifactsDirectory:
+        'artifacts',
+    });
 
   try {
     const job = parseTargetUrl(
@@ -22,36 +25,62 @@ async function main(): Promise<void> {
 
     logger.info(
       {
-        targetUrl: job.targetUrl,
-        environment: environment.NODE_ENV,
+        targetUrl:
+          job.targetUrl,
+        environment:
+          environment.NODE_ENV,
       },
       'Starting Toverni Application Explorer',
     );
 
     await browser.start();
 
-    logger.info('Chromium launched');
+    logger.info(
+      'Chromium launched',
+    );
 
-    const session = await browser.createSession();
+    const session =
+      await browser.createSession();
 
-    await session.navigate(job.targetUrl);
+    // 1. Navigate first
+    await session.navigate(
+      job.targetUrl,
+    );
 
     logger.info(
       {
-        url: session.getUrl(),
-        title: await session.getTitle(),
+        url:
+          session.getUrl(),
+        title:
+          await session.getTitle(),
       },
       'Target application loaded',
     );
 
+    // 2. Observe only after navigation
+    const observation =
+      await session.observe();
+
+    logger.info(
+      {
+        observation,
+      },
+      'Page observation captured',
+    );
+
     await session.close();
 
-    logger.info('Browser session closed');
+    logger.info(
+      'Browser session closed',
+    );
   } catch (error: unknown) {
-    if (error instanceof ZodError) {
+    if (
+      error instanceof ZodError
+    ) {
       logger.error(
         {
-          issues: error.issues,
+          issues:
+            error.issues,
         },
         'Invalid exploration target',
       );
@@ -60,7 +89,10 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (error instanceof BrowserControllerError) {
+    if (
+      error instanceof
+      BrowserControllerError
+    ) {
       logger.error(
         error.toJSON(),
         'Browser operation failed',
