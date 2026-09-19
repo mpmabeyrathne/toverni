@@ -159,13 +159,22 @@ export const scenarioGenerationInputSchema =
       ),
   });
 
-export const scenarioGenerationOutputSchema =
+  export const scenarioGenerationOutputSchema =
   z.object({
     scenarios:
       z.array(
         z.object({
           title:
             z.string(),
+
+          type:
+            z.enum([
+              'positive',
+              'negative',
+              'boundary',
+              'navigation',
+              'recovery',
+            ]),
 
           preconditions:
             z.array(
@@ -182,10 +191,11 @@ export const scenarioGenerationOutputSchema =
               z.string(),
             ),
 
-          sourceReferences:
+          evidenceReferences:
             z.array(
               z.string(),
-            ),
+            )
+            .min(1),
         }),
       ),
   });
