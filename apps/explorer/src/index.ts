@@ -10,6 +10,11 @@ import {
 } from './cli/parse-target.js';
 
 import {
+  buildEvidenceCatalog,
+  GroundedScenarioGenerator,
+} from './scenarios/index.js';
+
+import {
   getDatabaseUrl,
 } from './configuration/database.js';
 
@@ -76,8 +81,8 @@ async function main(): Promise<void> {
 
   let databaseConnection:
     | ReturnType<
-        typeof createDatabase
-      >
+      typeof createDatabase
+    >
     | null = null;
 
   let repository:
@@ -166,9 +171,9 @@ async function main(): Promise<void> {
         apiSchemas:
           knowledge.openApi
             ? Object.keys(
-                knowledge.openApi
-                  .schemas,
-              ).length
+              knowledge.openApi
+                .schemas,
+            ).length
             : 0,
       },
       'Product knowledge loaded',
@@ -375,19 +380,19 @@ async function main(): Promise<void> {
                       action.type,
 
                     ...(action.name !==
-                    undefined
+                      undefined
                       ? {
-                          name:
-                            action.name,
-                        }
+                        name:
+                          action.name,
+                      }
                       : {}),
 
                     ...(action.text !==
-                    undefined
+                      undefined
                       ? {
-                          text:
-                            action.text,
-                        }
+                        text:
+                          action.text,
+                      }
                       : {}),
                   }),
                 ),
@@ -412,12 +417,12 @@ async function main(): Promise<void> {
     const apiLinks =
       knowledge.openApi
         ? linkNetworkEventsToOperations(
-            observation
-              .networkEvents,
+          observation
+            .networkEvents,
 
-            knowledge.openApi
-              .operations,
-          )
+          knowledge.openApi
+            .operations,
+        )
         : [];
 
     logger.info(
@@ -537,26 +542,26 @@ async function main(): Promise<void> {
           explorationDecision
             .selected
             ? {
-                label:
-                  explorationDecision
-                    .selected
-                    .label,
+              label:
+                explorationDecision
+                  .selected
+                  .label,
 
-                score:
-                  explorationDecision
-                    .selected
-                    .score,
+              score:
+                explorationDecision
+                  .selected
+                  .score,
 
-                target:
-                  explorationDecision
-                    .selected
-                    .target,
+              target:
+                explorationDecision
+                  .selected
+                  .target,
 
-                reasons:
-                  explorationDecision
-                    .selected
-                    .reasons,
-              }
+              reasons:
+                explorationDecision
+                  .selected
+                  .reasons,
+            }
             : null,
 
         shouldStop:
@@ -585,6 +590,84 @@ async function main(): Promise<void> {
         persistedState.id,
         explorationDecision,
       );
+
+    // --------------------------------
+    // Grounded scenario generation
+    // --------------------------------
+
+    if (
+      modelConfiguration
+        .MODEL_REASONING_ENABLED
+    ) {
+      const currentFlow =
+        await activeRepository
+          .getApplicationFlow(
+            application.id,
+          );
+
+      if (currentFlow) {
+        const evidence =
+          buildEvidenceCatalog(
+            knowledge,
+            currentFlow,
+          );
+
+        const scenarioGenerator =
+          new GroundedScenarioGenerator(
+            modelProvider,
+          );
+
+          const scenarios =
+          (
+            await scenarioGenerator
+              .generate({
+                evidence,
+              })
+          ).slice(0, 8);
+
+        await activeRepository
+          .saveGeneratedScenarios(
+            run.id,
+            application.id,
+            scenarios,
+          );
+
+        logger.info(
+          {
+            evidenceCount:
+              evidence.length,
+
+            scenarioCount:
+              scenarios.length,
+
+            scenarios:
+              scenarios.map(
+                (scenario) => ({
+                  title:
+                    scenario.title,
+
+                  type:
+                    scenario.type,
+
+                  relevance:
+                    scenario.relevance,
+
+                  risk:
+                    scenario.risk,
+
+                  confidence:
+                    scenario.confidence,
+
+                  evidenceReferences:
+                    scenario
+                      .evidenceReferences,
+                }),
+              ),
+          },
+          'Grounded test scenarios generated',
+        );
+      }
+    }
 
     // --------------------------------
     // Complete exploration run
@@ -657,6 +740,9 @@ async function main(): Promise<void> {
           flow?.modelUsage
             .length ??
           0,
+        generatedScenarios:
+          flow?.generatedScenarios
+            .length ?? 0,
 
         modelTokens:
           flow?.modelUsage
@@ -714,8 +800,8 @@ async function main(): Promise<void> {
             'failed',
           );
       } catch (
-        persistenceError:
-          unknown
+      persistenceError:
+        unknown
       ) {
         logger.error(
           {

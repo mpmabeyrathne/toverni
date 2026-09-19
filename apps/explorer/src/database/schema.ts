@@ -938,3 +938,108 @@ import {
       ),
     ],
   );
+
+  export const generatedScenarios =
+  pgTable(
+    'generated_scenarios',
+    {
+      id:
+        uuid('id')
+          .defaultRandom()
+          .primaryKey(),
+
+      runId:
+        uuid('run_id')
+          .notNull()
+          .references(
+            () =>
+              explorationRuns.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      applicationId:
+        uuid('application_id')
+          .notNull()
+          .references(
+            () =>
+              applications.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      title:
+        text('title')
+          .notNull(),
+
+      scenarioType:
+        text('scenario_type')
+          .notNull(),
+
+      preconditions:
+        jsonb('preconditions')
+          .$type<string[]>()
+          .notNull(),
+
+      actions:
+        jsonb('actions')
+          .$type<string[]>()
+          .notNull(),
+
+      expectedOutcomes:
+        jsonb(
+          'expected_outcomes',
+        )
+          .$type<string[]>()
+          .notNull(),
+
+      evidenceReferences:
+        jsonb(
+          'evidence_references',
+        )
+          .$type<string[]>()
+          .notNull(),
+
+      relevance:
+        integer('relevance')
+          .notNull(),
+
+      risk:
+        integer('risk')
+          .notNull(),
+
+      confidence:
+        real('confidence')
+          .notNull(),
+
+      createdAt:
+        timestamp(
+          'created_at',
+          {
+            withTimezone:
+              true,
+          },
+        )
+          .defaultNow()
+          .notNull(),
+    },
+    (
+      table,
+    ) => [
+      index(
+        'generated_scenarios_run_idx',
+      ).on(
+        table.runId,
+      ),
+
+      index(
+        'generated_scenarios_application_idx',
+      ).on(
+        table.applicationId,
+      ),
+    ],
+  );
