@@ -40,7 +40,6 @@ import type {
     const trimmed =
       reference.trim();
   
-    // Exact match first.
     if (
       validEvidenceIds.has(
         trimmed,
@@ -49,10 +48,6 @@ import type {
       return trimmed;
     }
   
-    // Safe local repair:
-    // If the model returned something like
-    // "REQ-1 - booking requirement",
-    // extract the actual known evidence ID.
     for (
       const evidenceId of
         validEvidenceIds
@@ -119,6 +114,219 @@ import type {
       ...scenario,
       evidenceReferences,
     };
+  }
+  
+  function hasRequiredEvidenceForScenarioType(
+    scenario:
+      GroundedScenarioCandidate,
+  
+    evidence:
+      ScenarioEvidence[],
+  ): boolean {
+    const evidenceMap =
+      new Map(
+        evidence.map(
+          (item) => [
+            item.id,
+            item,
+          ],
+        ),
+      );
+  
+    const referencedEvidence =
+      scenario
+        .evidenceReferences
+        .flatMap(
+          (reference) => {
+            const item =
+              evidenceMap.get(
+                reference,
+              );
+  
+            return item
+              ? [item]
+              : [];
+          },
+        );
+  
+    switch (
+      scenario.type
+    ) {
+      case 'positive':
+        return referencedEvidence.some(
+          (item) =>
+            item.type ===
+              'requirement' ||
+            item.type ===
+              'capability' ||
+            item.type ===
+              'action' ||
+            item.type ===
+              'transition' ||
+            item.type ===
+              'api-operation',
+        );
+  
+      case 'navigation':
+        return referencedEvidence.some(
+          (item) =>
+            item.type ===
+              'state' ||
+            item.type ===
+              'action' ||
+            item.type ===
+              'transition' ||
+            item.type ===
+              'capability',
+        );
+  
+      case 'negative':
+      case 'boundary':
+        return referencedEvidence.some(
+          (item) =>
+            item.type ===
+              'requirement' ||
+            item.type ===
+              'constraint' ||
+            item.type ===
+              'api-operation',
+        );
+  
+      case 'recovery':
+        return referencedEvidence.some(
+          (item) =>
+            item.type ===
+              'requirement' ||
+            item.type ===
+              'constraint' ||
+            item.type ===
+              'transition',
+        );
+    }
+  }
+  
+  function normalizeActionDescription(
+    value: string,
+  ): string {
+    return value
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        ' ',
+      )
+      .trim();
+  }
+  
+  function createActionNavigationScenarios(
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate[] {
+    const scenarios:
+      GroundedScenarioCandidate[] =
+        [];
+  
+    const seenActions =
+      new Set<string>();
+  
+    for (
+      const item of evidence
+    ) {
+      if (
+        item.type !==
+        'action'
+      ) {
+        continue;
+      }
+  
+      const separatorIndex =
+        item.description
+          .indexOf(':');
+  
+      if (
+        separatorIndex === -1
+      ) {
+        continue;
+      }
+  
+      const actionType =
+        item.description
+          .slice(
+            0,
+            separatorIndex,
+          )
+          .trim()
+          .toLowerCase();
+  
+      const label =
+        item.description
+          .slice(
+            separatorIndex + 1,
+          )
+          .trim();
+  
+      // TOV-97 currently knows how to
+      // deterministically execute these.
+      if (
+        actionType !==
+          'link' &&
+        actionType !==
+          'button'
+      ) {
+        continue;
+      }
+  
+      if (
+        label.length ===
+        0 ||
+        label ===
+          'unnamed action'
+      ) {
+        continue;
+      }
+  
+      const signature =
+        normalizeActionDescription(
+          `${actionType}:${label}`,
+        );
+  
+      // Historical runs may contain the
+      // same discovered action many times.
+      if (
+        seenActions.has(
+          signature,
+        )
+      ) {
+        continue;
+      }
+  
+      seenActions.add(
+        signature,
+      );
+  
+      scenarios.push({
+        title:
+          `Navigation: ${label}`,
+  
+        type:
+          'navigation',
+  
+        preconditions: [],
+  
+        actions: [
+          `Use the discovered ${actionType} "${label}"`,
+        ],
+  
+        expectedOutcomes: [
+          `The discovered ${actionType} "${label}" can be executed from the observed application state.`,
+        ],
+  
+        evidenceReferences: [
+          item.id,
+        ],
+      });
+    }
+  
+    return scenarios;
   }
   
   export class GroundedScenarioGenerator {
@@ -217,32 +425,45 @@ import type {
             discoveredFlows,
           });
   
-          const groundedCandidates =
-          result.data.scenarios
-            .map(
-              (scenario) =>
-                groundScenario(
-                  scenario,
-                  validEvidenceIds,
-                ),
-            )
-            .filter(
-              (
+      const groundedModelScenarios =
+        result.data.scenarios
+          .map(
+            (scenario) =>
+              groundScenario(
                 scenario,
-              ): scenario is GroundedScenarioCandidate =>
-                scenario !== null,
-            )
-            .filter(
-              (scenario) =>
-                hasRequiredEvidenceForScenarioType(
-                  scenario,
-                  input.evidence,
-                ),
-            );
+                validEvidenceIds,
+              ),
+          )
+          .filter(
+            (
+              scenario,
+            ): scenario is GroundedScenarioCandidate =>
+              scenario !== null,
+          )
+          .filter(
+            (scenario) =>
+              hasRequiredEvidenceForScenarioType(
+                scenario,
+                input.evidence,
+              ),
+          );
+  
+      // These are not invented by the model.
+      // They come directly from discovered
+      // executable browser actions.
+      const deterministicActionScenarios =
+        createActionNavigationScenarios(
+          input.evidence,
+        );
+  
+      const allCandidates = [
+        ...groundedModelScenarios,
+        ...deterministicActionScenarios,
+      ];
   
       const deduplicated =
         deduplicateScenarios(
-          groundedCandidates,
+          allCandidates,
         );
   
       return deduplicated
@@ -285,84 +506,4 @@ import type {
           },
         );
     }
-  }
-
-  function hasRequiredEvidenceForScenarioType(
-    scenario:
-      GroundedScenarioCandidate,
-  
-    evidence:
-      ScenarioEvidence[],
-  ): boolean {
-    const evidenceMap =
-      new Map(
-        evidence.map(
-          (item) => [
-            item.id,
-            item,
-          ],
-        ),
-      );
-  
-    const referencedEvidence =
-      scenario
-        .evidenceReferences
-        .flatMap(
-          (reference) => {
-            const item =
-              evidenceMap.get(
-                reference,
-              );
-  
-            return item
-              ? [item]
-              : [];
-          },
-        );
-  
-    const allowedTypes =
-      (() => {
-        switch (
-          scenario.type
-        ) {
-          case 'positive':
-            return [
-              'requirement',
-              'capability',
-              'action',
-              'transition',
-              'api-operation',
-            ] as const;
-  
-          case 'navigation':
-            return [
-              'state',
-              'action',
-              'transition',
-              'capability',
-            ] as const;
-  
-          case 'negative':
-          case 'boundary':
-            return [
-              'requirement',
-              'constraint',
-              'api-operation',
-            ] as const;
-  
-          case 'recovery':
-            return [
-              'requirement',
-              'constraint',
-              'transition',
-            ] as const;
-        }
-      })();
-  
-    return referencedEvidence.some(
-      (item) =>
-        allowedTypes.includes(
-          item.type as never,
-        ),
-    );
   }

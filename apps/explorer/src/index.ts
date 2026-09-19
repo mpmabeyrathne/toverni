@@ -6,6 +6,16 @@ import {
 } from './browser/index.js';
 
 import {
+  createExecutableTestPlan,
+  runPlaywrightTest,
+  writePlaywrightTest,
+} from './test-generation/index.js';
+
+import {
+  join,
+} from 'node:path';
+
+import {
   parseTargetUrl,
 } from './cli/parse-target.js';
 
@@ -617,20 +627,62 @@ async function main(): Promise<void> {
             modelProvider,
           );
 
-          const scenarios =
-          (
-            await scenarioGenerator
-              .generate({
-                evidence,
-              })
-          ).slice(0, 8);
-
-        await activeRepository
-          .saveGeneratedScenarios(
-            run.id,
-            application.id,
-            scenarios,
+          const generatedScenarios =
+          await scenarioGenerator
+            .generate({
+              evidence,
+            });
+        
+        const actionBackedScenarios =
+          generatedScenarios.filter(
+            (scenario) =>
+              scenario
+                .evidenceReferences
+                .some(
+                  (reference) =>
+                    reference.startsWith(
+                      'ACTION-',
+                    ),
+                ),
           );
+        
+        const otherScenarios =
+          generatedScenarios.filter(
+            (scenario) =>
+              !scenario
+                .evidenceReferences
+                .some(
+                  (reference) =>
+                    reference.startsWith(
+                      'ACTION-',
+                    ),
+                ),
+          );
+        
+        const scenarios = [
+          ...actionBackedScenarios
+            .slice(0, 2),
+        
+          ...otherScenarios
+            .slice(
+              0,
+              Math.max(
+                0,
+                8 -
+                  actionBackedScenarios
+                    .slice(0, 2)
+                    .length,
+              ),
+            ),
+        ];
+
+        const storedScenarios =
+          await activeRepository
+            .saveGeneratedScenarios(
+              run.id,
+              application.id,
+              scenarios,
+            );
 
         logger.info(
           {
@@ -666,6 +718,274 @@ async function main(): Promise<void> {
           },
           'Grounded test scenarios generated',
         );
+
+        // --------------------------------
+        // Executable Playwright generation
+        // --------------------------------
+
+        const generatedTestsDirectory =
+          join(
+            process.cwd(),
+            'artifacts',
+            'generated-tests',
+            run.id,
+          );
+
+        for (
+          const storedScenario of
+          storedScenarios
+        ) {
+          const plan =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  storedScenario.id,
+
+                title:
+                  storedScenario.title,
+
+                evidenceReferences:
+                  storedScenario
+                    .evidenceReferences,
+              },
+
+              evidence:
+                evidence.map(
+                  (item) => ({
+                    id:
+                      item.id,
+
+                    type:
+                      item.type,
+
+                    source:
+                      item.source,
+                  }),
+                ),
+
+              actions:
+                currentFlow.actions.map(
+                  (action) => ({
+                    id:
+                      action.id,
+
+                    label:
+                      action.label,
+
+                    type:
+                      action.type,
+
+                    target:
+                      action.target,
+                  }),
+                ),
+            });
+
+          // ------------------------------
+          // Manual-required scenario
+          // ------------------------------
+
+          if (
+            plan.status ===
+            'manual_required'
+          ) {
+            await activeRepository
+              .saveGeneratedTest({
+                runId:
+                  run.id,
+
+                applicationId:
+                  application.id,
+
+                scenarioId:
+                  storedScenario.id,
+
+                generationStatus:
+                  'manual_required',
+
+                reason:
+                  plan.reason,
+
+                sourceFilePath:
+                  null,
+
+                sourceCode:
+                  null,
+              });
+
+            logger.info(
+              {
+                scenarioId:
+                  storedScenario.id,
+
+                title:
+                  storedScenario.title,
+
+                reason:
+                  plan.reason,
+              },
+              'Generated test requires manual completion',
+            );
+
+            continue;
+          }
+
+          // ------------------------------
+          // Generate Playwright file
+          // ------------------------------
+
+          try {
+            const writtenTest =
+              await writePlaywrightTest(
+                {
+                  plan,
+
+                  targetUrl:
+                    job.targetUrl,
+                },
+
+                generatedTestsDirectory,
+              );
+
+            const storedTest =
+              await activeRepository
+                .saveGeneratedTest({
+                  runId:
+                    run.id,
+
+                  applicationId:
+                    application.id,
+
+                  scenarioId:
+                    storedScenario.id,
+
+                  generationStatus:
+                    'ready',
+
+                  reason:
+                    null,
+
+                  sourceFilePath:
+                    writtenTest.filePath,
+
+                  sourceCode:
+                    writtenTest.source,
+                });
+
+            // ----------------------------
+            // Execute generated test
+            // ----------------------------
+
+            try {
+              const executionResult =
+                await runPlaywrightTest({
+                  filePath:
+                    writtenTest.filePath,
+
+                  workingDirectory:
+                    process.cwd(),
+                });
+
+              await activeRepository
+                .saveGeneratedTestExecution(
+                  storedTest.id,
+                  executionResult,
+                );
+
+              logger.info(
+                {
+                  scenarioId:
+                    storedScenario.id,
+
+                  generatedTestId:
+                    storedTest.id,
+
+                  filePath:
+                    writtenTest.filePath,
+
+                  status:
+                    executionResult.status,
+
+                  exitCode:
+                    executionResult.exitCode,
+
+                  durationMs:
+                    executionResult.durationMs,
+                },
+                'Generated Playwright test executed',
+              );
+            } catch (
+            executionError:
+              unknown
+            ) {
+              await activeRepository
+                .saveGeneratedTestError(
+                  storedTest.id,
+                  executionError,
+                );
+
+              logger.error(
+                {
+                  scenarioId:
+                    storedScenario.id,
+
+                  generatedTestId:
+                    storedTest.id,
+
+                  error:
+                    executionError,
+                },
+                'Generated Playwright test execution failed',
+              );
+            }
+          } catch (
+          generationError:
+            unknown
+          ) {
+            const message =
+              generationError instanceof
+                Error
+                ? generationError.message
+                : String(
+                  generationError,
+                );
+
+            await activeRepository
+              .saveGeneratedTest({
+                runId:
+                  run.id,
+
+                applicationId:
+                  application.id,
+
+                scenarioId:
+                  storedScenario.id,
+
+                generationStatus:
+                  'generation_error',
+
+                reason:
+                  message,
+
+                sourceFilePath:
+                  null,
+
+                sourceCode:
+                  null,
+              });
+
+            logger.error(
+              {
+                scenarioId:
+                  storedScenario.id,
+
+                error:
+                  generationError,
+              },
+              'Playwright test generation failed',
+            );
+          }
+        }
       }
     }
 
@@ -740,6 +1060,7 @@ async function main(): Promise<void> {
           flow?.modelUsage
             .length ??
           0,
+
         generatedScenarios:
           flow?.generatedScenarios
             .length ?? 0,
@@ -769,6 +1090,43 @@ async function main(): Promise<void> {
                   .estimatedCostUsd,
               0,
             ) ??
+          0,
+
+        generatedTests:
+          flow?.generatedTests
+            .length ??
+          0,
+
+        passedGeneratedTests:
+          flow?.generatedTests
+            .filter(
+              (test) =>
+                test.executionStatus ===
+                'passed',
+            )
+            .length ??
+          0,
+
+        failedGeneratedTests:
+          flow?.generatedTests
+            .filter(
+              (test) =>
+                test.executionStatus ===
+                'failed' ||
+                test.executionStatus ===
+                'runtime_error',
+            )
+            .length ??
+          0,
+
+        manualRequiredTests:
+          flow?.generatedTests
+            .filter(
+              (test) =>
+                test.generationStatus ===
+                'manual_required',
+            )
+            .length ??
           0,
       },
       'Application graph persisted',
@@ -861,7 +1219,22 @@ async function main(): Promise<void> {
 
     logger.error(
       {
-        error,
+        error:
+          error instanceof Error
+            ? {
+                name:
+                  error.name,
+    
+                message:
+                  error.message,
+    
+                stack:
+                  error.stack,
+    
+                cause:
+                  error.cause,
+              }
+            : error,
       },
       'Unexpected explorer error',
     );
