@@ -26,6 +26,10 @@ import {
 } from './configuration/logger.js';
 
 import {
+  getModelConfiguration,
+} from './configuration/model.js';
+
+import {
   createDatabase,
   ExplorationRepository,
 } from './database/index.js';
@@ -38,6 +42,11 @@ import {
   linkNetworkEventsToOperations,
   loadKnowledge,
 } from './knowledge/index.js';
+
+import {
+  OllamaProvider,
+  RecordingModelProvider,
+} from './models/index.js';
 
 import {
   ApplicationStateModel,
@@ -177,10 +186,13 @@ async function main(): Promise<void> {
         databaseUrl,
       );
 
-    repository =
+    const activeRepository =
       new ExplorationRepository(
         databaseConnection.db,
       );
+
+    repository =
+      activeRepository;
 
     // --------------------------------
     // Application
@@ -192,7 +204,7 @@ async function main(): Promise<void> {
       );
 
     const application =
-      await repository
+      await activeRepository
         .ensureApplication({
           name:
             targetUrl.hostname,
@@ -206,31 +218,32 @@ async function main(): Promise<void> {
     // --------------------------------
 
     const run =
-      await repository.startRun({
-        applicationId:
-          application.id,
+      await activeRepository
+        .startRun({
+          applicationId:
+            application.id,
 
-        entryUrl:
-          job.targetUrl,
+          entryUrl:
+            job.targetUrl,
 
-        context: {
-          environment:
-            environment.NODE_ENV,
+          context: {
+            environment:
+              environment.NODE_ENV,
 
-          requirementsLoaded:
-            knowledge.requirements !==
-            null,
+            requirementsLoaded:
+              knowledge.requirements !==
+              null,
 
-          openApiLoaded:
-            knowledge.openApi !==
-            null,
+            openApiLoaded:
+              knowledge.openApi !==
+              null,
 
-          apiOperationCount:
-            knowledge.openApi
-              ?.operations.length ??
-            0,
-        },
-      });
+            apiOperationCount:
+              knowledge.openApi
+                ?.operations.length ??
+              0,
+          },
+        });
 
     currentRunId =
       run.id;
@@ -251,6 +264,45 @@ async function main(): Promise<void> {
       },
       'Starting Toverni Application Explorer',
     );
+
+    // --------------------------------
+    // Model provider
+    // --------------------------------
+
+    const modelConfiguration =
+      getModelConfiguration();
+
+    const rawModelProvider =
+      new OllamaProvider({
+        baseUrl:
+          modelConfiguration
+            .OLLAMA_BASE_URL,
+
+        cheapModel:
+          modelConfiguration
+            .OLLAMA_CHEAP_MODEL,
+
+        complexModel:
+          modelConfiguration
+            .OLLAMA_COMPLEX_MODEL,
+      });
+
+    const modelProvider =
+      new RecordingModelProvider(
+        rawModelProvider,
+
+        async (
+          task,
+          usage,
+        ) => {
+          await activeRepository
+            .saveModelUsage(
+              run.id,
+              task,
+              usage,
+            );
+        },
+      );
 
     // --------------------------------
     // Browser
@@ -293,6 +345,65 @@ async function main(): Promise<void> {
       },
       'Page observation captured',
     );
+
+    // --------------------------------
+    // Optional semantic state analysis
+    // --------------------------------
+
+    if (
+      modelConfiguration
+        .MODEL_REASONING_ENABLED
+    ) {
+      const stateAnalysis =
+        await modelProvider
+          .analyzeState({
+            url:
+              observation.url,
+
+            title:
+              observation.title,
+
+            semanticText:
+              observation
+                .semanticText,
+
+            actions:
+              observation.actions
+                .map(
+                  (action) => ({
+                    type:
+                      action.type,
+
+                    ...(action.name !==
+                    undefined
+                      ? {
+                          name:
+                            action.name,
+                        }
+                      : {}),
+
+                    ...(action.text !==
+                    undefined
+                      ? {
+                          text:
+                            action.text,
+                        }
+                      : {}),
+                  }),
+                ),
+          });
+
+      logger.info(
+        {
+          analysis:
+            stateAnalysis.data,
+
+          usage:
+            stateAnalysis.usage,
+        },
+        'Application state semantically analyzed',
+      );
+    }
 
     // --------------------------------
     // Runtime network → OpenAPI
@@ -379,16 +490,17 @@ async function main(): Promise<void> {
     // --------------------------------
 
     const persistedState =
-      await repository.saveState(
-        application.id,
-        stateResult.state,
-      );
+      await activeRepository
+        .saveState(
+          application.id,
+          stateResult.state,
+        );
 
     // --------------------------------
     // Persist observation evidence
     // --------------------------------
 
-    await repository
+    await activeRepository
       .saveObservationEvidence(
         run.id,
         persistedState.id,
@@ -467,20 +579,22 @@ async function main(): Promise<void> {
     // Persist planner decision/actions
     // --------------------------------
 
-    await repository.saveDecision(
-      run.id,
-      persistedState.id,
-      explorationDecision,
-    );
+    await activeRepository
+      .saveDecision(
+        run.id,
+        persistedState.id,
+        explorationDecision,
+      );
 
     // --------------------------------
     // Complete exploration run
     // --------------------------------
 
-    await repository.completeRun(
-      run.id,
-      'completed',
-    );
+    await activeRepository
+      .completeRun(
+        run.id,
+        'completed',
+      );
 
     runCompleted = true;
 
@@ -489,7 +603,7 @@ async function main(): Promise<void> {
     // --------------------------------
 
     const flow =
-      await repository
+      await activeRepository
         .getApplicationFlow(
           application.id,
         );
@@ -537,6 +651,38 @@ async function main(): Promise<void> {
         artifacts:
           flow?.artifacts
             .length ??
+          0,
+
+        modelUsageEvents:
+          flow?.modelUsage
+            .length ??
+          0,
+
+        modelTokens:
+          flow?.modelUsage
+            .reduce(
+              (
+                total,
+                usage,
+              ) =>
+                total +
+                usage.totalTokens,
+              0,
+            ) ??
+          0,
+
+        modelCostUsd:
+          flow?.modelUsage
+            .reduce(
+              (
+                total,
+                usage,
+              ) =>
+                total +
+                usage
+                  .estimatedCostUsd,
+              0,
+            ) ??
           0,
       },
       'Application graph persisted',

@@ -4,6 +4,7 @@ import {
     integer,
     jsonb,
     pgTable,
+    real,
     text,
     timestamp,
     uniqueIndex,
@@ -846,3 +847,94 @@ import {
             .notNull(),
       },
     );
+
+    export const modelUsageEvents =
+  pgTable(
+    'model_usage_events',
+    {
+      id:
+        uuid('id')
+          .defaultRandom()
+          .primaryKey(),
+
+      runId:
+        uuid('run_id')
+          .notNull()
+          .references(
+            () =>
+              explorationRuns.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      task:
+        text('task')
+          .notNull(),
+
+      provider:
+        text('provider')
+          .notNull(),
+
+      model:
+        text('model')
+          .notNull(),
+
+      reasoningTier:
+        text(
+          'reasoning_tier',
+        )
+          .notNull(),
+
+      promptTokens:
+        integer(
+          'prompt_tokens',
+        )
+          .notNull(),
+
+      completionTokens:
+        integer(
+          'completion_tokens',
+        )
+          .notNull(),
+
+      totalTokens:
+        integer(
+          'total_tokens',
+        )
+          .notNull(),
+
+      estimatedCostUsd:
+        real(
+          'estimated_cost_usd',
+        )
+          .notNull(),
+
+      durationMs:
+        real(
+          'duration_ms',
+        )
+          .notNull(),
+
+      createdAt:
+        timestamp(
+          'created_at',
+          {
+            withTimezone:
+              true,
+          },
+        )
+          .defaultNow()
+          .notNull(),
+    },
+    (
+      table,
+    ) => [
+      index(
+        'model_usage_run_idx',
+      ).on(
+        table.runId,
+      ),
+    ],
+  );
