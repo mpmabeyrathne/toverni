@@ -1,0 +1,51 @@
+{
+    "flows": [
+      {
+        "id": "TODO-1",
+        "title": "Create todo",
+        "important": true,
+        "keywords": ["create", "todo"]
+      },
+      {
+        "id": "TODO-2",
+        "title": "Complete todo",
+        "important": true,
+        "keywords": ["complete", "todo"]
+      },
+      {
+        "id": "TODO-3",
+        "title": "Delete todo",
+        "important": true,
+        "keywords": ["delete", "todo"]
+      }
+    ],
+    "scenarios": [
+      {
+        "title": "Create a todo",
+        "actions": ["Enter todo title", "Create todo"],
+        "expectedOutcomes": ["Todo appears in the list"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Complete a todo",
+        "actions": ["Select existing todo", "Mark todo complete"],
+        "expectedOutcomes": ["Todo is marked complete"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Delete a todo",
+        "actions": ["Select existing todo", "Delete todo"],
+        "expectedOutcomes": ["Todo is removed"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      }
+    ]
+  }

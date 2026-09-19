@@ -1,0 +1,33 @@
+openapi: 3.0.3
+
+info:
+  title: Benchmark Commerce API
+  version: 1.0.0
+
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      responses:
+        '200':
+          description: Products returned
+
+  /cart/items:
+    post:
+      operationId: addCartItem
+      responses:
+        '201':
+          description: Item added
+
+  /cart/items/{itemId}:
+    delete:
+      operationId: removeCartItem
+      parameters:
+        - in: path
+          name: itemId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Item removed

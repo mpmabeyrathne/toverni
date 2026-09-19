@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Benchmark Commerce</title>
+</head>
+
+<body>
+  <main>
+    <h1>Products</h1>
+
+    <label for="product-search">
+      Search products
+    </label>
+
+    <input
+      id="product-search"
+      type="text"
+    >
+
+    <button
+      type="button"
+    >
+      Search Products
+    </button>
+
+    <section>
+      <h2>Mechanical Keyboard</h2>
+      <p>Available</p>
+
+      <button
+        id="add-keyboard"
+        type="button"
+      >
+        Add Keyboard to Cart
+      </button>
+    </section>
+
+    <section>
+      <h2>Gaming Mouse</h2>
+      <p>Unavailable</p>
+
+      <button
+        type="button"
+        disabled
+      >
+        Add Mouse to Cart
+      </button>
+    </section>
+
+    <section>
+      <h2>Cart</h2>
+
+      <p id="cart-status">
+        Cart is empty
+      </p>
+
+      <button
+        id="remove-cart-item"
+        type="button"
+        disabled
+      >
+        Remove from Cart
+      </button>
+    </section>
+  </main>
+
+  <script>
+    const cartStatus =
+      document.getElementById(
+        'cart-status',
+      );
+
+    const removeButton =
+      document.getElementById(
+        'remove-cart-item',
+      );
+
+    document
+      .getElementById(
+        'add-keyboard',
+      )
+      .addEventListener(
+        'click',
+        () => {
+          cartStatus.textContent =
+            'Mechanical Keyboard';
+
+          removeButton.disabled =
+            false;
+        },
+      );
+
+    removeButton.addEventListener(
+      'click',
+      () => {
+        cartStatus.textContent =
+          'Cart is empty';
+
+        removeButton.disabled =
+          true;
+      },
+    );
+  </script>
+</body>
+</html>

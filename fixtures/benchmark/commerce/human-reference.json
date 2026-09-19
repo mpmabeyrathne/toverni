@@ -1,0 +1,51 @@
+{
+    "flows": [
+      {
+        "id": "SHOP-1",
+        "title": "Search product",
+        "important": true,
+        "keywords": ["search", "product"]
+      },
+      {
+        "id": "SHOP-2",
+        "title": "Add product to cart",
+        "important": true,
+        "keywords": ["add", "cart"]
+      },
+      {
+        "id": "SHOP-3",
+        "title": "Remove product from cart",
+        "important": true,
+        "keywords": ["remove", "cart"]
+      }
+    ],
+    "scenarios": [
+      {
+        "title": "Search for product",
+        "actions": ["Enter product query", "Search"],
+        "expectedOutcomes": ["Matching products are displayed"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Add product to cart",
+        "actions": ["Select product", "Add product to cart"],
+        "expectedOutcomes": ["Product appears in cart"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Remove product from cart",
+        "actions": ["Open cart", "Remove product"],
+        "expectedOutcomes": ["Product is removed from cart"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      }
+    ]
+  }

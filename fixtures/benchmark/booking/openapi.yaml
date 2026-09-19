@@ -1,0 +1,33 @@
+openapi: 3.0.3
+
+info:
+  title: Benchmark Booking API
+  version: 1.0.0
+
+paths:
+  /rooms:
+    get:
+      operationId: listRooms
+      responses:
+        '200':
+          description: Rooms returned
+
+  /bookings:
+    post:
+      operationId: createBooking
+      responses:
+        '201':
+          description: Booking created
+
+  /bookings/{bookingId}:
+    delete:
+      operationId: cancelBooking
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Booking cancelled
