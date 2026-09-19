@@ -1,5 +1,4 @@
 import {
-  and,
   eq,
   inArray,
 } from 'drizzle-orm';
@@ -11,6 +10,10 @@ import type {
 import type {
   GroundedScenario,
 } from '../scenarios/index.js';
+
+import type {
+  ExecutableTestRunResult,
+} from '../test-generation/index.js';
 
 import type {
   ModelUsage,
@@ -41,6 +44,7 @@ import {
   transitions,
   modelUsageEvents,
   generatedScenarios,
+  generatedTests,
 } from './schema.js';
 
 export class ExplorationRepository {
@@ -697,6 +701,8 @@ export class ExplorationRepository {
         modelUsage: [],
 
         generatedScenarios: [],
+
+        generatedTests: [],
       };
     }
 
@@ -715,6 +721,7 @@ export class ExplorationRepository {
       storedArtifacts,
       storedModelUsage,
       storedGeneratedScenarios,
+      storedGeneratedTests,
     ] =
       await Promise.all([
         this.db
@@ -823,6 +830,17 @@ export class ExplorationRepository {
               runIds,
             ),
           ),
+        this.db
+          .select()
+          .from(
+            generatedTests,
+          )
+          .where(
+            inArray(
+              generatedTests.runId,
+              runIds,
+            ),
+          ),
       ]);
 
     return {
@@ -853,6 +871,9 @@ export class ExplorationRepository {
 
       generatedScenarios:
         storedGeneratedScenarios,
+
+      generatedTests:
+        storedGeneratedTests,
     };
   }
 
@@ -953,4 +974,147 @@ export class ExplorationRepository {
       )
       .returning();
   }
+  async saveGeneratedTest(
+    input: {
+      runId: string;
+      applicationId: string;
+      scenarioId: string;
+
+      generationStatus:
+      | 'ready'
+      | 'manual_required'
+      | 'generation_error';
+
+      reason:
+      string | null;
+
+      sourceFilePath:
+      string | null;
+
+      sourceCode:
+      string | null;
+    },
+  ) {
+    const [
+      storedTest,
+    ] =
+      await this.db
+        .insert(
+          generatedTests,
+        )
+        .values({
+          runId:
+            input.runId,
+
+          applicationId:
+            input.applicationId,
+
+          scenarioId:
+            input.scenarioId,
+
+          generationStatus:
+            input.generationStatus,
+
+          reason:
+            input.reason,
+
+          sourceFilePath:
+            input.sourceFilePath,
+
+          sourceCode:
+            input.sourceCode,
+
+          executionStatus:
+            'not_run',
+        })
+        .returning();
+
+    if (
+      !storedTest
+    ) {
+      throw new Error(
+        'Failed to persist generated test.',
+      );
+    }
+
+    return storedTest;
+  }
+
+  async saveGeneratedTestExecution(
+    generatedTestId:
+      string,
+
+    result:
+      ExecutableTestRunResult,
+  ): Promise<void> {
+    await this.db
+      .update(
+        generatedTests,
+      )
+      .set({
+        executionStatus:
+          result.status,
+
+        exitCode:
+          result.exitCode,
+
+        durationMs:
+          result.durationMs,
+
+        stdout:
+          result.stdout,
+
+        stderr:
+          result.stderr,
+
+        error:
+          result.error,
+
+        updatedAt:
+          new Date(),
+      })
+      .where(
+        eq(
+          generatedTests.id,
+          generatedTestId,
+        ),
+      );
+  }
+
+  async saveGeneratedTestError(
+    generatedTestId:
+      string,
+
+    error:
+      unknown,
+  ): Promise<void> {
+    const message =
+      error instanceof Error
+        ? error.message
+        : String(
+          error,
+        );
+
+    await this.db
+      .update(
+        generatedTests,
+      )
+      .set({
+        executionStatus:
+          'runtime_error',
+
+        error:
+          message,
+
+        updatedAt:
+          new Date(),
+      })
+      .where(
+        eq(
+          generatedTests.id,
+          generatedTestId,
+        ),
+      );
+  }
 }
+

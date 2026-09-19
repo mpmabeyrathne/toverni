@@ -1043,3 +1043,134 @@ import {
       ),
     ],
   );
+
+  export const generatedTests =
+  pgTable(
+    'generated_tests',
+    {
+      id:
+        uuid('id')
+          .defaultRandom()
+          .primaryKey(),
+
+      runId:
+        uuid('run_id')
+          .notNull()
+          .references(
+            () =>
+              explorationRuns.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      applicationId:
+        uuid('application_id')
+          .notNull()
+          .references(
+            () =>
+              applications.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      scenarioId:
+        uuid('scenario_id')
+          .notNull()
+          .references(
+            () =>
+              generatedScenarios.id,
+            {
+              onDelete:
+                'cascade',
+            },
+          ),
+
+      generationStatus:
+        text(
+          'generation_status',
+        )
+          .notNull(),
+
+      reason:
+        text('reason'),
+
+      sourceFilePath:
+        text(
+          'source_file_path',
+        ),
+
+      sourceCode:
+        text(
+          'source_code',
+        ),
+
+      executionStatus:
+        text(
+          'execution_status',
+        )
+          .notNull()
+          .default(
+            'not_run',
+          ),
+
+      exitCode:
+        integer(
+          'exit_code',
+        ),
+
+      durationMs:
+        real(
+          'duration_ms',
+        ),
+
+      stdout:
+        text('stdout'),
+
+      stderr:
+        text('stderr'),
+
+      error:
+        text('error'),
+
+      createdAt:
+        timestamp(
+          'created_at',
+          {
+            withTimezone:
+              true,
+          },
+        )
+          .defaultNow()
+          .notNull(),
+
+      updatedAt:
+        timestamp(
+          'updated_at',
+          {
+            withTimezone:
+              true,
+          },
+        )
+          .defaultNow()
+          .notNull(),
+    },
+    (
+      table,
+    ) => [
+      index(
+        'generated_tests_run_idx',
+      ).on(
+        table.runId,
+      ),
+
+      index(
+        'generated_tests_scenario_idx',
+      ).on(
+        table.scenarioId,
+      ),
+    ],
+  );
