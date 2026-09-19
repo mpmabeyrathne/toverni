@@ -7,6 +7,10 @@ import {
   import type {
     PageObservation,
   } from '../contracts/page-observation.js';
+
+  import type {
+    ModelUsage,
+  } from '../models/index.js';
   
   import type {
     ExplorationDecision,
@@ -31,6 +35,7 @@ import {
     explorationRuns,
     networkEvents,
     transitions,
+    modelUsageEvents,
   } from './schema.js';
   
   export class ExplorationRepository {
@@ -627,11 +632,11 @@ import {
             ),
           )
           .limit(1);
-  
+    
       if (!application) {
         return null;
       }
-  
+    
       const runs =
         await this.db
           .select()
@@ -642,11 +647,11 @@ import {
             eq(
               explorationRuns
                 .applicationId,
-  
+    
               applicationId,
             ),
           );
-  
+    
       const states =
         await this.db
           .select()
@@ -657,33 +662,43 @@ import {
             eq(
               applicationStates
                 .applicationId,
-  
+    
               applicationId,
             ),
           );
-  
+    
       if (
         runs.length === 0
       ) {
         return {
           application,
+    
           runs,
+    
           states,
-  
+    
           actions: [],
+    
           transitions: [],
+    
           decisions: [],
+    
           networkEvents: [],
+    
           consoleEvents: [],
+    
           artifacts: [],
+    
+          modelUsage: [],
         };
       }
-  
+    
       const runIds =
         runs.map(
-          (run) => run.id,
+          (run) =>
+            run.id,
         );
-  
+    
       const [
         actions,
         storedTransitions,
@@ -691,6 +706,7 @@ import {
         storedNetworkEvents,
         storedConsoleEvents,
         storedArtifacts,
+        storedModelUsage,
       ] =
         await Promise.all([
           this.db
@@ -702,10 +718,11 @@ import {
               inArray(
                 explorationActions
                   .runId,
+    
                 runIds,
               ),
             ),
-  
+    
           this.db
             .select()
             .from(
@@ -714,10 +731,11 @@ import {
             .where(
               inArray(
                 transitions.runId,
+    
                 runIds,
               ),
             ),
-  
+    
           this.db
             .select()
             .from(
@@ -727,10 +745,11 @@ import {
               inArray(
                 explorationDecisions
                   .runId,
+    
                 runIds,
               ),
             ),
-  
+    
           this.db
             .select()
             .from(
@@ -739,10 +758,11 @@ import {
             .where(
               inArray(
                 networkEvents.runId,
+    
                 runIds,
               ),
             ),
-  
+    
           this.db
             .select()
             .from(
@@ -751,10 +771,11 @@ import {
             .where(
               inArray(
                 consoleEvents.runId,
+    
                 runIds,
               ),
             ),
-  
+    
           this.db
             .select()
             .from(
@@ -763,33 +784,93 @@ import {
             .where(
               inArray(
                 artifacts.runId,
+    
+                runIds,
+              ),
+            ),
+    
+          this.db
+            .select()
+            .from(
+              modelUsageEvents,
+            )
+            .where(
+              inArray(
+                modelUsageEvents
+                  .runId,
+    
                 runIds,
               ),
             ),
         ]);
-  
+    
       return {
         application,
-  
+    
         runs,
-  
+    
         states,
-  
+    
         actions,
-  
+    
         transitions:
           storedTransitions,
-  
+    
         decisions,
-  
+    
         networkEvents:
           storedNetworkEvents,
-  
+    
         consoleEvents:
           storedConsoleEvents,
-  
+    
         artifacts:
           storedArtifacts,
+    
+        modelUsage:
+          storedModelUsage,
       };
+    }
+
+    async saveModelUsage(
+      runId: string,
+    
+      task: string,
+    
+      usage: ModelUsage,
+    ): Promise<void> {
+      await this.db
+        .insert(
+          modelUsageEvents,
+        )
+        .values({
+          runId,
+    
+          task,
+    
+          provider:
+            usage.provider,
+    
+          model:
+            usage.model,
+    
+          reasoningTier:
+            usage.reasoningTier,
+    
+          promptTokens:
+            usage.promptTokens,
+    
+          completionTokens:
+            usage.completionTokens,
+    
+          totalTokens:
+            usage.totalTokens,
+    
+          estimatedCostUsd:
+            usage.estimatedCostUsd,
+    
+          durationMs:
+            usage.durationMs,
+        });
     }
   }
