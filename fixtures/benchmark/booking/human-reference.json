@@ -1,0 +1,66 @@
+{
+    "flows": [
+      {
+        "id": "BOOK-1",
+        "title": "Search available rooms",
+        "important": true,
+        "keywords": ["search", "room"]
+      },
+      {
+        "id": "BOOK-2",
+        "title": "Book available room",
+        "important": true,
+        "keywords": ["book", "room"]
+      },
+      {
+        "id": "BOOK-3",
+        "title": "Reject unavailable room",
+        "important": true,
+        "keywords": ["unavailable", "room"]
+      },
+      {
+        "id": "BOOK-4",
+        "title": "Cancel booking",
+        "important": true,
+        "keywords": ["cancel", "booking"]
+      }
+    ],
+    "scenarios": [
+      {
+        "title": "Search for available rooms",
+        "actions": ["Search for an available room"],
+        "expectedOutcomes": ["Available rooms are displayed"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Book an available room",
+        "actions": ["Select an available room", "Book the room"],
+        "expectedOutcomes": ["Booking confirmation is displayed"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Attempt to book an unavailable room",
+        "actions": ["Select an unavailable room", "Attempt booking"],
+        "expectedOutcomes": ["Booking is prevented"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      },
+      {
+        "title": "Cancel an existing booking",
+        "actions": ["Open booking", "Cancel booking"],
+        "expectedOutcomes": ["Booking is cancelled"],
+        "executable": true,
+        "evidenceReferences": [],
+        "unsupportedSteps": [],
+        "humanEditsRequired": 0
+      }
+    ]
+  }

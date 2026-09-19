@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Benchmark Todo</title>
+</head>
+
+<body>
+  <main>
+    <h1>Todo List</h1>
+
+    <label for="todo-title">
+      Todo title
+    </label>
+
+    <input
+      id="todo-title"
+      type="text"
+    >
+
+    <button
+      id="add-todo"
+      type="button"
+    >
+      Add Todo
+    </button>
+
+    <ul id="todos">
+      <li>
+        <span>
+          Learn Playwright
+        </span>
+
+        <button
+          type="button"
+        >
+          Complete Todo
+        </button>
+
+        <button
+          type="button"
+        >
+          Delete Todo
+        </button>
+      </li>
+    </ul>
+  </main>
+
+  <script>
+    const list =
+      document.getElementById(
+        'todos',
+      );
+
+    const input =
+      document.getElementById(
+        'todo-title',
+      );
+
+    document
+      .getElementById(
+        'add-todo',
+      )
+      .addEventListener(
+        'click',
+        () => {
+          const title =
+            input.value.trim();
+
+          if (!title) {
+            return;
+          }
+
+          const item =
+            document.createElement(
+              'li',
+            );
+
+          item.textContent =
+            title;
+
+          list.appendChild(
+            item,
+          );
+
+          input.value = '';
+        },
+      );
+  </script>
+</body>
+</html>

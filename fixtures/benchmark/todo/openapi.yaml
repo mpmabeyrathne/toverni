@@ -1,0 +1,44 @@
+openapi: 3.0.3
+
+info:
+  title: Benchmark Todo API
+  version: 1.0.0
+
+paths:
+  /todos:
+    get:
+      operationId: listTodos
+      responses:
+        '200':
+          description: Todos returned
+
+    post:
+      operationId: createTodo
+      responses:
+        '201':
+          description: Todo created
+
+  /todos/{todoId}:
+    patch:
+      operationId: updateTodo
+      parameters:
+        - in: path
+          name: todoId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Todo updated
+
+    delete:
+      operationId: deleteTodo
+      parameters:
+        - in: path
+          name: todoId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Todo deleted

@@ -1,0 +1,8 @@
+{
+    "id": "commerce",
+    "title": "Mini Commerce",
+    "entryPath": "index.html",
+    "requirementsPath": "requirements.md",
+    "openApiPath": "openapi.yaml",
+    "humanReferencePath": "human-reference.json"
+  }

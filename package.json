@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio",
-    "model:smoke": "pnpm --filter @toverni/explorer model:smoke"
+    "model:smoke": "pnpm --filter @toverni/explorer model:smoke",
+    "benchmark": "tsx src/benchmark/run-benchmark.ts"
   },
   "keywords": [],
   "author": "",

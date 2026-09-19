@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Benchmark Booking</title>
+</head>
+
+<body>
+  <main>
+    <h1>Room Booking</h1>
+
+    <label for="search">
+      Search rooms
+    </label>
+
+    <input
+      id="search"
+      type="text"
+      placeholder="Room name"
+    >
+
+    <button
+      id="search-button"
+      type="button"
+    >
+      Search
+    </button>
+
+    <section>
+      <h2>Ocean Room</h2>
+      <p>Available</p>
+
+      <button
+        id="book-ocean"
+        type="button"
+      >
+        Book Ocean Room
+      </button>
+    </section>
+
+    <section>
+      <h2>Garden Room</h2>
+      <p>Unavailable</p>
+
+      <button
+        id="book-garden"
+        type="button"
+        disabled
+      >
+        Book Garden Room
+      </button>
+    </section>
+
+    <section>
+      <h2>Current booking</h2>
+
+      <p id="booking-status">
+        No booking
+      </p>
+
+      <button
+        id="cancel-booking"
+        type="button"
+        disabled
+      >
+        Cancel Booking
+      </button>
+    </section>
+  </main>
+
+  <script>
+    const bookingStatus =
+      document.getElementById(
+        'booking-status',
+      );
+
+    const cancelButton =
+      document.getElementById(
+        'cancel-booking',
+      );
+
+    document
+      .getElementById(
+        'book-ocean',
+      )
+      .addEventListener(
+        'click',
+        () => {
+          bookingStatus.textContent =
+            'Ocean Room booked';
+
+          cancelButton.disabled =
+            false;
+        },
+      );
+
+    cancelButton.addEventListener(
+      'click',
+      () => {
+        bookingStatus.textContent =
+          'No booking';
+
+        cancelButton.disabled =
+          true;
+      },
+    );
+  </script>
+</body>
+</html>
