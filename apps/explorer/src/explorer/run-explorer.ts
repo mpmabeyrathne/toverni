@@ -48,6 +48,7 @@ import {
 
 import {
     DeterministicExplorationPlanner,
+    runExplorationLoop,
 } from '../exploration/index.js';
 
 import {
@@ -389,259 +390,195 @@ export async function runExplorer(
             'Target application loaded',
         );
 
-        // --------------------------------
-        // Observation
-        // --------------------------------
-
-        const observation =
-            await session.observe();
-
-        logger.info(
-            {
-                observation,
-            },
-            'Page observation captured',
-        );
-
-        // --------------------------------
-        // Optional semantic state analysis
+               // --------------------------------
+        // Observation analysis helper
         // --------------------------------
 
-        if (
-            modelConfiguration
-                .MODEL_REASONING_ENABLED
-        ) {
-            const stateAnalysis =
-                await modelProvider
-                    .analyzeState({
-                        url:
-                            observation.url,
+        type Observation =
+            Awaited<
+                ReturnType<
+                    typeof session.observe
+                >
+            >;
 
-                        title:
-                            observation.title,
-
-                        semanticText:
-                            observation
-                                .semanticText,
-
-                        actions:
-                            observation.actions
-                                .map(
-                                    (action) => ({
-                                        type:
-                                            action.type,
-
-                                        ...(action.name !==
-                                            undefined
-                                            ? {
-                                                name:
-                                                    action.name,
-                                            }
-                                            : {}),
-
-                                        ...(action.text !==
-                                            undefined
-                                            ? {
-                                                text:
-                                                    action.text,
-                                            }
-                                            : {}),
-                                    }),
-                                ),
-                    });
-
-            logger.info(
-                {
-                    analysis:
-                        stateAnalysis.data,
-
-                    usage:
-                        stateAnalysis.usage,
-                },
-                'Application state semantically analyzed',
-            );
-        }
-
-        // --------------------------------
-        // Runtime network → OpenAPI
-        // --------------------------------
-
-        const apiLinks =
-            knowledge.openApi
-                ? linkNetworkEventsToOperations(
-                    observation
-                        .networkEvents,
-
-                    knowledge.openApi
-                        .operations,
-                )
-                : [];
-
-        logger.info(
-            {
-                networkEventCount:
-                    observation
-                        .networkEvents.length,
-
-                linkedOperationCount:
-                    apiLinks.length,
-
-                linkedApiOperations:
-                    apiLinks.map(
-                        (link) => ({
-                            networkEventId:
-                                link.networkEventId,
-
-                            method:
-                                link.method,
-
-                            url:
-                                link.url,
-
-                            operationId:
-                                link.operationId,
-
-                            operationPath:
-                                link.operationPath,
-
-                            confidence:
-                                link.confidence,
-
-                            reason:
-                                link.reason,
-                        }),
-                    ),
-            },
-            'Runtime network evidence linked to API context',
-        );
-
-        // --------------------------------
-        // State identification
-        // --------------------------------
-
-        const stateResult =
-            stateModel.registerObservation(
-                observation,
-            );
-
-        logger.info(
-            {
-                stateId:
-                    stateResult.state.id,
-
-                routePattern:
-                    stateResult.state
-                        .routePattern,
-
-                isNew:
-                    stateResult.isNew,
-
-                visits:
-                    stateResult.state.visits,
-            },
-            'Application state identified',
-        );
-
-        // --------------------------------
-        // Persist state
-        // --------------------------------
-
-        const persistedState =
-            await activeRepository
-                .saveState(
-                    application.id,
-                    stateResult.state,
+        const analyzeObservation =
+            async (
+                observation:
+                    Observation,
+            ): Promise<void> => {
+                logger.info(
+                    {
+                        observation,
+                    },
+                    'Page observation captured',
                 );
 
+                // --------------------------------
+                // Optional semantic analysis
+                // --------------------------------
+
+                if (
+                    modelConfiguration
+                        .MODEL_REASONING_ENABLED
+                ) {
+                    const stateAnalysis =
+                        await modelProvider
+                            .analyzeState({
+                                url:
+                                    observation.url,
+
+                                title:
+                                    observation.title,
+
+                                semanticText:
+                                    observation
+                                        .semanticText,
+
+                                actions:
+                                    observation.actions
+                                        .map(
+                                            (
+                                                action,
+                                            ) => ({
+                                                type:
+                                                    action.type,
+
+                                                ...(action.name !==
+                                                    undefined
+                                                    ? {
+                                                        name:
+                                                            action.name,
+                                                    }
+                                                    : {}),
+
+                                                ...(action.text !==
+                                                    undefined
+                                                    ? {
+                                                        text:
+                                                            action.text,
+                                                    }
+                                                    : {}),
+                                            }),
+                                        ),
+                            });
+
+                    logger.info(
+                        {
+                            analysis:
+                                stateAnalysis.data,
+
+                            usage:
+                                stateAnalysis.usage,
+                        },
+                        'Application state semantically analyzed',
+                    );
+                }
+
+                // --------------------------------
+                // Runtime network → OpenAPI
+                // --------------------------------
+
+                const apiLinks =
+                    knowledge.openApi
+                        ? linkNetworkEventsToOperations(
+                            observation
+                                .networkEvents,
+
+                            knowledge.openApi
+                                .operations,
+                        )
+                        : [];
+
+                logger.info(
+                    {
+                        networkEventCount:
+                            observation
+                                .networkEvents
+                                .length,
+
+                        linkedOperationCount:
+                            apiLinks.length,
+
+                        linkedApiOperations:
+                            apiLinks.map(
+                                (link) => ({
+                                    networkEventId:
+                                        link.networkEventId,
+
+                                    method:
+                                        link.method,
+
+                                    url:
+                                        link.url,
+
+                                    operationId:
+                                        link.operationId,
+
+                                    operationPath:
+                                        link.operationPath,
+
+                                    confidence:
+                                        link.confidence,
+
+                                    reason:
+                                        link.reason,
+                                }),
+                            ),
+                    },
+                    'Runtime network evidence linked to API context',
+                );
+            };
+
         // --------------------------------
-        // Persist observation evidence
+        // Multi-step exploration
         // --------------------------------
 
-        await activeRepository
-            .saveObservationEvidence(
-                run.id,
-                persistedState.id,
-                observation,
-            );
+        const explorationResult =
+            await runExplorationLoop({
+                session,
 
-        // --------------------------------
-        // Exploration planning
-        // --------------------------------
+                stateModel,
 
-        const explorationDecision =
-            planner.plan({
-                state:
-                    stateResult.state,
+                planner,
 
-                observation,
+                repository:
+                    activeRepository,
 
-                productContext: {
-                    priorityTerms: [
-                        ...(knowledge.requirements
-                            ?.capabilities ??
-                            []),
+                applicationId:
+                    application.id,
 
-                        ...(knowledge.requirements
-                            ?.domainTerms ??
-                            []),
-                    ],
-                },
+                runId:
+                    run.id,
+
+                priorityTerms: [
+                    ...(knowledge.requirements
+                        ?.capabilities ??
+                        []),
+
+                    ...(knowledge.requirements
+                        ?.domainTerms ??
+                        []),
+                ],
+
+                analyzeObservation,
             });
+
+        const initialObservation =
+            explorationResult
+                .initialObservation;
 
         logger.info(
             {
-                selectedAction:
-                    explorationDecision
-                        .selected
-                        ? {
-                            label:
-                                explorationDecision
-                                    .selected
-                                    .label,
-
-                            score:
-                                explorationDecision
-                                    .selected
-                                    .score,
-
-                            target:
-                                explorationDecision
-                                    .selected
-                                    .target,
-
-                            reasons:
-                                explorationDecision
-                                    .selected
-                                    .reasons,
-                        }
-                        : null,
-
-                shouldStop:
-                    explorationDecision
-                        .shouldStop,
+                executedActions:
+                    explorationResult
+                        .executedActions,
 
                 stopReason:
-                    explorationDecision
+                    explorationResult
                         .stopReason,
-
-                candidateCount:
-                    explorationDecision
-                        .rankedCandidates
-                        .length,
             },
-            'Next exploration action planned',
+            'Multi-step exploration completed',
         );
-
-        // --------------------------------
-        // Persist planner decision/actions
-        // --------------------------------
-
-        await activeRepository
-            .saveDecision(
-                run.id,
-                persistedState.id,
-                explorationDecision,
-            );
 
         // --------------------------------
         // Grounded scenario generation
@@ -1204,56 +1141,57 @@ export async function runExplorer(
 
             initialPageContext:
                 [
-                    observation.title,
-                    observation.url,
-                    ...observation.semanticText,
+                    initialObservation.title,
+                    initialObservation.url,
+                    ...initialObservation
+                        .semanticText,
                 ].join('\n'),
 
             flow,
         };
     } catch (
-        error:
-          unknown
-      ) {
+    error:
+        unknown
+    ) {
         if (
-          repository &&
-          currentRunId &&
-          !runCompleted
+            repository &&
+            currentRunId &&
+            !runCompleted
         ) {
-          try {
-            await repository
-              .completeRun(
-                currentRunId,
-                'failed',
-              );
-          } catch (
+            try {
+                await repository
+                    .completeRun(
+                        currentRunId,
+                        'failed',
+                    );
+            } catch (
             persistenceError:
-              unknown
-          ) {
-            logger.error(
-              {
-                error:
-                  persistenceError,
-      
-                runId:
-                  currentRunId,
-              },
-              'Failed to mark exploration run as failed',
-            );
-          }
+                unknown
+            ) {
+                logger.error(
+                    {
+                        error:
+                            persistenceError,
+
+                        runId:
+                            currentRunId,
+                    },
+                    'Failed to mark exploration run as failed',
+                );
+            }
         }
-      
+
         throw error;
-      } finally {
+    } finally {
         try {
-          await browser.close();
+            await browser.close();
         } finally {
-          if (
-            databaseConnection
-          ) {
-            await databaseConnection
-              .close();
-          }
+            if (
+                databaseConnection
+            ) {
+                await databaseConnection
+                    .close();
+            }
         }
-      }
+    }
 }
