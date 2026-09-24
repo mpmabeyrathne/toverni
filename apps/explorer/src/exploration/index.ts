@@ -22,3 +22,21 @@ export {
     LlmActionRankingInput,
     LlmActionRankingResult,
   } from './llm-action-ranker.js';
+
+  export {
+    executeExplorationAction,
+  } from './execute-exploration-action.js';
+  
+  export type {
+    ExplorationActionExecutionResult,
+    ExplorationActionToExecute,
+  } from './execute-exploration-action.js';
+
+  export {
+    runExplorationLoop,
+  } from './run-exploration-loop.js';
+  
+  export type {
+    RunExplorationLoopInput,
+    RunExplorationLoopResult,
+  } from './run-exploration-loop.js';
