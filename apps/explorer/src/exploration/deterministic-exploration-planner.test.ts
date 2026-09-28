@@ -369,5 +369,256 @@ import {
           ).toBe(1);
         },
       );
+      it(
+        'blocks disabled actions',
+        () => {
+          const stateModel =
+            new ApplicationStateModel();
+      
+          const observation =
+            createObservation();
+      
+          const createProject =
+            observation.actions.find(
+              (action) =>
+                action.name ===
+                'Create Project',
+            );
+      
+          if (!createProject) {
+            throw new Error(
+              'Expected Create Project action',
+            );
+          }
+      
+          createProject.disabled =
+            true;
+      
+          const state =
+            stateModel
+              .registerObservation(
+                observation,
+              )
+              .state;
+      
+          const planner =
+            new DeterministicExplorationPlanner(
+              stateModel,
+            );
+      
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+      
+          const candidate =
+            decision
+              .rankedCandidates
+              .find(
+                (item) =>
+                  item.label ===
+                  'Create Project',
+              );
+      
+          expect(
+            candidate?.blocked,
+          ).toBe(true);
+      
+          expect(
+            candidate
+              ?.blockReasons,
+          ).toContain(
+            'Action is disabled',
+          );
+      
+          expect(
+            decision.selected
+              ?.label,
+          ).not.toBe(
+            'Create Project',
+          );
+        },
+      );
+      
+      it(
+        'blocks invisible actions',
+        () => {
+          const stateModel =
+            new ApplicationStateModel();
+      
+          const observation =
+            createObservation();
+      
+          const learnMore =
+            observation.actions.find(
+              (action) =>
+                action.name ===
+                'Learn More',
+            );
+      
+          if (!learnMore) {
+            throw new Error(
+              'Expected Learn More action',
+            );
+          }
+      
+          learnMore.visible =
+            false;
+      
+          const state =
+            stateModel
+              .registerObservation(
+                observation,
+              )
+              .state;
+      
+          const planner =
+            new DeterministicExplorationPlanner(
+              stateModel,
+            );
+      
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+      
+          const candidate =
+            decision
+              .rankedCandidates
+              .find(
+                (item) =>
+                  item.label ===
+                  'Learn More',
+              );
+      
+          expect(
+            candidate?.blocked,
+          ).toBe(true);
+      
+          expect(
+            candidate
+              ?.blockReasons,
+          ).toContain(
+            'Action is not visible',
+          );
+      
+          expect(
+            decision.selected
+              ?.label,
+          ).not.toBe(
+            'Learn More',
+          );
+        },
+      );
+      
+      it(
+        'blocks actions that require input data',
+        () => {
+          const {
+            observation,
+            state,
+            planner,
+          } = setup();
+      
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+      
+          const searchCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Search',
+              );
+      
+          expect(
+            searchCandidate,
+          ).toBeDefined();
+      
+          expect(
+            searchCandidate
+              ?.blocked,
+          ).toBe(true);
+      
+          expect(
+            searchCandidate
+              ?.blockReasons,
+          ).toContain(
+            'Action requires input data before it can be executed',
+          );
+      
+          expect(
+            decision.selected
+              ?.label,
+          ).not.toBe(
+            'Search',
+          );
+        },
+      );
+      
+      it(
+        'never selects a blocked action even when product context increases its score',
+        () => {
+          const {
+            observation,
+            state,
+            planner,
+          } = setup();
+      
+          const decision =
+            planner.plan({
+              state,
+      
+              observation,
+      
+              productContext: {
+                priorityTerms: [
+                  'delete',
+                ],
+              },
+            });
+      
+          const deleteCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Delete Project',
+              );
+      
+          expect(
+            deleteCandidate,
+          ).toBeDefined();
+      
+          expect(
+            deleteCandidate
+              ?.blocked,
+          ).toBe(true);
+      
+          expect(
+            deleteCandidate
+              ?.score,
+          ).toBeGreaterThan(0);
+      
+          expect(
+            decision.selected
+              ?.label,
+          ).not.toBe(
+            'Delete Project',
+          );
+      
+          expect(
+            decision.selected
+              ?.blocked,
+          ).toBe(false);
+        },
+      );
     },
   );

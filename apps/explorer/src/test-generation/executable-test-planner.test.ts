@@ -132,5 +132,81 @@ import {
           ).toEqual([]);
         },
       );
+      it(
+        'requires manual completion when referenced action is blocked',
+        () => {
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-3',
+      
+                title:
+                  'Book unavailable room',
+      
+                evidenceReferences: [
+                  'ACTION-2',
+                ],
+              },
+      
+              evidence: [
+                {
+                  id:
+                    'ACTION-2',
+      
+                  type:
+                    'action',
+      
+                  source:
+                    'action-db-2',
+                },
+              ],
+      
+              actions: [
+                {
+                  id:
+                    'action-db-2',
+      
+                  label:
+                    'Book Garden Room',
+      
+                  type:
+                    'button',
+      
+                  target: {
+                    by:
+                      'role',
+      
+                    role:
+                      'button',
+      
+                    name:
+                      'Book Garden Room',
+      
+                    exact:
+                      true,
+                  },
+      
+                  blocked:
+                    true,
+      
+                  blockReasons: [
+                    'Action is disabled',
+                  ],
+                },
+              ],
+            });
+      
+          expect(
+            result.status,
+          ).toBe(
+            'manual_required',
+          );
+      
+          expect(
+            result.steps,
+          ).toEqual([]);
+        },
+      );
     },
   );

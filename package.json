@@ -14,7 +14,7 @@
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio",
     "model:smoke": "pnpm --filter @toverni/explorer model:smoke",
-    "benchmark": "tsx src/benchmark/run-benchmark.ts"
+    "benchmark": "pnpm --filter @toverni/explorer exec tsx src/benchmark/run-benchmark.ts"
   },
   "keywords": [],
   "author": "",

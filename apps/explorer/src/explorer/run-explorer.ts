@@ -742,21 +742,27 @@ export async function runExplorer(
                                     }),
                                 ),
 
-                            actions:
+                                actions:
                                 currentFlow.actions.map(
-                                    (action) => ({
-                                        id:
-                                            action.id,
-
-                                        label:
-                                            action.label,
-
-                                        type:
-                                            action.type,
-
-                                        target:
-                                            action.target,
-                                    }),
+                                  (action) => ({
+                                    id:
+                                      action.id,
+                              
+                                    label:
+                                      action.label,
+                              
+                                    type:
+                                      action.type,
+                              
+                                    target:
+                                      action.target,
+                              
+                                    blocked:
+                                      action.blocked,
+                              
+                                    blockReasons:
+                                      action.blockReasons,
+                                  }),
                                 ),
                         });
 
