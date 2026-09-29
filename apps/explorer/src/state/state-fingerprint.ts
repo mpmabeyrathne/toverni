@@ -84,18 +84,20 @@ import {
           );
   
         const normalized =
-          line
-            .trim()
+          normalizeDynamicText(
+            line
+              .trim()
   
-            .replace(
-              /"[^"]*"/g,
-              '"<name>"',
-            )
+              .replace(
+                /"[^"]*"/g,
+                '"<name>"',
+              )
   
-            .replace(
-              /\/url:\s+.*/g,
-              '/url',
-            );
+              .replace(
+                /\/url:\s+.*/g,
+                '/url',
+              ),
+          );
   
         return `${depth}:${normalized}`;
       })

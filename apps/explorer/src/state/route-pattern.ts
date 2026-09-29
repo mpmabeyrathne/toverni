@@ -38,25 +38,29 @@ function normalizePathSegment(
   return segment;
 }
 
-export function deriveRoutePattern(
-  value: string,
+function normalizeRoute(
+  pathname: string,
+  searchParams:
+    URLSearchParams,
 ): string {
-  const url = new URL(value);
-
   const segments =
-    url.pathname
+    pathname
       .split('/')
-      .map((segment) =>
-        normalizePathSegment(
-          segment,
-        ),
+      .map(
+        (segment) =>
+          normalizePathSegment(
+            segment,
+          ),
       );
 
-  const pathname =
-    segments.join('/') || '/';
+  const normalizedPathname =
+    segments.join('/') ||
+    '/';
 
   const retainedParams =
-    [...url.searchParams.entries()]
+    [
+      ...searchParams.entries(),
+    ]
       .filter(
         ([key]) =>
           !PAGINATION_QUERY_KEYS.has(
@@ -64,7 +68,10 @@ export function deriveRoutePattern(
           ),
       )
       .sort(
-        ([firstKey], [secondKey]) =>
+        (
+          [firstKey],
+          [secondKey],
+        ) =>
           firstKey.localeCompare(
             secondKey,
           ),
@@ -76,6 +83,40 @@ export function deriveRoutePattern(
     ).toString();
 
   return query
-    ? `${pathname}?${query}`
-    : pathname;
+    ? `${normalizedPathname}?${query}`
+    : normalizedPathname;
+}
+
+export function deriveRoutePattern(
+  value: string,
+): string {
+  const url =
+    new URL(value);
+
+  // Support hash-based SPA routing:
+  // https://example.com/#/products/123
+  //
+  // becomes:
+  // /products/:id
+  if (
+    url.hash.startsWith(
+      '#/',
+    )
+  ) {
+    const hashRoute =
+      new URL(
+        url.hash.slice(1),
+        url.origin,
+      );
+
+    return normalizeRoute(
+      hashRoute.pathname,
+      hashRoute.searchParams,
+    );
+  }
+
+  return normalizeRoute(
+    url.pathname,
+    url.searchParams,
+  );
 }

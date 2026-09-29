@@ -1,273 +1,444 @@
 import type {
-    BrowserSession,
-  } from '../browser/index.js';
-  
-  import type {
+  BrowserSession,
+} from '../browser/index.js';
+
+import {
+  logger,
+} from '../configuration/logger.js';
+
+import type {
+  ExplorationRepository,
+} from '../database/index.js';
+
+import {
+  ApplicationStateModel,
+} from '../state/index.js';
+
+import {
+  DeterministicExplorationPlanner,
+} from './deterministic-exploration-planner.js';
+
+import {
+  executeExplorationAction,
+} from './execute-exploration-action.js';
+
+type Observation =
+  Awaited<
+    ReturnType<
+      BrowserSession['observe']
+    >
+  >;
+
+type LoopRepository =
+  Pick<
     ExplorationRepository,
-  } from '../database/index.js';
-  
-  import {
-    ApplicationStateModel,
-  } from '../state/index.js';
-  
-  import {
-    DeterministicExplorationPlanner,
-  } from './deterministic-exploration-planner.js';
-  
-  import {
-    executeExplorationAction,
-  } from './execute-exploration-action.js';
-  
-  type Observation =
-    Awaited<
-      ReturnType<
-        BrowserSession['observe']
-      >
-    >;
-  
-  type LoopRepository =
-    Pick<
-      ExplorationRepository,
-      | 'saveState'
-      | 'saveObservationEvidence'
-      | 'saveDecision'
-      | 'saveTransition'
-    >;
-  
-  export interface RunExplorationLoopInput {
-    session: BrowserSession;
-  
-    stateModel:
-      ApplicationStateModel;
-  
-    planner:
-      DeterministicExplorationPlanner;
-  
-    repository:
-      LoopRepository;
-  
-    applicationId:
-      string;
-  
-    runId:
-      string;
-  
-    priorityTerms:
-      string[];
-  
-    analyzeObservation?: (
-      observation: Observation,
-    ) => Promise<void>;
-  }
-  
-  export interface RunExplorationLoopResult {
-    initialObservation:
-      Observation;
-  
-    finalObservation:
-      Observation;
-  
-    executedActions:
-      number;
-  
-    stopReason:
-      string | null;
-  }
-  
-  export async function runExplorationLoop(
-    input: RunExplorationLoopInput,
-  ): Promise<RunExplorationLoopResult> {
-    const initialObservation =
-      await input.session.observe();
-  
-    let currentObservation =
-      initialObservation;
-  
-    await input.analyzeObservation?.(
+    | 'saveState'
+    | 'saveObservationEvidence'
+    | 'saveDecision'
+    | 'saveTransition'
+  >;
+
+export interface RunExplorationLoopInput {
+  session:
+    BrowserSession;
+
+  stateModel:
+    ApplicationStateModel;
+
+  planner:
+    DeterministicExplorationPlanner;
+
+  repository:
+    LoopRepository;
+
+  applicationId:
+    string;
+
+  runId:
+    string;
+
+  priorityTerms:
+    string[];
+
+  analyzeObservation?: (
+    observation: Observation,
+  ) => Promise<void>;
+}
+
+export interface RunExplorationLoopResult {
+  initialObservation:
+    Observation;
+
+  finalObservation:
+    Observation;
+
+  executedActions:
+    number;
+
+  stopReason:
+    string | null;
+}
+
+export async function runExplorationLoop(
+  input:
+    RunExplorationLoopInput,
+): Promise<RunExplorationLoopResult> {
+  // --------------------------------
+  // Initial observation
+  // --------------------------------
+
+  const initialObservation =
+    await input.session.observe();
+
+  let currentObservation =
+    initialObservation;
+
+  await input.analyzeObservation?.(
+    currentObservation,
+  );
+
+  // --------------------------------
+  // Register initial state
+  // --------------------------------
+
+  const initialStateResult =
+    input.stateModel
+      .registerObservation(
+        currentObservation,
+      );
+
+  // --------------------------------
+  // Inspectable deduplication
+  // --------------------------------
+
+  logger.info(
+    {
+      observedUrl:
+        initialStateResult
+          .deduplication
+          .observedUrl,
+
+      routePattern:
+        initialStateResult
+          .deduplication
+          .routePattern,
+
+      fingerprint:
+        initialStateResult
+          .deduplication
+          .fingerprint,
+
+      canonicalStateId:
+        initialStateResult
+          .deduplication
+          .canonicalStateId,
+
+      matchedExistingState:
+        initialStateResult
+          .deduplication
+          .matchedExistingState,
+
+      reason:
+        initialStateResult
+          .deduplication
+          .reason,
+    },
+    'Application state deduplication evaluated',
+  );
+
+  let currentState =
+    initialStateResult.state;
+
+  // --------------------------------
+  // Persist initial state
+  // --------------------------------
+
+  let currentPersistedState =
+    await input.repository
+      .saveState(
+        input.applicationId,
+        currentState,
+      );
+
+  // --------------------------------
+  // Preserve raw observation evidence
+  // --------------------------------
+
+  await input.repository
+    .saveObservationEvidence(
+      input.runId,
+      currentPersistedState.id,
       currentObservation,
     );
-  
-    const initialStateResult =
-      input.stateModel
-        .registerObservation(
+
+  let stopReason:
+    string | null = null;
+
+  // --------------------------------
+  // Multi-step exploration loop
+  // --------------------------------
+
+  while (true) {
+    // ------------------------------
+    // Plan next action
+    // ------------------------------
+
+    const decision =
+      input.planner.plan({
+        state:
+          currentState,
+
+        observation:
           currentObservation,
+
+        productContext: {
+          priorityTerms:
+            input.priorityTerms,
+        },
+      });
+
+    // ------------------------------
+    // Persist decision
+    // ------------------------------
+
+    const persistedDecision =
+      await input.repository
+        .saveDecision(
+          input.runId,
+          currentPersistedState.id,
+          decision,
         );
-  
-    let currentState =
-      initialStateResult.state;
-  
-    let currentPersistedState =
+
+    // ------------------------------
+    // Stop if no eligible action
+    // ------------------------------
+
+    if (
+      decision.shouldStop ||
+      !decision.selected
+    ) {
+      stopReason =
+        decision.stopReason ??
+        'no-selected-action';
+
+      break;
+    }
+
+    const selected =
+      decision.selected;
+
+    // ------------------------------
+    // Execute selected action
+    // ------------------------------
+
+    const executionResult =
+      await executeExplorationAction(
+        input.session,
+        {
+          type:
+            selected.action.type,
+
+          label:
+            selected.label,
+
+          target:
+            selected.target,
+        },
+      );
+
+    if (
+      executionResult.status !==
+      'executed'
+    ) {
+      stopReason =
+        executionResult.reason;
+
+      break;
+    }
+
+    // ------------------------------
+    // Record executed action
+    // ------------------------------
+
+    input.planner
+      .recordActionExecution(
+        selected,
+      );
+
+    // ------------------------------
+    // Observe destination
+    // ------------------------------
+
+    const nextObservation =
+      await input.session.observe();
+
+    await input.analyzeObservation?.(
+      nextObservation,
+    );
+
+    // ------------------------------
+    // Register transition
+    // ------------------------------
+
+    const transitionResult =
+      input.stateModel
+        .recordTransition({
+          before:
+            currentObservation,
+
+          after:
+            nextObservation,
+
+          action: {
+            type:
+              'click',
+
+            target:
+              selected.label,
+          },
+        });
+
+    // ------------------------------
+    // Inspectable state deduplication
+    // ------------------------------
+
+    logger.info(
+      {
+        observedUrl:
+          transitionResult
+            .toStateDeduplication
+            .observedUrl,
+
+        routePattern:
+          transitionResult
+            .toStateDeduplication
+            .routePattern,
+
+        fingerprint:
+          transitionResult
+            .toStateDeduplication
+            .fingerprint,
+
+        canonicalStateId:
+          transitionResult
+            .toStateDeduplication
+            .canonicalStateId,
+
+        matchedExistingState:
+          transitionResult
+            .toStateDeduplication
+            .matchedExistingState,
+
+        reason:
+          transitionResult
+            .toStateDeduplication
+            .reason,
+
+        fromStateId:
+          transitionResult
+            .fromState.id,
+
+        toStateId:
+          transitionResult
+            .toState.id,
+
+        equivalentState:
+          transitionResult
+            .transition
+            .equivalentState,
+
+        explorationBlocked:
+          transitionResult
+            .transition
+            .explorationBlocked,
+      },
+      'Application state deduplication evaluated',
+    );
+
+    // ------------------------------
+    // Persist transition states
+    // ------------------------------
+
+    const persistedFromState =
       await input.repository
         .saveState(
           input.applicationId,
-          currentState,
+          transitionResult
+            .fromState,
         );
-  
+
+    const persistedToState =
+      await input.repository
+        .saveState(
+          input.applicationId,
+          transitionResult
+            .toState,
+        );
+
+    // ------------------------------
+    // Preserve raw destination
+    // observation evidence
+    // ------------------------------
+
     await input.repository
       .saveObservationEvidence(
         input.runId,
-        currentPersistedState.id,
-        currentObservation,
-      );
-  
-    let stopReason:
-      string | null = null;
-  
-    while (true) {
-      const decision =
-        input.planner.plan({
-          state:
-            currentState,
-  
-          observation:
-            currentObservation,
-  
-          productContext: {
-            priorityTerms:
-              input.priorityTerms,
-          },
-        });
-  
-      const persistedDecision =
-        await input.repository
-          .saveDecision(
-            input.runId,
-            currentPersistedState.id,
-            decision,
-          );
-  
-      if (
-        decision.shouldStop ||
-        !decision.selected
-      ) {
-        stopReason =
-          decision.stopReason ??
-          'no-selected-action';
-  
-        break;
-      }
-  
-      const selected =
-        decision.selected;
-  
-      const executionResult =
-        await executeExplorationAction(
-          input.session,
-          {
-            type:
-              selected.action.type,
-  
-            label:
-              selected.label,
-  
-            target:
-              selected.target,
-          },
-        );
-  
-      if (
-        executionResult.status !==
-        'executed'
-      ) {
-        stopReason =
-          executionResult.reason;
-  
-        break;
-      }
-  
-      input.planner
-        .recordActionExecution(
-          selected,
-        );
-  
-      const nextObservation =
-        await input.session.observe();
-  
-      await input.analyzeObservation?.(
+        persistedToState.id,
         nextObservation,
       );
-  
-      const transitionResult =
-        input.stateModel
-          .recordTransition({
-            before:
-              currentObservation,
-  
-            after:
-              nextObservation,
-  
-            action: {
-              type:
-                'click',
-  
-              target:
-                selected.label,
-            },
-          });
-  
-      const persistedFromState =
-        await input.repository
-          .saveState(
-            input.applicationId,
-            transitionResult
-              .fromState,
-          );
-  
-      const persistedToState =
-        await input.repository
-          .saveState(
-            input.applicationId,
-            transitionResult
-              .toState,
-          );
-  
-      await input.repository
-        .saveObservationEvidence(
+
+    // ------------------------------
+    // Persist transition
+    // ------------------------------
+
+    await input.repository
+      .saveTransition({
+        runId:
           input.runId,
+
+        fromStateId:
+          persistedFromState.id,
+
+        toStateId:
           persistedToState.id,
-          nextObservation,
-        );
-  
-      await input.repository
-        .saveTransition({
-          runId:
-            input.runId,
-  
-          fromStateId:
-            persistedFromState.id,
-  
-          toStateId:
-            persistedToState.id,
-  
-          actionId:
-            persistedDecision
-              .selectedActionId,
-  
-          transition:
-            transitionResult
-              .transition,
-        });
-  
-      currentObservation =
-        nextObservation;
-  
-      currentState =
-        transitionResult.toState;
-  
-      currentPersistedState =
-        persistedToState;
-    }
-  
-    return {
-      initialObservation,
-  
-      finalObservation:
-        currentObservation,
-  
-      executedActions:
-        input.planner
-          .getTotalActionsTaken(),
-  
-      stopReason,
-    };
+
+        actionId:
+          persistedDecision
+            .selectedActionId,
+
+        transition:
+          transitionResult
+            .transition,
+      });
+
+    // ------------------------------
+    // Continue from destination
+    // ------------------------------
+
+    currentObservation =
+      nextObservation;
+
+    currentState =
+      transitionResult.toState;
+
+    currentPersistedState =
+      persistedToState;
   }
+
+  // --------------------------------
+  // Result
+  // --------------------------------
+
+  return {
+    initialObservation,
+
+    finalObservation:
+      currentObservation,
+
+    executedActions:
+      input.planner
+        .getTotalActionsTaken(),
+
+    stopReason,
+  };
+}
