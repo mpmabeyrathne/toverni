@@ -550,17 +550,19 @@ export async function runExplorer(
                 runId:
                     run.id,
 
-                priorityTerms: [
-                    ...(knowledge.requirements
-                        ?.capabilities ??
-                        []),
+                    priorityTerms: [
+                        ...(knowledge.requirements
+                          ?.capabilities ??
+                          []),
+                      
+                        ...(knowledge.requirements
+                          ?.domainTerms ??
+                          []),
+                      ],
 
-                    ...(knowledge.requirements
-                        ?.domainTerms ??
-                        []),
-                ],
+                      knowledge,
 
-                analyzeObservation,
+                      analyzeObservation,
             });
 
         const initialObservation =

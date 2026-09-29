@@ -2,6 +2,14 @@ import type {
   BrowserSession,
 } from '../browser/index.js';
 
+import type {
+  KnowledgeContext,
+} from '../knowledge/knowledge-contracts.js';
+
+import {
+  linkNetworkEventsToOperations,
+} from '../knowledge/api-operation-linker.js';
+
 import {
   logger,
 } from '../configuration/logger.js';
@@ -40,25 +48,28 @@ type LoopRepository =
 
 export interface RunExplorationLoopInput {
   session:
-    BrowserSession;
+  BrowserSession;
 
   stateModel:
-    ApplicationStateModel;
+  ApplicationStateModel;
 
   planner:
-    DeterministicExplorationPlanner;
+  DeterministicExplorationPlanner;
 
   repository:
-    LoopRepository;
+  LoopRepository;
 
   applicationId:
-    string;
+  string;
 
   runId:
-    string;
+  string;
 
   priorityTerms:
-    string[];
+  string[];
+
+  knowledge?:
+  KnowledgeContext;
 
   analyzeObservation?: (
     observation: Observation,
@@ -67,16 +78,88 @@ export interface RunExplorationLoopInput {
 
 export interface RunExplorationLoopResult {
   initialObservation:
-    Observation;
+  Observation;
 
   finalObservation:
-    Observation;
+  Observation;
 
   executedActions:
-    number;
+  number;
 
   stopReason:
-    string | null;
+  string | null;
+}
+
+function getContextualApiOperationIds(
+  observation:
+    Observation,
+
+  knowledge:
+    | KnowledgeContext
+    | undefined,
+
+  seenNetworkEventIds:
+    Set<string>,
+): string[] {
+  const openApi =
+    knowledge?.openApi;
+
+  if (!openApi) {
+    return [];
+  }
+
+  const freshNetworkEvents =
+    observation.networkEvents.filter(
+      (event) =>
+        !seenNetworkEventIds.has(
+          event.id,
+        ),
+    );
+
+  for (
+    const event of
+    freshNetworkEvents
+  ) {
+    seenNetworkEventIds.add(
+      event.id,
+    );
+  }
+
+  const requestBodyOperationIds =
+    new Set(
+      openApi.operations
+        .filter(
+          (operation) =>
+            operation.requestBody !==
+            undefined,
+        )
+        .map(
+          (operation) =>
+            operation.operationId,
+        ),
+    );
+
+  const links =
+    linkNetworkEventsToOperations(
+      freshNetworkEvents,
+      openApi.operations,
+    );
+
+  return [
+    ...new Set(
+      links
+        .map(
+          (link) =>
+            link.operationId,
+        )
+        .filter(
+          (operationId) =>
+            requestBodyOperationIds.has(
+              operationId,
+            ),
+        ),
+    ),
+  ].sort();
 }
 
 export async function runExplorationLoop(
@@ -174,6 +257,8 @@ export async function runExplorationLoop(
   let stopReason:
     string | null = null;
 
+    const seenNetworkEventIds =
+  new Set<string>();
   // --------------------------------
   // Multi-step exploration loop
   // --------------------------------
@@ -182,20 +267,40 @@ export async function runExplorationLoop(
     // ------------------------------
     // Plan next action
     // ------------------------------
+    const apiOperationIds =
+    getContextualApiOperationIds(
+      currentObservation,
+      input.knowledge,
+      seenNetworkEventIds,
+    );
 
-    const decision =
-      input.planner.plan({
-        state:
-          currentState,
+const decision =
+  input.planner.plan({
+    state:
+      currentState,
 
-        observation:
-          currentObservation,
+    observation:
+      currentObservation,
 
-        productContext: {
-          priorityTerms:
-            input.priorityTerms,
-        },
-      });
+    productContext: {
+      priorityTerms:
+        input.priorityTerms,
+    },
+
+    ...(input.knowledge
+      ? {
+          knowledge:
+            input.knowledge,
+        }
+      : {}),
+
+    ...(apiOperationIds.length >
+    0
+      ? {
+          apiOperationIds,
+        }
+      : {}),
+  });
 
     // ------------------------------
     // Persist decision
@@ -232,19 +337,22 @@ export async function runExplorationLoop(
     // ------------------------------
 
     const executionResult =
-      await executeExplorationAction(
-        input.session,
-        {
-          type:
-            selected.action.type,
-
-          label:
-            selected.label,
-
-          target:
-            selected.target,
-        },
-      );
+    await executeExplorationAction(
+      input.session,
+      {
+        type:
+          selected.action.type,
+  
+        label:
+          selected.label,
+  
+        target:
+          selected.target,
+  
+        formExecution:
+          selected.formExecution,
+      },
+    );
 
     if (
       executionResult.status !==

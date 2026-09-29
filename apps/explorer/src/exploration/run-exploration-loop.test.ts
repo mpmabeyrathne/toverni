@@ -9,6 +9,10 @@ import type {
     BrowserSession,
 } from '../browser/index.js';
 
+import type {
+    KnowledgeContext,
+} from '../knowledge/knowledge-contracts.js';
+
 import {
     ApplicationStateModel,
 } from '../state/index.js';
@@ -87,6 +91,363 @@ function createObservation(
     };
 }
 
+function createEmailObservation():
+  Observation {
+  return {
+    capturedAt:
+      '2026-09-29T00:00:00.000Z',
+
+    url:
+      'http://example.test/users',
+
+    title:
+      'Create User',
+
+    semanticText: [
+      'Create User',
+      'Email',
+    ],
+
+    ariaSnapshot: [
+      '- main:',
+      '  - textbox "Email"',
+    ].join('\n'),
+
+    actions: [
+      {
+        type:
+          'input',
+
+        tagName:
+          'input',
+
+        name:
+          'Email',
+
+        inputType:
+          'email',
+
+        disabled:
+          false,
+
+        visible:
+          true,
+
+        formField: {
+          htmlName:
+            'email',
+
+          inputType:
+            'email',
+
+          required:
+            true,
+        },
+      },
+    ],
+
+    consoleEvents: [],
+
+    networkEvents: [
+      {
+        id:
+          'request-create-user',
+
+        method:
+          'POST',
+
+        url:
+          'http://example.test/users',
+
+        resourceType:
+          'fetch',
+
+        status:
+          200,
+
+        ok:
+          true,
+
+        failed:
+          false,
+      },
+    ],
+
+    supportingArtifacts: [],
+  };
+}
+
+function createInviteObservationWithCumulativeNetwork():
+  Observation {
+  return {
+    capturedAt:
+      '2026-09-29T00:00:01.000Z',
+
+    url:
+      'http://example.test/invitations',
+
+    title:
+      'Invite User',
+
+    semanticText: [
+      'Invite User',
+      'Email',
+    ],
+
+    ariaSnapshot: [
+      '- main:',
+      '  - textbox "Email"',
+    ].join('\n'),
+
+    actions: [
+      {
+        type:
+          'input',
+
+        tagName:
+          'input',
+
+        name:
+          'Email',
+
+        inputType:
+          'email',
+
+        disabled:
+          false,
+
+        visible:
+          true,
+
+        formField: {
+          htmlName:
+            'email',
+
+          inputType:
+            'email',
+
+          required:
+            true,
+        },
+      },
+    ],
+
+    consoleEvents: [],
+
+    // Intentionally cumulative.
+    // request-create-user belongs to
+    // the PREVIOUS observation.
+    networkEvents: [
+      {
+        id:
+          'request-create-user',
+
+        method:
+          'POST',
+
+        url:
+          'http://example.test/users',
+
+        resourceType:
+          'fetch',
+
+        status:
+          200,
+
+        ok:
+          true,
+
+        failed:
+          false,
+      },
+
+      {
+        id:
+          'request-invite-user',
+
+        method:
+          'POST',
+
+        url:
+          'http://example.test/invitations',
+
+        resourceType:
+          'fetch',
+
+        status:
+          200,
+
+        ok:
+          true,
+
+        failed:
+          false,
+      },
+    ],
+
+    supportingArtifacts: [],
+  };
+}
+
+function createCompletedObservation():
+  Observation {
+  return {
+    capturedAt:
+      '2026-09-29T00:00:01.000Z',
+
+    url:
+      'http://example.test/users',
+
+    title:
+      'Create User',
+
+    semanticText: [
+      'Create User',
+      'Email entered',
+    ],
+
+    ariaSnapshot:
+      '- main:',
+
+    actions: [],
+
+    consoleEvents: [],
+
+    networkEvents: [],
+
+    supportingArtifacts: [],
+  };
+}
+
+function createRuntimeKnowledge():
+  KnowledgeContext {
+  return {
+    requirements:
+      null,
+
+    openApi: {
+      sourcePath:
+        '/fixtures/openapi.yaml',
+
+      title:
+        'Account API',
+
+      version:
+        '1.0.0',
+
+      servers: [],
+
+      operations: [
+        {
+          operationId:
+            'createUser',
+
+          method:
+            'POST',
+
+          path:
+            '/users',
+
+          parameters: [],
+
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  $ref:
+                    '#/components/schemas/CreateUserRequest',
+                },
+              },
+            },
+          },
+
+          responses: [],
+
+          security: [],
+
+          tags: [],
+        },
+
+        {
+          operationId:
+            'inviteUser',
+
+          method:
+            'POST',
+
+          path:
+            '/invitations',
+
+          parameters: [],
+
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  $ref:
+                    '#/components/schemas/InviteUserRequest',
+                },
+              },
+            },
+          },
+
+          responses: [],
+
+          security: [],
+
+          tags: [],
+        },
+      ],
+
+      schemas: {
+        CreateUserRequest: {
+          type:
+            'object',
+
+          required: [
+            'email',
+          ],
+
+          properties: {
+            email: {
+              type:
+                'string',
+
+              format:
+                'email',
+
+              example:
+                'account@example.com',
+            },
+          },
+        },
+
+        InviteUserRequest: {
+          type:
+            'object',
+
+          required: [
+            'email',
+          ],
+
+          properties: {
+            email: {
+              type:
+                'string',
+
+              format:
+                'email',
+
+              example:
+                'invite@example.com',
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 describe(
     'runExplorationLoop',
     () => {
@@ -153,7 +514,7 @@ describe(
                         async () => {
                             const observation =
                                 observations[
-                                    observationIndex
+                                observationIndex
                                 ];
 
                             if (
@@ -185,7 +546,7 @@ describe(
                         observe,
                         click,
                     } as unknown as
-                        BrowserSession;
+                    BrowserSession;
 
                 // --------------------------------
                 // State model
@@ -220,19 +581,19 @@ describe(
                 const savedTransitions:
                     Array<{
                         actionId:
-                            string | null;
+                        string | null;
 
                         transition: {
                             action: {
                                 type:
-                                    string;
+                                string;
 
                                 target?:
-                                    string | null;
+                                string | null;
                             };
 
                             equivalentState:
-                                boolean;
+                            boolean;
                         };
                     }> = [];
 
@@ -244,7 +605,7 @@ describe(
 
                             state: {
                                 id:
-                                    string;
+                                string;
                             },
                         ) => {
                             return {
@@ -278,7 +639,7 @@ describe(
 
                             decision: {
                                 selected:
-                                    unknown | null;
+                                unknown | null;
                             },
                         ) => {
                             decisionNumber +=
@@ -305,19 +666,19 @@ describe(
                         async (
                             input: {
                                 actionId:
-                                    string | null;
+                                string | null;
 
                                 transition: {
                                     action: {
                                         type:
-                                            string;
+                                        string;
 
                                         target?:
-                                            string | null;
+                                        string | null;
                                     };
 
                                     equivalentState:
-                                        boolean;
+                                    boolean;
                                 };
                             },
                         ) => {
@@ -337,9 +698,9 @@ describe(
 
                         saveTransition,
                     } as unknown as
-                        RunExplorationLoopInput[
-                        'repository'
-                        ];
+                    RunExplorationLoopInput[
+                    'repository'
+                    ];
 
                 // --------------------------------
                 // Execute exploration
@@ -494,5 +855,418 @@ describe(
                 );
             },
         );
+        it(
+            'derives contextual OpenAPI operation from runtime network evidence',
+            async () => {
+              const initialObservation =
+                createEmailObservation();
+          
+              const completedObservation =
+                createCompletedObservation();
+          
+              const observations = [
+                initialObservation,
+                completedObservation,
+              ];
+          
+              let observationIndex =
+                0;
+          
+              const observe =
+                vi.fn(
+                  async () => {
+                    const observation =
+                      observations[
+                        observationIndex
+                      ];
+          
+                    if (!observation) {
+                      throw new Error(
+                        'Unexpected observation request',
+                      );
+                    }
+          
+                    observationIndex +=
+                      1;
+          
+                    return observation;
+                  },
+                );
+          
+              const fill =
+                vi.fn(
+                  async () => {
+                    // Browser side effect represented
+                    // by next observation.
+                  },
+                );
+          
+              const session = {
+                observe,
+                fill,
+              } as unknown as
+                BrowserSession;
+          
+              const stateModel =
+                new ApplicationStateModel();
+          
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                );
+          
+              const saveState =
+                vi.fn(
+                  async (
+                    _applicationId:
+                      string,
+          
+                    state: {
+                      id:
+                        string;
+                    },
+                  ) => ({
+                    id:
+                      state.id,
+                  }),
+                );
+          
+              const saveObservationEvidence =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+          
+              let decisionNumber =
+                0;
+          
+              let actionNumber =
+                0;
+          
+              const saveDecision =
+                vi.fn(
+                  async (
+                    _runId:
+                      string,
+          
+                    _stateId:
+                      string,
+          
+                    decision: {
+                      selected:
+                        unknown | null;
+                    },
+                  ) => {
+                    decisionNumber +=
+                      1;
+          
+                    return {
+                      decision: {
+                        id:
+                          `decision-${decisionNumber}`,
+                      },
+          
+                      selectedActionId:
+                        decision.selected
+                          ? `action-${++actionNumber}`
+                          : null,
+                    };
+                  },
+                );
+          
+              const saveTransition =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+          
+              const repository = {
+                saveState,
+                saveObservationEvidence,
+                saveDecision,
+                saveTransition,
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+          
+              const knowledge =
+                createRuntimeKnowledge();
+          
+              const result =
+                await runExplorationLoop({
+                  session,
+          
+                  stateModel,
+          
+                  planner,
+          
+                  repository,
+          
+                  applicationId:
+                    'application-1',
+          
+                  runId:
+                    'run-openapi-context',
+          
+                  priorityTerms: [],
+          
+                  knowledge,
+                });
+          
+              expect(
+                fill,
+              ).toHaveBeenCalledTimes(
+                1,
+              );
+          
+              expect(
+                fill,
+              ).toHaveBeenCalledWith(
+                {
+                  by:
+                    'label',
+          
+                  label:
+                    'Email',
+          
+                  exact:
+                    true,
+                },
+          
+                'account@example.com',
+              );
+          
+              expect(
+                result.executedActions,
+              ).toBe(
+                1,
+              );
+          
+              expect(
+                result.stopReason,
+              ).toBe(
+                'no-eligible-actions',
+              );
+            },
+          );
+          it(
+            'does not reuse stale network operations from previous observations',
+            async () => {
+              const stateA =
+                createEmailObservation();
+          
+              const stateB =
+                createInviteObservationWithCumulativeNetwork();
+          
+              const stateC =
+                createCompletedObservation();
+          
+              const observations = [
+                stateA,
+                stateB,
+                stateC,
+              ];
+          
+              let observationIndex =
+                0;
+          
+              const observe =
+                vi.fn(
+                  async () => {
+                    const observation =
+                      observations[
+                        observationIndex
+                      ];
+          
+                    if (!observation) {
+                      throw new Error(
+                        'Unexpected observation request',
+                      );
+                    }
+          
+                    observationIndex +=
+                      1;
+          
+                    return observation;
+                  },
+                );
+          
+              const fill =
+                vi.fn(
+                  async () => {
+                    // Browser side effect is represented
+                    // by the next observation.
+                  },
+                );
+          
+              const session = {
+                observe,
+                fill,
+              } as unknown as
+                BrowserSession;
+          
+              const stateModel =
+                new ApplicationStateModel();
+          
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                );
+          
+              const saveState =
+                vi.fn(
+                  async (
+                    _applicationId:
+                      string,
+          
+                    state: {
+                      id:
+                        string;
+                    },
+                  ) => ({
+                    id:
+                      state.id,
+                  }),
+                );
+          
+              const saveObservationEvidence =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+          
+              let decisionNumber =
+                0;
+          
+              let actionNumber =
+                0;
+          
+              const saveDecision =
+                vi.fn(
+                  async (
+                    _runId:
+                      string,
+          
+                    _stateId:
+                      string,
+          
+                    decision: {
+                      selected:
+                        unknown | null;
+                    },
+                  ) => {
+                    decisionNumber +=
+                      1;
+          
+                    return {
+                      decision: {
+                        id:
+                          `decision-${decisionNumber}`,
+                      },
+          
+                      selectedActionId:
+                        decision.selected
+                          ? `action-${++actionNumber}`
+                          : null,
+                    };
+                  },
+                );
+          
+              const saveTransition =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+          
+              const repository = {
+                saveState,
+                saveObservationEvidence,
+                saveDecision,
+                saveTransition,
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+          
+              const result =
+                await runExplorationLoop({
+                  session,
+          
+                  stateModel,
+          
+                  planner,
+          
+                  repository,
+          
+                  applicationId:
+                    'application-1',
+          
+                  runId:
+                    'run-network-scope',
+          
+                  priorityTerms: [],
+          
+                  knowledge:
+                    createRuntimeKnowledge(),
+                });
+          
+              expect(
+                fill,
+              ).toHaveBeenCalledTimes(
+                2,
+              );
+          
+              expect(
+                fill,
+              ).toHaveBeenNthCalledWith(
+                1,
+                {
+                  by:
+                    'label',
+          
+                  label:
+                    'Email',
+          
+                  exact:
+                    true,
+                },
+                'account@example.com',
+              );
+          
+              expect(
+                fill,
+              ).toHaveBeenNthCalledWith(
+                2,
+                {
+                  by:
+                    'label',
+          
+                  label:
+                    'Email',
+          
+                  exact:
+                    true,
+                },
+                'invite@example.com',
+              );
+          
+              expect(
+                result.executedActions,
+              ).toBe(
+                2,
+              );
+          
+              expect(
+                result.stopReason,
+              ).toBe(
+                'no-eligible-actions',
+              );
+            },
+          );
     },
 );

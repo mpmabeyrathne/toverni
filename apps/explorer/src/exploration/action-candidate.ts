@@ -103,6 +103,26 @@ import type {
         exact: true,
       };
     }
+
+    if (
+      action.type ===
+        'contenteditable' &&
+      action.name
+    ) {
+      return {
+        by:
+          'role',
+    
+        role:
+          'textbox',
+    
+        name:
+          action.name,
+    
+        exact:
+          true,
+      };
+    }
   
     if (
       (
@@ -111,15 +131,23 @@ import type {
         action.type ===
           'select' ||
         action.type ===
-          'textarea'
+          'textarea' ||
+        action.type ===
+          'checkbox' ||
+        action.type ===
+          'radio'
       ) &&
       action.name
     ) {
       return {
-        by: 'label',
+        by:
+          'label',
+    
         label:
           action.name,
-        exact: true,
+    
+        exact:
+          true,
       };
     }
   

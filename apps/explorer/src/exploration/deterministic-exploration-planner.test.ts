@@ -7,6 +7,10 @@ import {
   import type {
     PageObservation,
   } from '../contracts/page-observation.js';
+
+  import type {
+    KnowledgeContext,
+  } from '../knowledge/knowledge-contracts.js';
   
   import {
     ApplicationStateModel,
@@ -124,6 +128,210 @@ import {
       planner,
     };
   }
+
+  function createEmailObservation():
+  PageObservation {
+  const observation =
+    createObservation();
+
+  observation.actions.push({
+    type:
+      'input',
+
+    tagName:
+      'input',
+
+    name:
+      'Email',
+
+    inputType:
+      'email',
+
+    disabled:
+      false,
+
+    visible:
+      true,
+
+    formField: {
+      htmlName:
+        'email',
+
+      inputType:
+        'email',
+
+      required:
+        true,
+    },
+  });
+
+  return observation;
+}
+
+function createEmailKnowledge(
+  includeInvite = true,
+): KnowledgeContext {
+  return {
+    requirements:
+      null,
+
+    openApi: {
+      sourcePath:
+        '/fixtures/openapi.yaml',
+
+      title:
+        'Account API',
+
+      version:
+        '1.0.0',
+
+      servers: [],
+
+      operations: [
+        {
+          operationId:
+            'createUser',
+
+          method:
+            'POST',
+
+          path:
+            '/users',
+
+          parameters: [],
+
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  $ref:
+                    '#/components/schemas/CreateUserRequest',
+                },
+              },
+            },
+          },
+
+          responses: [],
+
+          security: [],
+
+          tags: [],
+        },
+
+        ...(includeInvite
+          ? [
+              {
+                operationId:
+                  'inviteUser',
+
+                method:
+                  'POST',
+
+                path:
+                  '/invitations',
+
+                parameters: [],
+
+                requestBody: {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        $ref:
+                          '#/components/schemas/InviteUserRequest',
+                      },
+                    },
+                  },
+                },
+
+                responses: [],
+
+                security: [],
+
+                tags: [],
+              },
+            ]
+          : []),
+      ],
+
+      schemas: {
+        CreateUserRequest: {
+          type:
+            'object',
+
+          required: [
+            'email',
+          ],
+
+          properties: {
+            email: {
+              type:
+                'string',
+
+              format:
+                'email',
+
+              example:
+                'account@example.com',
+            },
+          },
+        },
+
+        ...(includeInvite
+          ? {
+              InviteUserRequest: {
+                type:
+                  'object',
+
+                required: [
+                  'email',
+                ],
+
+                properties: {
+                  email: {
+                    type:
+                      'string',
+
+                    format:
+                      'email',
+
+                    example:
+                      'invite@example.com',
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+    },
+  };
+}
+
+function setupWithObservation(
+  observation:
+    PageObservation,
+) {
+  const stateModel =
+    new ApplicationStateModel();
+
+  const state =
+    stateModel
+      .registerObservation(
+        observation,
+      )
+      .state;
+
+  const planner =
+    new DeterministicExplorationPlanner(
+      stateModel,
+    );
+
+  return {
+    stateModel,
+    observation,
+    state,
+    planner,
+  };
+}
   
   describe(
     'DeterministicExplorationPlanner',
@@ -550,7 +758,7 @@ import {
             searchCandidate
               ?.blockReasons,
           ).toContain(
-            'Action requires input data before it can be executed',
+            'Action requires grounded form data before it can be executed',
           );
       
           expect(
@@ -618,6 +826,436 @@ import {
             decision.selected
               ?.blocked,
           ).toBe(false);
+        },
+      );
+      it(
+        'uses the contextual OpenAPI operation when creating grounded form execution',
+        () => {
+          const observation =
+            createEmailObservation();
+      
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+      
+          const knowledge =
+            createEmailKnowledge();
+      
+          const decision =
+            planner.plan({
+              state,
+      
+              observation,
+      
+              knowledge,
+      
+              apiOperationIds: [
+                'createUser',
+              ],
+            });
+      
+          const emailCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Email',
+              );
+      
+          expect(
+            emailCandidate,
+          ).toBeDefined();
+      
+          expect(
+            emailCandidate?.blocked,
+          ).toBe(false);
+      
+          expect(
+            emailCandidate
+              ?.formExecution,
+          ).toEqual(
+            expect.objectContaining({
+              kind:
+                'fill',
+      
+              value:
+                'account@example.com',
+            }),
+          );
+      
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.evidence
+              .some(
+                (item) =>
+                  item.source ===
+                  'openapi' &&
+                  item.detail.includes(
+                    'operations.createUser.requestBody',
+                  ),
+              ),
+          ).toBe(true);
+        },
+      );
+      it(
+        'does not guess between conflicting contextual OpenAPI operations',
+        () => {
+          const observation =
+            createEmailObservation();
+      
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+      
+          const knowledge =
+            createEmailKnowledge();
+      
+          const decision =
+            planner.plan({
+              state,
+      
+              observation,
+      
+              knowledge,
+      
+              apiOperationIds: [
+                'createUser',
+                'inviteUser',
+              ],
+            });
+      
+          const emailCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Email',
+              );
+      
+          expect(
+            emailCandidate,
+          ).toBeDefined();
+      
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.kind,
+          ).toBe(
+            'fill',
+          );
+          
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.value,
+          ).not.toBe(
+            'account@example.com',
+          );
+          
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.value,
+          ).not.toBe(
+            'invite@example.com',
+          );
+          
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.evidence
+              .some(
+                (item) =>
+                  item.source ===
+                  'openapi',
+              ),
+          ).toBe(false);
+      
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.value,
+          ).not.toBe(
+            'account@example.com',
+          );
+      
+          expect(
+            emailCandidate
+              ?.formExecution
+              ?.value,
+          ).not.toBe(
+            'invite@example.com',
+          );
+        },
+      );
+
+      it(
+        'preserves safe global OpenAPI fallback when runtime operation context is unavailable',
+        () => {
+          const observation =
+            createEmailObservation();
+      
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+      
+          const knowledge =
+            createEmailKnowledge(
+              false,
+            );
+      
+          const decision =
+            planner.plan({
+              state,
+      
+              observation,
+      
+              knowledge,
+            });
+      
+          const emailCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Email',
+              );
+      
+          expect(
+            emailCandidate,
+          ).toBeDefined();
+      
+          expect(
+            emailCandidate
+              ?.formExecution,
+          ).toEqual(
+            expect.objectContaining({
+              kind:
+                'fill',
+      
+              value:
+                'account@example.com',
+            }),
+          );
+        },
+      );
+      it(
+        'keeps observable UI constraints authoritative over contextual OpenAPI data',
+        () => {
+          const observation =
+            createObservation();
+      
+          observation.actions.push({
+            type:
+              'input',
+      
+            tagName:
+              'input',
+      
+            name:
+              'Seats',
+      
+            inputType:
+              'number',
+      
+            disabled:
+              false,
+      
+            visible:
+              true,
+      
+            formField: {
+              htmlName:
+                'seats',
+      
+              inputType:
+                'number',
+      
+              required:
+                true,
+      
+              min:
+                '1',
+      
+              max:
+                '10',
+      
+              step:
+                '1',
+            },
+          });
+      
+          const knowledge:
+            KnowledgeContext = {
+            requirements:
+              null,
+      
+            openApi: {
+              sourcePath:
+                '/fixtures/openapi.yaml',
+      
+              title:
+                'Booking API',
+      
+              version:
+                '1.0.0',
+      
+              servers: [],
+      
+              operations: [
+                {
+                  operationId:
+                    'createBooking',
+      
+                  method:
+                    'POST',
+      
+                  path:
+                    '/bookings',
+      
+                  parameters: [],
+      
+                  requestBody: {
+                    content: {
+                      'application/json': {
+                        schema: {
+                          $ref:
+                            '#/components/schemas/CreateBookingRequest',
+                        },
+                      },
+                    },
+                  },
+      
+                  responses: [],
+      
+                  security: [],
+      
+                  tags: [],
+                },
+              ],
+      
+              schemas: {
+                CreateBookingRequest: {
+                  type:
+                    'object',
+      
+                  required: [
+                    'seats',
+                  ],
+      
+                  properties: {
+                    seats: {
+                      type:
+                        'integer',
+      
+                      minimum:
+                        5,
+      
+                      maximum:
+                        30,
+      
+                      example:
+                        20,
+                    },
+                  },
+                },
+              },
+            },
+          };
+      
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+      
+          const decision =
+            planner.plan({
+              state,
+      
+              observation,
+      
+              knowledge,
+      
+              apiOperationIds: [
+                'createBooking',
+              ],
+            });
+      
+          const seatsCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Seats',
+              );
+      
+          expect(
+            seatsCandidate,
+          ).toBeDefined();
+      
+          expect(
+            seatsCandidate
+              ?.formExecution
+              ?.kind,
+          ).toBe(
+            'fill',
+          );
+      
+          const generatedValue =
+            seatsCandidate
+              ?.formExecution
+              ?.value;
+      
+          expect(
+            typeof generatedValue,
+          ).toBe(
+            'string',
+          );
+      
+          expect(
+            Number(
+              generatedValue,
+            ),
+          ).toBeGreaterThanOrEqual(
+            1,
+          );
+      
+          expect(
+            generatedValue,
+          ).not.toBe(
+            '20',
+          );
+      
+          expect(
+            seatsCandidate
+              ?.formExecution
+              ?.evidence
+              .some(
+                (item) =>
+                  item.source ===
+                  'ui',
+              ),
+          ).toBe(true);
         },
       );
     },
