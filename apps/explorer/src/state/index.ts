@@ -6,6 +6,7 @@ export {
     RecordTransitionInput,
     RecordTransitionResult,
     RegisterObservationResult,
+    StateDeduplicationDecision,
   } from './application-state-model.js';
   
   export {
