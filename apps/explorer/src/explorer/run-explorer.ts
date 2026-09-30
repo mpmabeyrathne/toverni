@@ -9,12 +9,12 @@ import {
 } from '../test-generation/index.js';
 
 import {
-    join,
-} from 'node:path';
+    mapPersistedApplicationGraph,
+} from '../state/persisted-application-graph.js';
 
 import {
-    parseTargetUrl,
-} from '../cli/parse-target.js';
+    join,
+} from 'node:path';
 
 import {
     buildEvidenceCatalog,
@@ -50,6 +50,12 @@ import {
     DeterministicExplorationPlanner,
     runExplorationLoop,
 } from '../exploration/index.js';
+
+import {
+    groundBusinessBehaviors,
+    identifyBusinessBehaviors,
+    reconstructBusinessFlows,
+} from '../flows/index.js';
 
 import {
     linkNetworkEventsToOperations,
@@ -390,7 +396,7 @@ export async function runExplorer(
             'Target application loaded',
         );
 
-               // --------------------------------
+        // --------------------------------
         // Observation analysis helper
         // --------------------------------
 
@@ -412,67 +418,6 @@ export async function runExplorer(
                     },
                     'Page observation captured',
                 );
-
-                // --------------------------------
-                // Optional semantic analysis
-                // --------------------------------
-
-                if (
-                    modelConfiguration
-                        .MODEL_REASONING_ENABLED
-                ) {
-                    const stateAnalysis =
-                        await modelProvider
-                            .analyzeState({
-                                url:
-                                    observation.url,
-
-                                title:
-                                    observation.title,
-
-                                semanticText:
-                                    observation
-                                        .semanticText,
-
-                                actions:
-                                    observation.actions
-                                        .map(
-                                            (
-                                                action,
-                                            ) => ({
-                                                type:
-                                                    action.type,
-
-                                                ...(action.name !==
-                                                    undefined
-                                                    ? {
-                                                        name:
-                                                            action.name,
-                                                    }
-                                                    : {}),
-
-                                                ...(action.text !==
-                                                    undefined
-                                                    ? {
-                                                        text:
-                                                            action.text,
-                                                    }
-                                                    : {}),
-                                            }),
-                                        ),
-                            });
-
-                    logger.info(
-                        {
-                            analysis:
-                                stateAnalysis.data,
-
-                            usage:
-                                stateAnalysis.usage,
-                        },
-                        'Application state semantically analyzed',
-                    );
-                }
 
                 // --------------------------------
                 // Runtime network → OpenAPI
@@ -550,19 +495,19 @@ export async function runExplorer(
                 runId:
                     run.id,
 
-                    priorityTerms: [
-                        ...(knowledge.requirements
-                          ?.capabilities ??
-                          []),
-                      
-                        ...(knowledge.requirements
-                          ?.domainTerms ??
-                          []),
-                      ],
+                priorityTerms: [
+                    ...(knowledge.requirements
+                        ?.capabilities ??
+                        []),
 
-                      knowledge,
+                    ...(knowledge.requirements
+                        ?.domainTerms ??
+                        []),
+                ],
 
-                      analyzeObservation,
+                knowledge,
+
+                analyzeObservation,
             });
 
         const initialObservation =
@@ -583,398 +528,483 @@ export async function runExplorer(
         );
 
         // --------------------------------
-        // Grounded scenario generation
+        // Persisted business-flow reconstruction
         // --------------------------------
 
-        if (
-            modelConfiguration
-                .MODEL_REASONING_ENABLED
-        ) {
-            const currentFlow =
-                await activeRepository
-                    .getApplicationFlow(
-                        application.id,
-                    );
-
-            if (currentFlow) {
-                const evidence =
-                    buildEvidenceCatalog(
-                        knowledge,
-                        currentFlow,
-                    );
-
-                const scenarioGenerator =
-                    new GroundedScenarioGenerator(
-                        modelProvider,
-                    );
-
-                const generatedScenarios =
-                    await scenarioGenerator
-                        .generate({
-                            evidence,
-                        });
-
-                const actionBackedScenarios =
-                    generatedScenarios.filter(
-                        (scenario) =>
-                            scenario
-                                .evidenceReferences
-                                .some(
-                                    (reference) =>
-                                        reference.startsWith(
-                                            'ACTION-',
-                                        ),
-                                ),
-                    );
-
-                const otherScenarios =
-                    generatedScenarios.filter(
-                        (scenario) =>
-                            !scenario
-                                .evidenceReferences
-                                .some(
-                                    (reference) =>
-                                        reference.startsWith(
-                                            'ACTION-',
-                                        ),
-                                ),
-                    );
-
-                const scenarios = [
-                    ...actionBackedScenarios
-                        .slice(0, 2),
-
-                    ...otherScenarios
-                        .slice(
-                            0,
-                            Math.max(
-                                0,
-                                8 -
-                                actionBackedScenarios
-                                    .slice(0, 2)
-                                    .length,
-                            ),
-                        ),
-                ];
-
-                const storedScenarios =
-                    await activeRepository
-                        .saveGeneratedScenarios(
-                            run.id,
-                            application.id,
-                            scenarios,
-                        );
-
-                logger.info(
-                    {
-                        evidenceCount:
-                            evidence.length,
-
-                        scenarioCount:
-                            scenarios.length,
-
-                        scenarios:
-                            scenarios.map(
-                                (scenario) => ({
-                                    title:
-                                        scenario.title,
-
-                                    type:
-                                        scenario.type,
-
-                                    relevance:
-                                        scenario.relevance,
-
-                                    risk:
-                                        scenario.risk,
-
-                                    confidence:
-                                        scenario.confidence,
-
-                                    evidenceReferences:
-                                        scenario
-                                            .evidenceReferences,
-                                }),
-                            ),
-                    },
-                    'Grounded test scenarios generated',
+        const currentFlow =
+            await activeRepository
+                .getApplicationFlow(
+                    application.id,
                 );
 
-                // --------------------------------
-                // Executable Playwright generation
-                // --------------------------------
-
-                const generatedTestsDirectory =
-                    join(
-                        process.cwd(),
-                        'artifacts',
-                        'generated-tests',
-                        run.id,
-                    );
-
-                for (
-                    const storedScenario of
-                    storedScenarios
-                ) {
-                    const plan =
-                        createExecutableTestPlan({
-                            scenario: {
-                                id:
-                                    storedScenario.id,
-
-                                title:
-                                    storedScenario.title,
-
-                                evidenceReferences:
-                                    storedScenario
-                                        .evidenceReferences,
-                            },
-
-                            evidence:
-                                evidence.map(
-                                    (item) => ({
-                                        id:
-                                            item.id,
-
-                                        type:
-                                            item.type,
-
-                                        source:
-                                            item.source,
-                                    }),
-                                ),
-
-                                actions:
-                                currentFlow.actions.map(
-                                  (action) => ({
-                                    id:
-                                      action.id,
-                              
-                                    label:
-                                      action.label,
-                              
-                                    type:
-                                      action.type,
-                              
-                                    target:
-                                      action.target,
-                              
-                                    blocked:
-                                      action.blocked,
-                              
-                                    blockReasons:
-                                      action.blockReasons,
-                                  }),
-                                ),
-                        });
-
-                    // ------------------------------
-                    // Manual-required scenario
-                    // ------------------------------
-
-                    if (
-                        plan.status ===
-                        'manual_required'
-                    ) {
-                        await activeRepository
-                            .saveGeneratedTest({
-                                runId:
-                                    run.id,
-
-                                applicationId:
-                                    application.id,
-
-                                scenarioId:
-                                    storedScenario.id,
-
-                                generationStatus:
-                                    'manual_required',
-
-                                reason:
-                                    plan.reason,
-
-                                sourceFilePath:
-                                    null,
-
-                                sourceCode:
-                                    null,
-                            });
-
-                        logger.info(
-                            {
-                                scenarioId:
-                                    storedScenario.id,
-
-                                title:
-                                    storedScenario.title,
-
-                                reason:
-                                    plan.reason,
-                            },
-                            'Generated test requires manual completion',
-                        );
-
-                        continue;
-                    }
-
-                    // ------------------------------
-                    // Generate Playwright file
-                    // ------------------------------
-
-                    try {
-                        const writtenTest =
-                            await writePlaywrightTest(
-                                {
-                                    plan,
-
-                                    targetUrl:
-                                        input.targetUrl,
-                                },
-
-                                generatedTestsDirectory,
-                            );
-
-                        const storedTest =
-                            await activeRepository
-                                .saveGeneratedTest({
-                                    runId:
-                                        run.id,
-
-                                    applicationId:
-                                        application.id,
-
-                                    scenarioId:
-                                        storedScenario.id,
-
-                                    generationStatus:
-                                        'ready',
-
-                                    reason:
-                                        null,
-
-                                    sourceFilePath:
-                                        writtenTest.filePath,
-
-                                    sourceCode:
-                                        writtenTest.source,
-                                });
-
-                        // ----------------------------
-                        // Execute generated test
-                        // ----------------------------
-
-                        try {
-                            const executionResult =
-                                await runPlaywrightTest({
-                                    filePath:
-                                        writtenTest.filePath,
-
-                                    workingDirectory:
-                                        process.cwd(),
-                                });
-
-                            await activeRepository
-                                .saveGeneratedTestExecution(
-                                    storedTest.id,
-                                    executionResult,
-                                );
-
-                            logger.info(
-                                {
-                                    scenarioId:
-                                        storedScenario.id,
-
-                                    generatedTestId:
-                                        storedTest.id,
-
-                                    filePath:
-                                        writtenTest.filePath,
-
-                                    status:
-                                        executionResult.status,
-
-                                    exitCode:
-                                        executionResult.exitCode,
-
-                                    durationMs:
-                                        executionResult.durationMs,
-                                },
-                                'Generated Playwright test executed',
-                            );
-                        } catch (
-                        executionError:
-                            unknown
-                        ) {
-                            await activeRepository
-                                .saveGeneratedTestError(
-                                    storedTest.id,
-                                    executionError,
-                                );
-
-                            logger.error(
-                                {
-                                    scenarioId:
-                                        storedScenario.id,
-
-                                    generatedTestId:
-                                        storedTest.id,
-
-                                    error:
-                                        executionError,
-                                },
-                                'Generated Playwright test execution failed',
-                            );
-                        }
-                    } catch (
-                    generationError:
-                        unknown
-                    ) {
-                        const message =
-                            generationError instanceof
-                                Error
-                                ? generationError.message
-                                : String(
-                                    generationError,
-                                );
-
-                        await activeRepository
-                            .saveGeneratedTest({
-                                runId:
-                                    run.id,
-
-                                applicationId:
-                                    application.id,
-
-                                scenarioId:
-                                    storedScenario.id,
-
-                                generationStatus:
-                                    'generation_error',
-
-                                reason:
-                                    message,
-
-                                sourceFilePath:
-                                    null,
-
-                                sourceCode:
-                                    null,
-                            });
-
-                        logger.error(
-                            {
-                                scenarioId:
-                                    storedScenario.id,
-
-                                error:
-                                    generationError,
-                            },
-                            'Playwright test generation failed',
-                        );
-                    }
-                }
-            }
+        if (!currentFlow) {
+            throw new Error(
+                'Application flow was not available after exploration.',
+            );
         }
+
+        const {
+            states:
+            graphStates,
+
+            transitions:
+            graphTransitions,
+        } =
+            mapPersistedApplicationGraph(
+                currentFlow,
+            );
+
+        const reconstructedFlows =
+            reconstructBusinessFlows({
+                states:
+                    graphStates,
+
+                transitions:
+                    graphTransitions,
+            });
+
+        const businessBehaviors =
+            identifyBusinessBehaviors({
+                states:
+                    graphStates,
+
+                transitions:
+                    graphTransitions,
+
+                flows:
+                    reconstructedFlows,
+            });
+
+        const groundedBusinessBehaviors =
+            groundBusinessBehaviors({
+                behaviors:
+                    businessBehaviors,
+
+                transitions:
+                    graphTransitions,
+
+                knowledge,
+            });
+
+        logger.info(
+            {
+                applicationId:
+                    application.id,
+
+                runId:
+                    run.id,
+
+                graphSource:
+                    'persisted',
+
+                graphStates:
+                    graphStates.length,
+
+                graphTransitions:
+                    graphTransitions.length,
+
+                reconstructedFlows:
+                    reconstructedFlows.length,
+
+                businessBehaviors:
+                    businessBehaviors.length,
+
+                groundedBusinessBehaviors:
+                    groundedBusinessBehaviors.length,
+            },
+            'Business flows reconstructed and grounded',
+        );
+
+        // --------------------------------
+// Grounded scenario generation
+// --------------------------------
+
+if (
+    modelConfiguration
+      .MODEL_REASONING_ENABLED
+  ) {
+    const evidence =
+      buildEvidenceCatalog(
+        knowledge,
+        currentFlow,
+        groundedBusinessBehaviors,
+      );
+  
+    const scenarioGenerator =
+      new GroundedScenarioGenerator(
+        modelProvider,
+      );
+  
+    const generatedScenarios =
+      await scenarioGenerator
+        .generate({
+          evidence,
+        });
+  
+    const actionBackedScenarios =
+      generatedScenarios.filter(
+        (scenario) =>
+          scenario
+            .evidenceReferences
+            .some(
+              (reference) =>
+                reference.startsWith(
+                  'ACTION-',
+                ),
+            ),
+      );
+  
+    const otherScenarios =
+      generatedScenarios.filter(
+        (scenario) =>
+          !scenario
+            .evidenceReferences
+            .some(
+              (reference) =>
+                reference.startsWith(
+                  'ACTION-',
+                ),
+            ),
+      );
+  
+    const selectedActionScenarios =
+      actionBackedScenarios
+        .slice(
+          0,
+          2,
+        );
+  
+    const scenarios = [
+      ...selectedActionScenarios,
+  
+      ...otherScenarios.slice(
+        0,
+        Math.max(
+          0,
+          8 -
+            selectedActionScenarios
+              .length,
+        ),
+      ),
+    ];
+  
+    const storedScenarios =
+      await activeRepository
+        .saveGeneratedScenarios(
+          run.id,
+          application.id,
+          scenarios,
+        );
+  
+    logger.info(
+      {
+        evidenceCount:
+          evidence.length,
+  
+        scenarioCount:
+          scenarios.length,
+  
+        scenarios:
+          scenarios.map(
+            (scenario) => ({
+              title:
+                scenario.title,
+  
+              type:
+                scenario.type,
+  
+              relevance:
+                scenario.relevance,
+  
+              risk:
+                scenario.risk,
+  
+              confidence:
+                scenario.confidence,
+  
+              evidenceReferences:
+                scenario
+                  .evidenceReferences,
+            }),
+          ),
+      },
+      'Grounded test scenarios generated',
+    );
+  
+    // --------------------------------
+    // Executable Playwright generation
+    // --------------------------------
+  
+    const generatedTestsDirectory =
+      join(
+        process.cwd(),
+        'artifacts',
+        'generated-tests',
+        run.id,
+      );
+  
+    for (
+      const storedScenario of
+      storedScenarios
+    ) {
+      const plan =
+        createExecutableTestPlan({
+          scenario: {
+            id:
+              storedScenario.id,
+  
+            title:
+              storedScenario.title,
+  
+            evidenceReferences:
+              storedScenario
+                .evidenceReferences,
+          },
+  
+          evidence:
+            evidence.map(
+              (item) => ({
+                id:
+                  item.id,
+  
+                type:
+                  item.type,
+  
+                source:
+                  item.source,
+              }),
+            ),
+  
+          actions:
+            currentFlow.actions.map(
+              (action) => ({
+                id:
+                  action.id,
+  
+                label:
+                  action.label,
+  
+                type:
+                  action.type,
+  
+                target:
+                  action.target,
+  
+                blocked:
+                  action.blocked,
+  
+                blockReasons:
+                  action.blockReasons,
+              }),
+            ),
+        });
+  
+      // ------------------------------
+      // Manual-required scenario
+      // ------------------------------
+  
+      if (
+        plan.status ===
+        'manual_required'
+      ) {
+        await activeRepository
+          .saveGeneratedTest({
+            runId:
+              run.id,
+  
+            applicationId:
+              application.id,
+  
+            scenarioId:
+              storedScenario.id,
+  
+            generationStatus:
+              'manual_required',
+  
+            reason:
+              plan.reason,
+  
+            sourceFilePath:
+              null,
+  
+            sourceCode:
+              null,
+          });
+  
+        logger.info(
+          {
+            scenarioId:
+              storedScenario.id,
+  
+            title:
+              storedScenario.title,
+  
+            reason:
+              plan.reason,
+          },
+          'Generated test requires manual completion',
+        );
+  
+        continue;
+      }
+  
+      // ------------------------------
+      // Generate Playwright file
+      // ------------------------------
+  
+      try {
+        const writtenTest =
+          await writePlaywrightTest(
+            {
+              plan,
+  
+              targetUrl:
+                input.targetUrl,
+            },
+  
+            generatedTestsDirectory,
+          );
+  
+        const storedTest =
+          await activeRepository
+            .saveGeneratedTest({
+              runId:
+                run.id,
+  
+              applicationId:
+                application.id,
+  
+              scenarioId:
+                storedScenario.id,
+  
+              generationStatus:
+                'ready',
+  
+              reason:
+                null,
+  
+              sourceFilePath:
+                writtenTest.filePath,
+  
+              sourceCode:
+                writtenTest.source,
+            });
+  
+        // ----------------------------
+        // Execute generated test
+        // ----------------------------
+  
+        try {
+          const executionResult =
+            await runPlaywrightTest({
+              filePath:
+                writtenTest.filePath,
+  
+              workingDirectory:
+                process.cwd(),
+            });
+  
+          await activeRepository
+            .saveGeneratedTestExecution(
+              storedTest.id,
+              executionResult,
+            );
+  
+          logger.info(
+            {
+              scenarioId:
+                storedScenario.id,
+  
+              generatedTestId:
+                storedTest.id,
+  
+              filePath:
+                writtenTest.filePath,
+  
+              status:
+                executionResult.status,
+  
+              exitCode:
+                executionResult.exitCode,
+  
+              durationMs:
+                executionResult.durationMs,
+            },
+            'Generated Playwright test executed',
+          );
+        } catch (
+          executionError:
+            unknown
+        ) {
+          await activeRepository
+            .saveGeneratedTestError(
+              storedTest.id,
+              executionError,
+            );
+  
+          logger.error(
+            {
+              scenarioId:
+                storedScenario.id,
+  
+              generatedTestId:
+                storedTest.id,
+  
+              error:
+                executionError,
+            },
+            'Generated Playwright test execution failed',
+          );
+        }
+      } catch (
+        generationError:
+          unknown
+      ) {
+        const message =
+          generationError instanceof
+          Error
+            ? generationError.message
+            : String(
+                generationError,
+              );
+  
+        await activeRepository
+          .saveGeneratedTest({
+            runId:
+              run.id,
+  
+            applicationId:
+              application.id,
+  
+            scenarioId:
+              storedScenario.id,
+  
+            generationStatus:
+              'generation_error',
+  
+            reason:
+              message,
+  
+            sourceFilePath:
+              null,
+  
+            sourceCode:
+              null,
+          });
+  
+        logger.error(
+          {
+            scenarioId:
+              storedScenario.id,
+  
+            error:
+              generationError,
+          },
+          'Playwright test generation failed',
+        );
+      }
+    }
+  }
 
         // --------------------------------
         // Complete exploration run
