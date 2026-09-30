@@ -114,6 +114,8 @@ const ACTION_TYPE_SCORES:
     5,
 };
 
+const GLOBAL_ACTION_REPEAT_PENALTY = 120;
+
 export class DeterministicExplorationPlanner {
   private readonly budget:
     ExplorationBudget;
@@ -125,6 +127,12 @@ export class DeterministicExplorationPlanner {
     >();
 
   private readonly stateActionCounts =
+    new Map<
+      string,
+      number
+    >();
+
+    private readonly globalActionCounts =
     new Map<
       string,
       number
@@ -277,6 +285,22 @@ export class DeterministicExplorationPlanner {
         candidate.stateId,
         stateCount + 1,
       );
+
+      const globalActionKey =
+  this.createGlobalActionKey(
+    candidate.action.type,
+    candidate.label,
+  );
+
+const globalActionCount =
+  this.globalActionCounts.get(
+    globalActionKey,
+  ) ?? 0;
+
+this.globalActionCounts.set(
+  globalActionKey,
+  globalActionCount + 1,
+);
     }
   }
 
@@ -356,6 +380,12 @@ export class DeterministicExplorationPlanner {
         label,
       );
 
+      const globalActionVisitCount =
+  this.getGlobalActionVisitCount(
+    action.type,
+    label,
+  );
+
     const reasons:
       string[] = [];
 
@@ -433,6 +463,23 @@ export class DeterministicExplorationPlanner {
 
       reasons.push(
         'Action has not been visited in this state',
+      );
+    }
+
+    if (
+      globalActionVisitCount >
+      0
+    ) {
+      score -=
+        globalActionVisitCount *
+        GLOBAL_ACTION_REPEAT_PENALTY;
+    
+      reasons.push(
+        [
+          'Action has already been executed',
+          `${globalActionVisitCount}`,
+          'time(s) across discovered states',
+        ].join(' '),
       );
     }
 
@@ -557,6 +604,41 @@ export class DeterministicExplorationPlanner {
         ?.has(signature) ??
       false
     );
+  }
+
+  private getGlobalActionVisitCount(
+    type:
+      ActionElement['type'],
+  
+    label:
+      string,
+  ): number {
+    const key =
+      this.createGlobalActionKey(
+        type,
+        label,
+      );
+  
+    return (
+      this.globalActionCounts.get(
+        key,
+      ) ?? 0
+    );
+  }
+  
+  private createGlobalActionKey(
+    type:
+      ActionElement['type'],
+  
+    label:
+      string,
+  ): string {
+    return [
+      type,
+      this.normalize(
+        label,
+      ),
+    ].join(':');
   }
 
   private getGraphVisitCount(

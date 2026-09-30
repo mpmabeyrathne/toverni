@@ -1,7 +1,11 @@
 import type {
     KnowledgeContext,
   } from '../knowledge/index.js';
-  
+
+  import type {
+    GroundedBusinessBehavior,
+  } from '../flows/grounded-business-behavior.js';
+
   import type {
     ScenarioEvidence,
   } from './scenario-contracts.js';
@@ -54,13 +58,17 @@ import type {
     );
   }
   
-  export function buildEvidenceCatalog(
-    knowledge:
-      KnowledgeContext,
-  
-    flow:
-      ApplicationFlow,
-  ): ScenarioEvidence[] {
+export function buildEvidenceCatalog(
+  knowledge:
+    KnowledgeContext,
+
+  flow:
+    ApplicationFlow,
+
+  businessBehaviors:
+    GroundedBusinessBehavior[] =
+      [],
+): ScenarioEvidence[] {
     const catalog:
       ScenarioEvidence[] = [];
   
@@ -248,6 +256,118 @@ import type {
         );
       },
     );
+
+    // --------------------------------
+// Reconstructed business flows
+// --------------------------------
+
+businessBehaviors.forEach(
+  (
+    behavior,
+    index,
+  ) => {
+    const actionSequence =
+      behavior.steps
+        .map(
+          (step) => {
+            const target =
+              step.action.target
+                ? ` ${step.action.target}`
+                : '';
+
+            return `${step.action.type}${target}`;
+          },
+        )
+        .join(
+          ' -> ',
+        );
+
+    const transitionSequence =
+      behavior.transitionIds
+        .join(
+          ' -> ',
+        );
+
+    const stateSequence =
+      behavior.stateIds
+        .join(
+          ' -> ',
+        );
+
+    const preconditions =
+      behavior
+        .preconditionTransitionIds
+        .length >
+      0
+        ? behavior
+            .preconditionTransitionIds
+            .join(
+              ' -> ',
+            )
+        : 'none';
+
+    const requirements =
+      behavior
+        .requirementEvidenceIds
+        .length >
+      0
+        ? behavior
+            .requirementEvidenceIds
+            .join(
+              ', ',
+            )
+        : 'none';
+
+    const apiOperations =
+      behavior
+        .apiOperationIds
+        .length >
+      0
+        ? behavior
+            .apiOperationIds
+            .join(
+              ', ',
+            )
+        : 'none';
+
+    pushUnique(
+      catalog,
+      {
+        id:
+          `FLOW-BUSINESS-${index + 1}`,
+
+        type:
+          'transition',
+
+        description:
+          [
+            `Business flow: ${behavior.name}.`,
+
+            `Actions: ${actionSequence}.`,
+
+            `Ordered states: ${stateSequence}.`,
+
+            `Ordered transitions: ${transitionSequence}.`,
+
+            `Reusable preconditions: ${preconditions}.`,
+
+            `Linked requirements: ${requirements}.`,
+
+            `Linked API operations: ${apiOperations}.`,
+
+            `Outcome state: ${behavior.outcome.stateId}.`,
+
+            `Complete: ${behavior.complete}.`,
+          ].join(
+            ' ',
+          ),
+
+        source:
+          behavior.id,
+      },
+    );
+  },
+);
   
     // --------------------------------
     // OpenAPI operations

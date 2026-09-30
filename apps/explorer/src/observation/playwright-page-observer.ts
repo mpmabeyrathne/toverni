@@ -721,102 +721,99 @@ export class PlaywrightPageObserver
                     'aria-placeholder',
                   );
 
-                const collectAriaOptions =
-                  () => {
                     const optionElements =
-                      new Set<Element>();
-
-                    if (
-                      role === 'listbox'
-                    ) {
-                      element
-                        .querySelectorAll(
-                          '[role="option"]',
-                        )
-                        .forEach(
-                          (option) =>
-                            optionElements.add(
-                              option,
-                            ),
-                        );
-                    }
-
-                    const controlledIds = [
-                      element.getAttribute(
-                        'aria-controls',
-                      ),
-                      element.getAttribute(
-                        'aria-owns',
-                      ),
-                    ]
-                      .filter(
-                        (
-                          value,
-                        ): value is string =>
-                          Boolean(value),
+                    new Set<Element>();
+                  
+                  if (
+                    role === 'listbox'
+                  ) {
+                    element
+                      .querySelectorAll(
+                        '[role="option"]',
                       )
-                      .flatMap(
-                        (value) =>
-                          value.split(
-                            /\s+/,
+                      .forEach(
+                        (option) =>
+                          optionElements.add(
+                            option,
                           ),
                       );
-
-                    for (
-                      const id of
-                      controlledIds
-                    ) {
-                      const controlled =
-                        document.getElementById(
-                          id,
-                        );
-
-                      controlled
-                        ?.querySelectorAll(
-                          '[role="option"]',
-                        )
-                        .forEach(
-                          (option) =>
-                            optionElements.add(
-                              option,
-                            ),
-                        );
-                    }
-
-                    return [
-                      ...optionElements,
-                    ].map(
-                      (option) => {
-                        const label =
-                          option.textContent
-                            ?.trim() ??
-                          '';
-
-                        return {
-                          value:
-                            option.getAttribute(
-                              'data-value',
-                            ) ??
-                            option.getAttribute(
-                              'value',
-                            ) ??
-                            label,
-
-                          label,
-
-                          disabled:
-                            option.getAttribute(
-                              'aria-disabled',
-                            ) === 'true',
-
-                          selected:
-                            option.getAttribute(
-                              'aria-selected',
-                            ) === 'true',
-                        };
-                      },
+                  }
+                  
+                  const controlledIds = [
+                    element.getAttribute(
+                      'aria-controls',
+                    ),
+                    element.getAttribute(
+                      'aria-owns',
+                    ),
+                  ]
+                    .filter(
+                      (
+                        value,
+                      ): value is string =>
+                        Boolean(value),
+                    )
+                    .flatMap(
+                      (value) =>
+                        value.split(
+                          /\s+/,
+                        ),
                     );
-                  };
+                  
+                  for (
+                    const id of
+                    controlledIds
+                  ) {
+                    const controlled =
+                      document.getElementById(
+                        id,
+                      );
+                  
+                    controlled
+                      ?.querySelectorAll(
+                        '[role="option"]',
+                      )
+                      .forEach(
+                        (option) =>
+                          optionElements.add(
+                            option,
+                          ),
+                      );
+                  }
+                  
+                  const ariaOptions = [
+                    ...optionElements,
+                  ].map(
+                    (option) => {
+                      const label =
+                        option.textContent
+                          ?.trim() ??
+                        '';
+                  
+                      return {
+                        value:
+                          option.getAttribute(
+                            'data-value',
+                          ) ??
+                          option.getAttribute(
+                            'value',
+                          ) ??
+                          label,
+                  
+                        label,
+                  
+                        disabled:
+                          option.getAttribute(
+                            'aria-disabled',
+                          ) === 'true',
+                  
+                        selected:
+                          option.getAttribute(
+                            'aria-selected',
+                          ) === 'true',
+                      };
+                    },
+                  );
 
                   if (
                     (
@@ -844,7 +841,7 @@ export class PlaywrightPageObserver
                     role === 'combobox'
                   ) {
                     const options =
-                      collectAriaOptions();
+                    ariaOptions;
                   
                     formField = {
                       ...(formField ?? {
@@ -880,7 +877,7 @@ export class PlaywrightPageObserver
                     role === 'listbox'
                   ) {
                     const options =
-                      collectAriaOptions();
+                    ariaOptions;
                   
                     formField = {
                       required:

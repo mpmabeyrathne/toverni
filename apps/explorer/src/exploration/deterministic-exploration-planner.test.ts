@@ -462,6 +462,189 @@ function setupWithObservation(
       );
   
       it(
+        'prefers a different semantic action after the same action was executed in another state',
+        () => {
+          const stateModel =
+            new ApplicationStateModel();
+      
+          const firstObservation:
+            PageObservation = {
+            ...createObservation(),
+      
+            title:
+              'Todo List',
+      
+            semanticText: [
+              'Todo List',
+              'Add Todo',
+            ],
+      
+            ariaSnapshot: `
+              - main:
+                - heading "Todo List" [level=1]
+                - button "Add Todo"
+            `,
+      
+            actions: [
+              {
+                type:
+                  'button',
+      
+                tagName:
+                  'button',
+      
+                name:
+                  'Add Todo',
+      
+                text:
+                  'Add Todo',
+      
+                disabled:
+                  false,
+      
+                visible:
+                  true,
+              },
+            ],
+          };
+      
+          const firstState =
+            stateModel
+              .registerObservation(
+                firstObservation,
+              )
+              .state;
+      
+          const planner =
+            new DeterministicExplorationPlanner(
+              stateModel,
+            );
+      
+          const firstDecision =
+            planner.plan({
+              state:
+                firstState,
+      
+              observation:
+                firstObservation,
+            });
+      
+          expect(
+            firstDecision.selected
+              ?.label,
+          ).toBe(
+            'Add Todo',
+          );
+      
+          if (
+            !firstDecision.selected
+          ) {
+            throw new Error(
+              'Expected Add Todo to be selected',
+            );
+          }
+      
+          planner.recordActionExecution(
+            firstDecision.selected,
+          );
+      
+          const secondObservation:
+            PageObservation = {
+            ...createObservation(),
+      
+            title:
+              'Todo List',
+      
+            semanticText: [
+              'Todo List',
+              'Created Todo',
+              'Add Todo',
+              'Complete Todo',
+            ],
+      
+            ariaSnapshot: `
+              - main:
+                - heading "Todo List" [level=1]
+                - listitem: Created Todo
+                - button "Add Todo"
+                - button "Complete Todo"
+            `,
+      
+            actions: [
+              {
+                type:
+                  'button',
+      
+                tagName:
+                  'button',
+      
+                name:
+                  'Add Todo',
+      
+                text:
+                  'Add Todo',
+      
+                disabled:
+                  false,
+      
+                visible:
+                  true,
+              },
+      
+              {
+                type:
+                  'button',
+      
+                tagName:
+                  'button',
+      
+                name:
+                  'Complete Todo',
+      
+                text:
+                  'Complete Todo',
+      
+                disabled:
+                  false,
+      
+                visible:
+                  true,
+              },
+            ],
+          };
+      
+          const secondState =
+            stateModel
+              .registerObservation(
+                secondObservation,
+              )
+              .state;
+      
+          expect(
+            secondState.id,
+          ).not.toBe(
+            firstState.id,
+          );
+      
+          const secondDecision =
+            planner.plan({
+              state:
+                secondState,
+      
+              observation:
+                secondObservation,
+            });
+      
+          expect(
+            secondDecision.selected
+              ?.label,
+          ).toBe(
+            'Complete Todo',
+          );
+        },
+      );
+      
+      it(
         'uses product context when ranking',
         () => {
           const {
