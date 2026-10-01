@@ -2,6 +2,10 @@ import type {
   ScenarioEvidence,
 } from '../scenarios/index.js';
 
+import type {
+  GroundedBusinessBehavior,
+} from '../flows/index.js';
+
 export type CoverageStatus =
   | 'covered'
   | 'partially_covered'
@@ -121,6 +125,10 @@ export interface BuildCoverageReportInput {
 export function buildCoverageTargets(
   evidence:
     ScenarioEvidence[],
+
+  businessBehaviors:
+    GroundedBusinessBehavior[] =
+      [],
 ): CoverageTarget[] {
   return evidence.flatMap(
     (
@@ -135,6 +143,23 @@ export function buildCoverageTargets(
         return [];
       }
 
+      const linkedBusinessFlows =
+        businessBehaviors.flatMap(
+          (
+            behavior,
+            index,
+          ) =>
+            behavior
+              .requirementEvidenceIds
+              .includes(
+                item.id,
+              )
+              ? [
+                  `FLOW-BUSINESS-${index + 1}`,
+                ]
+              : [],
+        );
+
       return [
         {
           id:
@@ -147,6 +172,7 @@ export function buildCoverageTargets(
 
           evidenceReferences: [
             item.id,
+            ...linkedBusinessFlows,
           ],
 
           supported:
