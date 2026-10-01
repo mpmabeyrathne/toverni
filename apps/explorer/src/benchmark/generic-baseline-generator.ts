@@ -211,6 +211,9 @@ import {
   
           executable:
             false,
+
+          runtimeStatus:
+            'not_run',
   
           evidenceReferences: [],
   
