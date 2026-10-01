@@ -39,6 +39,9 @@ export interface BuildAssertionsInput {
   actionEvidenceReference:
     string;
 
+  scenarioEvidenceReferences?:
+    string[];
+
   evidence:
     EvidenceItem[];
 
@@ -126,6 +129,9 @@ function transitionEvidenceReferences(
   actionEvidenceReference:
     string,
 
+  scenarioEvidenceReferences:
+    string[],
+
   evidence:
     EvidenceItem[],
 ): string[] {
@@ -138,13 +144,30 @@ function transitionEvidenceReferences(
           transition.id,
     );
 
+  const validEvidenceIds =
+    new Set(
+      evidence.map(
+        (item) =>
+          item.id,
+      ),
+    );
+
   return [
-    actionEvidenceReference,
-    ...(transitionEvidence
-      ? [
-          transitionEvidence.id,
-        ]
-      : []),
+    ...new Set([
+      actionEvidenceReference,
+      ...(transitionEvidence
+        ? [
+            transitionEvidence.id,
+          ]
+        : []),
+      ...scenarioEvidenceReferences
+        .filter(
+          (reference) =>
+            validEvidenceIds.has(
+              reference,
+            ),
+        ),
+    ]),
   ];
 }
 
@@ -238,6 +261,8 @@ export function buildEvidenceBackedAssertions(
     transitionEvidenceReferences(
       transition,
       input.actionEvidenceReference,
+      input.scenarioEvidenceReferences ??
+        [],
       input.evidence,
     );
 
