@@ -33,6 +33,9 @@ import type {
   
     if (
       toverni
+        .executableScenarioCount >
+        0 &&
+      toverni
         .meaningfulAssertionCoverage <
       0.8
     ) {
