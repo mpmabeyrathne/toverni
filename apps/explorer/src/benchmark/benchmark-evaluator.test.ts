@@ -66,7 +66,7 @@ import {
                     0,
 
                   assertionCount:
-                    0,
+                    1,
                 },
               ],
   
@@ -117,6 +117,12 @@ import {
             result
               .toverni
               .importantFlowCoverage,
+          ).toBe(1);
+
+          expect(
+            result
+              .toverni
+              .meaningfulAssertionCoverage,
           ).toBe(1);
 
           expect(
