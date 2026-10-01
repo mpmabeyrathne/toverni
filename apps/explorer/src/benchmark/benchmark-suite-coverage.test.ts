@@ -55,7 +55,7 @@ describe(
       'covers substantially more representative interaction patterns',
       () => {
         const patterns =
-          new Set(
+          new Set<string>(
             Object.values(
               fixtureCapabilities,
             ).flat(),
