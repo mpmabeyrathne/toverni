@@ -38,10 +38,6 @@ import type {
         scenario.title,
       ),
   
-      normalize(
-        scenario.type,
-      ),
-  
       normalizeArray(
         scenario.actions,
       ),
