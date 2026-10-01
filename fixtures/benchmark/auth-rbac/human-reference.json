@@ -1,0 +1,145 @@
+{
+  "flows": [
+    {
+      "id": "AUTH-1",
+      "title": "Sign in with valid credentials",
+      "important": true,
+      "keywords": [
+        "sign",
+        "in",
+        "dashboard"
+      ]
+    },
+    {
+      "id": "AUTH-2",
+      "title": "Reject invalid credentials",
+      "important": true,
+      "keywords": [
+        "invalid",
+        "password",
+        "error"
+      ]
+    },
+    {
+      "id": "AUTH-3",
+      "title": "Preserve session across SPA navigation",
+      "important": true,
+      "keywords": [
+        "profile",
+        "dashboard",
+        "session"
+      ]
+    },
+    {
+      "id": "AUTH-4",
+      "title": "Enforce role based admin access",
+      "important": true,
+      "keywords": [
+        "admin",
+        "forbidden",
+        "role"
+      ]
+    },
+    {
+      "id": "AUTH-5",
+      "title": "Sign out clears session",
+      "important": true,
+      "keywords": [
+        "sign",
+        "out",
+        "session"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "title": "Valid admin sign in",
+      "actions": [
+        "Enter valid credentials",
+        "Sign in",
+        "Open admin panel"
+      ],
+      "expectedOutcomes": [
+        "Dashboard is displayed",
+        "Admin panel is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-1",
+        "REQ-3"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 2
+    },
+    {
+      "title": "Invalid sign in",
+      "actions": [
+        "Enter invalid password",
+        "Sign in"
+      ],
+      "expectedOutcomes": [
+        "Invalid credentials message is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-2"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Standard user blocked from admin",
+      "actions": [
+        "Sign in as standard user",
+        "Open admin panel"
+      ],
+      "expectedOutcomes": [
+        "Access denied message is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-4"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Session survives SPA navigation",
+      "actions": [
+        "Sign in",
+        "Open profile",
+        "Return to dashboard"
+      ],
+      "expectedOutcomes": [
+        "User remains signed in"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-1"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Sign out",
+      "actions": [
+        "Sign in",
+        "Sign out"
+      ],
+      "expectedOutcomes": [
+        "Sign in view is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-5"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    }
+  ]
+}
