@@ -1,344 +1,269 @@
 import {
-    describe,
-    expect,
-    it,
-  } from 'vitest';
-  
-  import {
-    createBenchmarkReport,
-    renderBenchmarkMarkdown,
-  } from './benchmark-report.js';
-  
-  describe(
-    'benchmark report',
-    () => {
-      it(
-        'renders application comparison',
-        () => {
-          const report =
-            createBenchmarkReport([
-              {
-                fixtureId:
-                  'booking',
-  
-                title:
-                  'Booking',
-  
-                toverni: {
-                  scenarioCount:
-                    5,
-  
-                  relevantScenarioCount:
-                    5,
-  
-                  executableScenarioCount:
-                    4,
-  
-                  duplicateScenarioCount:
-                    0,
-  
-                  unsupportedStepCount:
-                    0,
-  
-                  coveredImportantFlowCount:
-                    4,
-  
-                  totalImportantFlowCount:
-                    4,
-  
-                  totalHumanEdits:
-                    0,
-  
-                  relevanceRate:
-                    1,
-  
-                  executabilityRate:
-                    0.8,
-  
-                  duplicateRate:
-                    0,
-  
-                  importantFlowCoverage:
-                    1,
-  
-                  unsupportedStepsPerScenario:
-                    0,
-  
-                  humanEditsPerScenario:
-                    0,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 
-                  assertionScenarioCount:
-                    4,
+import type {
+  BenchmarkMetrics,
+} from './benchmark-contracts.js';
 
-                  meaningfulAssertionCoverage:
-                    0.8,
-                },
-  
-                baseline: {
-                  scenarioCount:
-                    5,
-  
-                  relevantScenarioCount:
-                    4,
-  
-                  executableScenarioCount:
-                    2,
-  
-                  duplicateScenarioCount:
-                    1,
-  
-                  unsupportedStepCount:
-                    2,
-  
-                  coveredImportantFlowCount:
-                    3,
-  
-                  totalImportantFlowCount:
-                    4,
-  
-                  totalHumanEdits:
-                    3,
-  
-                  relevanceRate:
-                    0.8,
-  
-                  executabilityRate:
-                    0.4,
-  
-                  duplicateRate:
-                    0.2,
-  
-                  importantFlowCoverage:
-                    0.75,
-  
-                  unsupportedStepsPerScenario:
-                    0.4,
-  
-                  humanEditsPerScenario:
-                    0.6,
+import {
+  createBenchmarkReport,
+  renderBenchmarkMarkdown,
+} from './benchmark-report.js';
 
-                  assertionScenarioCount:
-                    0,
+import {
+  BENCHMARK_METRIC_DEFINITIONS_VERSION,
+} from './benchmark-quality-telemetry.js';
 
-                  meaningfulAssertionCoverage:
-                    0,
-                },
+function metrics(
+  overrides:
+    Partial<BenchmarkMetrics> = {},
+): BenchmarkMetrics {
+  return {
+    scenarioCount: 5,
+    relevantScenarioCount: 5,
+    executableScenarioCount: 4,
+    runtimeExecutedScenarioCount: 4,
+    runtimePassedScenarioCount: 3,
+    runtimeFailedScenarioCount: 1,
+    requirementGroundedScenarioCount: 5,
+    totalActionCount: 10,
+    duplicateScenarioCount: 0,
+    unsupportedStepCount: 0,
+    coveredImportantFlowCount: 4,
+    totalImportantFlowCount: 4,
+    totalHumanEdits: 0,
+    relevanceRate: 1,
+    executabilityRate: 0.8,
+    runtimePassRate: 0.75,
+    requirementGroundingRate: 1,
+    unsupportedActionRate: 0,
+    coverageEfficiency: 0.8,
+    duplicateRate: 0,
+    importantFlowCoverage: 1,
+    unsupportedStepsPerScenario: 0,
+    humanEditsPerScenario: 0,
+    assertionScenarioCount: 4,
+    meaningfulAssertionCoverage: 1,
+    ...overrides,
+  };
+}
 
-                toverniCoverage: {
-                  entries: [
-                    {
-                      target: {
-                        id:
-                          'BOOK-1',
+describe(
+  'benchmark report',
+  () => {
+    it(
+      'renders versioned per-fixture and aggregate quality telemetry',
+      () => {
+        const report =
+          createBenchmarkReport([
+            {
+              fixtureId:
+                'booking',
 
-                        kind:
-                          'flow',
+              title:
+                'Booking',
 
-                        label:
-                          'Book room',
+              toverni:
+                metrics(),
 
-                        evidenceReferences: [
-                          'BOOK-1',
-                        ],
+              baseline:
+                metrics({
+                  scenarioCount: 5,
+                  relevantScenarioCount: 4,
+                  executableScenarioCount: 2,
+                  runtimeExecutedScenarioCount: 0,
+                  runtimePassedScenarioCount: 0,
+                  runtimeFailedScenarioCount: 0,
+                  requirementGroundedScenarioCount: 0,
+                  totalActionCount: 10,
+                  duplicateScenarioCount: 1,
+                  unsupportedStepCount: 2,
+                  coveredImportantFlowCount: 3,
+                  totalImportantFlowCount: 4,
+                  totalHumanEdits: 3,
+                  relevanceRate: 0.8,
+                  executabilityRate: 0.4,
+                  runtimePassRate: 0,
+                  requirementGroundingRate: 0,
+                  unsupportedActionRate: 0.2,
+                  coverageEfficiency: 0.6,
+                  duplicateRate: 0.2,
+                  importantFlowCoverage: 0.75,
+                  unsupportedStepsPerScenario: 0.4,
+                  humanEditsPerScenario: 0.6,
+                  assertionScenarioCount: 0,
+                  meaningfulAssertionCoverage: 0,
+                }),
 
-                        supported:
-                          true,
+              toverniCoverage: {
+                entries: [
+                  {
+                    target: {
+                      id:
+                        'BOOK-1',
 
-                        blocked:
-                          false,
-                      },
+                      kind:
+                        'flow',
 
-                      status:
-                        'covered',
+                      label:
+                        'Book room',
 
-                      scenarioIds: [
-                        'scenario-1',
+                      evidenceReferences: [
+                        'BOOK-1',
                       ],
 
-                      testIds: [
-                        'test-1',
-                      ],
+                      supported:
+                        true,
 
-                      reasons: [
-                        'Covered by executable scenario.',
-                      ],
+                      blocked:
+                        false,
                     },
-                  ],
 
-                  totals: {
-                    total:
-                      1,
+                    status:
+                      'covered',
 
-                    covered:
-                      1,
+                    scenarioIds: [
+                      'scenario-1',
+                    ],
 
-                    partiallyCovered:
-                      0,
+                    testIds: [
+                      'test-1',
+                    ],
 
-                    blocked:
-                      0,
-
-                    unsupported:
-                      0,
-
-                    uncovered:
-                      0,
+                    reasons: [
+                      'Covered by executable scenario.',
+                    ],
                   },
+                ],
 
-                  gaps:
-                    [],
+                totals: {
+                  total: 1,
+                  covered: 1,
+                  partiallyCovered: 0,
+                  blocked: 0,
+                  unsupported: 0,
+                  uncovered: 0,
                 },
 
-                baselineCoverage: {
-                  entries: [
-                    {
-                      target: {
-                        id:
-                          'BOOK-1',
-
-                        kind:
-                          'flow',
-
-                        label:
-                          'Book room',
-
-                        evidenceReferences: [
-                          'BOOK-1',
-                        ],
-
-                        supported:
-                          true,
-
-                        blocked:
-                          false,
-                      },
-
-                      status:
-                        'partially_covered',
-
-                      scenarioIds: [
-                        'baseline-scenario-1',
-                      ],
-
-                      testIds:
-                        [],
-
-                      reasons: [
-                        'Scenario exists without completed executable coverage.',
-                      ],
-                    },
-                  ],
-
-                  totals: {
-                    total:
-                      1,
-
-                    covered:
-                      0,
-
-                    partiallyCovered:
-                      1,
-
-                    blocked:
-                      0,
-
-                    unsupported:
-                      0,
-
-                    uncovered:
-                      0,
-                  },
-
-                  gaps: [
-                    {
-                      target: {
-                        id:
-                          'BOOK-1',
-
-                        kind:
-                          'flow',
-
-                        label:
-                          'Book room',
-
-                        evidenceReferences: [
-                          'BOOK-1',
-                        ],
-
-                        supported:
-                          true,
-
-                        blocked:
-                          false,
-                      },
-
-                      status:
-                        'partially_covered',
-
-                      scenarioIds: [
-                        'baseline-scenario-1',
-                      ],
-
-                      testIds:
-                        [],
-
-                      reasons: [
-                        'Scenario exists without completed executable coverage.',
-                      ],
-                    },
-                  ],
-                },
-  
-                decision: {
-                  decision:
-                    'continue',
-  
-                  reasons: [],
-                },
+                gaps: [],
               },
-            ]);
-  
-          const markdown =
-            renderBenchmarkMarkdown(
-              report,
-            );
-  
-          expect(
-            report.overallDecision,
-          ).toBe(
-            'continue',
-          );
-  
-          expect(
-            markdown,
-          ).toContain(
-            'Toverni P0 Benchmark Report',
-          );
-  
-          expect(
-            markdown,
-          ).toContain(
-            '80.0%',
+
+              baselineCoverage: {
+                entries: [
+                  {
+                    target: {
+                      id:
+                        'BOOK-1',
+
+                      kind:
+                        'flow',
+
+                      label:
+                        'Book room',
+
+                      evidenceReferences: [
+                        'BOOK-1',
+                      ],
+
+                      supported:
+                        true,
+
+                      blocked:
+                        false,
+                    },
+
+                    status:
+                      'partially_covered',
+
+                    scenarioIds: [
+                      'baseline-scenario-1',
+                    ],
+
+                    testIds: [],
+
+                    reasons: [
+                      'Scenario exists without completed executable coverage.',
+                    ],
+                  },
+                ],
+
+                totals: {
+                  total: 1,
+                  covered: 0,
+                  partiallyCovered: 1,
+                  blocked: 0,
+                  unsupported: 0,
+                  uncovered: 0,
+                },
+
+                gaps: [],
+              },
+
+              decision: {
+                decision:
+                  'continue',
+
+                reasons: [],
+
+                thresholds: [],
+              },
+            },
+          ]);
+
+        const markdown =
+          renderBenchmarkMarkdown(
+            report,
           );
 
-          expect(
-            markdown,
-          ).toContain(
-            'Meaningful assertion coverage',
-          );
+        expect(
+          report.metricDefinitionsVersion,
+        ).toBe(
+          BENCHMARK_METRIC_DEFINITIONS_VERSION,
+        );
 
-          expect(
-            markdown,
-          ).toContain(
-            'Reference flow coverage',
-          );
+        expect(
+          report.aggregate.toverni.runtimePassRate,
+        ).toBe(0.75);
 
-          expect(
-            markdown,
-          ).toContain(
-            '| Book room | covered | partially_covered |',
-          );
-        },
-      );
-    },
-  );
+        expect(
+          markdown,
+        ).toContain(
+          'Aggregate quality telemetry',
+        );
+
+        expect(
+          markdown,
+        ).toContain(
+          'Runtime pass rate',
+        );
+
+        expect(
+          markdown,
+        ).toContain(
+          'Requirement grounding',
+        );
+
+        expect(
+          markdown,
+        ).toContain(
+          'Metric definitions',
+        );
+
+        expect(
+          markdown,
+        ).toContain(
+          BENCHMARK_METRIC_DEFINITIONS_VERSION,
+        );
+
+        expect(
+          markdown,
+        ).toContain(
+          '| Book room | covered | partially_covered |',
+        );
+      },
+    );
+  },
+);
