@@ -5,7 +5,7 @@ import {
 } from 'vitest';
 
 import {
-  renderPlaywrightTest,
+  compilePlaywrightTest,
 } from './playwright-test-renderer.js';
 
 const readyPlan = {
@@ -96,13 +96,13 @@ const readyPlan = {
 };
 
 describe(
-  'renderPlaywrightTest',
+  'compilePlaywrightTest',
   () => {
     it(
       'compiles validated IR into runnable Playwright source',
       () => {
         const source =
-          renderPlaywrightTest({
+          compilePlaywrightTest({
             targetUrl:
               'https://example.com',
 
@@ -152,7 +152,7 @@ describe(
       'produces deterministic source for the same validated IR',
       () => {
         const first =
-          renderPlaywrightTest({
+          compilePlaywrightTest({
             targetUrl:
               'https://example.com',
 
@@ -161,7 +161,7 @@ describe(
           });
 
         const second =
-          renderPlaywrightTest({
+          compilePlaywrightTest({
             targetUrl:
               'https://example.com',
 
@@ -184,7 +184,7 @@ describe(
       () => {
         expect(
           () =>
-            renderPlaywrightTest({
+            compilePlaywrightTest({
               targetUrl:
                 'https://example.com',
 
@@ -213,7 +213,7 @@ describe(
       () => {
         expect(
           () =>
-            renderPlaywrightTest({
+            compilePlaywrightTest({
               targetUrl:
                 'https://example.com',
 
