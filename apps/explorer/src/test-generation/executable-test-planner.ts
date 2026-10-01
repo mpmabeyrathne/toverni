@@ -305,6 +305,10 @@ export function createExecutableTestPlan(
           actionEvidenceReference:
             step.evidenceReference,
 
+          scenarioEvidenceReferences:
+            input.scenario
+              .evidenceReferences,
+
           evidence:
             input.evidence,
 
