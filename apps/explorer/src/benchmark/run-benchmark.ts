@@ -171,6 +171,10 @@ async function main():
     'booking',
     'todo',
     'commerce',
+    'auth-rbac',
+    'checkout-form',
+    'data-grid',
+    'upload-retry',
   ] as const;
 
   const modelConfiguration =
