@@ -89,3 +89,22 @@ export {
 export type {
   BenchmarkThresholdResult,
 } from './benchmark-thresholds.js';
+
+
+export {
+  loadCompetitiveToolFixtureOutput,
+  loadCompetitiveToolMetadata,
+} from './competitive-benchmark-loader.js';
+
+export {
+  createCompetitiveBenchmarkReport,
+  renderCompetitiveBenchmarkMarkdown,
+  writeCompetitiveBenchmarkReport,
+} from './competitive-benchmark-report.js';
+
+export type {
+  CompetitiveBenchmarkReport,
+  CompetitiveFixtureMetrics,
+  CompetitiveToolFixtureOutput,
+  CompetitiveToolMetadata,
+} from './competitive-benchmark-contracts.js';
