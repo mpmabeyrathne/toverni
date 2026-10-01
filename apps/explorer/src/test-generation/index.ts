@@ -1,10 +1,14 @@
 export {
+    executableAssertionKindSchema,
+    executableAssertionSchema,
     executableStepSchema,
     executableTestPlanSchema,
     executableTestStatusSchema,
   } from './executable-test-contracts.js';
   
   export type {
+    ExecutableAssertion,
+    ExecutableAssertionKind,
     ExecutableStep,
     ExecutableTestPlan,
     ExecutableTestStatus,
@@ -40,3 +44,12 @@ export {
   export type {
     RunPlaywrightTestInput,
   } from './playwright-test-runner.js';
+
+export {
+  buildEvidenceBackedAssertions,
+} from './assertion-planner.js';
+
+export type {
+  AssertionTransition,
+  BuildAssertionsInput,
+} from './assertion-planner.js';
