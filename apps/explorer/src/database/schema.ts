@@ -23,6 +23,10 @@ import {
   import type {
     ExplorationCandidate,
   } from '../exploration/exploration-contracts.js';
+
+  import type {
+    ExecutableAssertion,
+  } from '../test-generation/executable-test-contracts.js';
   
   export const applications =
     pgTable(
@@ -1120,13 +1124,9 @@ import {
         jsonb(
           'assertions',
         )
-          .$type<Array<{
-            afterActionId: string;
-            kind: string;
-            description: string;
-            playwright: string;
-            evidenceReferences: string[];
-          }>>()
+          .$type<
+            ExecutableAssertion[]
+          >()
           .default([])
           .notNull(),
 
