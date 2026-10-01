@@ -90,6 +90,9 @@ export interface RunExplorationLoopInput {
 
   retryAttempts?:
     number;
+
+  getModelCallCount?: () =>
+    number;
 }
 
 export interface RunExplorationLoopResult {
@@ -312,6 +315,7 @@ export async function runExplorationLoop(
     0;
 
   let modelCalls =
+    input.getModelCallCount?.() ??
     input.checkpoint
       ?.modelCalls ??
     0;
@@ -463,6 +467,10 @@ export async function runExplorationLoop(
   // --------------------------------
 
   while (true) {
+    modelCalls =
+      input.getModelCallCount?.() ??
+      modelCalls;
+
     const runtimeStop =
       runtimeBudgetStop(
         input.budget,
@@ -759,6 +767,10 @@ const decision =
 
     depth +=
       1;
+
+    modelCalls =
+      input.getModelCallCount?.() ??
+      modelCalls;
 
     completedExecutions.push({
       stateId:
