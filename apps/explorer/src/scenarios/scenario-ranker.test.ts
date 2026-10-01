@@ -83,6 +83,16 @@ import {
           expect(
             result.risk,
           ).toBe(50);
+
+          expect(
+            result.rankingReasons,
+          ).toEqual(
+            expect.arrayContaining([
+              expect.stringContaining(
+                'matched 2/2 evidence references',
+              ),
+            ]),
+          );
         },
       );
     },
