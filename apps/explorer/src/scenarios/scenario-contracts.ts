@@ -83,6 +83,11 @@ import {
         z.number()
           .min(0)
           .max(1),
+
+      rankingReasons:
+        z.array(
+          z.string(),
+        ),
     });
   
   export const groundedScenarioCandidateSchema =
@@ -94,6 +99,9 @@ import {
         true,
   
       confidence:
+        true,
+
+      rankingReasons:
         true,
     });
   
