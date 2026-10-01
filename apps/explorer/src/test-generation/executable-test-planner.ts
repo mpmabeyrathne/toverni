@@ -7,6 +7,11 @@ import type {
 } from './executable-test-contracts.js';
 
 import {
+  buildEvidenceBackedAssertions,
+  type AssertionTransition,
+} from './assertion-planner.js';
+
+import {
   renderPlaywrightLocator,
 } from './playwright-locator-renderer.js';
 
@@ -45,6 +50,9 @@ export interface CreateExecutablePlanInput {
 
   actions:
     StoredAction[];
+
+  transitions?:
+    AssertionTransition[];
 }
 
 function actionCommand(
@@ -245,6 +253,9 @@ export function createExecutableTestPlan(
       steps:
         [],
 
+      assertions:
+        [],
+
       evidenceReferences:
         input.scenario
           .evidenceReferences,
@@ -275,11 +286,33 @@ export function createExecutableTestPlan(
       steps:
         [],
 
+      assertions:
+        [],
+
       evidenceReferences:
         input.scenario
           .evidenceReferences,
     };
   }
+
+  const assertions =
+    executableSteps.flatMap(
+      (step) =>
+        buildEvidenceBackedAssertions({
+          actionId:
+            step.actionId,
+
+          actionEvidenceReference:
+            step.evidenceReference,
+
+          evidence:
+            input.evidence,
+
+          transitions:
+            input.transitions ??
+            [],
+        }),
+    );
 
   // --------------------------------
   // Ready
@@ -300,6 +333,8 @@ export function createExecutableTestPlan(
 
     steps:
       executableSteps,
+
+    assertions,
 
     evidenceReferences:
       input.scenario
