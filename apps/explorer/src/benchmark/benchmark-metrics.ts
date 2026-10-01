@@ -237,7 +237,9 @@ import type {
           scenario.runtimeStatus ===
             'passed' ||
           scenario.runtimeStatus ===
-            'failed',
+            'failed' ||
+          scenario.runtimeStatus ===
+            'runtime_error',
       );
 
     const runtimeExecutedScenarioCount =
@@ -257,7 +259,9 @@ import type {
         .filter(
           (scenario) =>
             scenario.runtimeStatus ===
-            'failed',
+              'failed' ||
+            scenario.runtimeStatus ===
+              'runtime_error',
         )
         .length;
 
