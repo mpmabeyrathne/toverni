@@ -997,6 +997,15 @@ export class ExplorationRepository {
 
       sourceCode:
       string | null;
+
+      assertions:
+      Array<{
+        afterActionId: string;
+        kind: string;
+        description: string;
+        playwright: string;
+        evidenceReferences: string[];
+      }>;
     },
   ) {
     const [
@@ -1027,6 +1036,9 @@ export class ExplorationRepository {
 
           sourceCode:
             input.sourceCode,
+
+          assertions:
+            input.assertions,
 
           executionStatus:
             'not_run',
