@@ -200,7 +200,7 @@ export function evaluateBenchmarkThresholds(
           !threshold.passed,
       )
       .map(
-        (threshold) => {
+        (threshold): string => {
           const percent =
             (
               threshold.threshold *
