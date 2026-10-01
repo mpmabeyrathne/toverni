@@ -28,6 +28,10 @@ import {
           'booking',
           'todo',
           'commerce',
+          'auth-rbac',
+          'checkout-form',
+          'data-grid',
+          'upload-retry',
         ]
       ) {
         it(
@@ -63,6 +67,31 @@ import {
             ).toBeGreaterThan(
               0,
             );
+
+            expect(
+              fixture.humanReference
+                .flows.every(
+                  (flow) =>
+                    flow.important,
+                ),
+            ).toBe(true);
+
+            expect(
+              fixture.humanReference
+                .scenarios.length,
+            ).toBeGreaterThan(
+              0,
+            );
+
+            expect(
+              fixture.humanReference
+                .scenarios.some(
+                  (scenario) =>
+                    scenario
+                      .assertionCount >
+                    0,
+                ),
+            ).toBe(true);
           },
         );
       }
