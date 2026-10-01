@@ -150,8 +150,31 @@ function canonicalizeSemanticPhrase(
       value,
     );
 
+  const normalizedTokens =
+    tokens.map(
+      (token) => ({
+        added: 'add',
+        booked: 'book',
+        booking: 'booking',
+        cancelled: 'cancel',
+        canceled: 'cancel',
+        completed: 'complete',
+        created: 'create',
+        deleted: 'delete',
+        ordered: 'order',
+        paid: 'pay',
+        purchased: 'purchase',
+        removed: 'remove',
+        reserved: 'reserve',
+        saved: 'save',
+        submitted: 'submit',
+        updated: 'update',
+        uploaded: 'upload',
+      }[token] ?? token),
+    );
+
   const transactionIndex =
-    tokens.findIndex(
+    normalizedTokens.findIndex(
       (token) =>
         TRANSACTION_VERBS.has(
           token,
@@ -161,18 +184,50 @@ function canonicalizeSemanticPhrase(
   if (
     transactionIndex === -1
   ) {
-    return tokens
+    const variants =
+      normalizedTokens
+        .filter(
+          (token) =>
+            BEHAVIOR_VARIANT_TOKENS.has(
+              token,
+            ),
+        )
+        .sort();
+
+    const structuralNouns =
+      normalizedTokens
+        .filter(
+          (token) =>
+            STRUCTURAL_NOUNS.has(
+              token,
+            ),
+        )
+        .sort();
+
+    if (
+      structuralNouns.length >
+      0
+    ) {
+      return [
+        ...new Set([
+          ...structuralNouns,
+          ...variants,
+        ]),
+      ].join(' ');
+    }
+
+    return normalizedTokens
       .sort()
       .join(' ');
   }
 
   const verb =
-    tokens[
+    normalizedTokens[
       transactionIndex
     ];
 
   const variants =
-    tokens
+    normalizedTokens
       .filter(
         (token) =>
           BEHAVIOR_VARIANT_TOKENS.has(
@@ -182,7 +237,7 @@ function canonicalizeSemanticPhrase(
       .sort();
 
   const structuralNouns =
-    tokens
+    normalizedTokens
       .filter(
         (token) =>
           STRUCTURAL_NOUNS.has(
@@ -192,7 +247,7 @@ function canonicalizeSemanticPhrase(
       .sort();
 
   const tailTokens =
-    tokens.slice(
+    normalizedTokens.slice(
       transactionIndex + 1,
     );
 
