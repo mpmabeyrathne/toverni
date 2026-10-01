@@ -111,6 +111,171 @@ import {
                   humanEditsPerScenario:
                     0.6,
                 },
+
+                toverniCoverage: {
+                  entries: [
+                    {
+                      target: {
+                        id:
+                          'BOOK-1',
+
+                        kind:
+                          'flow',
+
+                        label:
+                          'Book room',
+
+                        evidenceReferences: [
+                          'BOOK-1',
+                        ],
+
+                        supported:
+                          true,
+
+                        blocked:
+                          false,
+                      },
+
+                      status:
+                        'covered',
+
+                      scenarioIds: [
+                        'scenario-1',
+                      ],
+
+                      testIds: [
+                        'test-1',
+                      ],
+
+                      reasons: [
+                        'Covered by executable scenario.',
+                      ],
+                    },
+                  ],
+
+                  totals: {
+                    total:
+                      1,
+
+                    covered:
+                      1,
+
+                    partiallyCovered:
+                      0,
+
+                    blocked:
+                      0,
+
+                    unsupported:
+                      0,
+
+                    uncovered:
+                      0,
+                  },
+
+                  gaps:
+                    [],
+                },
+
+                baselineCoverage: {
+                  entries: [
+                    {
+                      target: {
+                        id:
+                          'BOOK-1',
+
+                        kind:
+                          'flow',
+
+                        label:
+                          'Book room',
+
+                        evidenceReferences: [
+                          'BOOK-1',
+                        ],
+
+                        supported:
+                          true,
+
+                        blocked:
+                          false,
+                      },
+
+                      status:
+                        'partially_covered',
+
+                      scenarioIds: [
+                        'baseline-scenario-1',
+                      ],
+
+                      testIds:
+                        [],
+
+                      reasons: [
+                        'Scenario exists without completed executable coverage.',
+                      ],
+                    },
+                  ],
+
+                  totals: {
+                    total:
+                      1,
+
+                    covered:
+                      0,
+
+                    partiallyCovered:
+                      1,
+
+                    blocked:
+                      0,
+
+                    unsupported:
+                      0,
+
+                    uncovered:
+                      0,
+                  },
+
+                  gaps: [
+                    {
+                      target: {
+                        id:
+                          'BOOK-1',
+
+                        kind:
+                          'flow',
+
+                        label:
+                          'Book room',
+
+                        evidenceReferences: [
+                          'BOOK-1',
+                        ],
+
+                        supported:
+                          true,
+
+                        blocked:
+                          false,
+                      },
+
+                      status:
+                        'partially_covered',
+
+                      scenarioIds: [
+                        'baseline-scenario-1',
+                      ],
+
+                      testIds:
+                        [],
+
+                      reasons: [
+                        'Scenario exists without completed executable coverage.',
+                      ],
+                    },
+                  ],
+                },
   
                 decision: {
                   decision:
