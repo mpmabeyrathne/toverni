@@ -3,7 +3,7 @@ import type {
   } from '../models/index.js';
   
   import {
-    deduplicateScenarios,
+    deduplicateScenariosWithReasons,
   } from './scenario-deduplicator.js';
   
   import {
@@ -337,6 +337,133 @@ import type {
     return scenarios;
   }
   
+  const TRANSACTION_VERB_ALIASES:
+    Readonly<
+      Record<
+        string,
+        string
+      >
+    > = {
+      added: 'add',
+      booked: 'book',
+      cancelled: 'cancel',
+      canceled: 'cancel',
+      completed: 'complete',
+      created: 'create',
+      deleted: 'delete',
+      ordered: 'order',
+      paid: 'pay',
+      purchased: 'purchase',
+      removed: 'remove',
+      reserved: 'reserve',
+      saved: 'save',
+      submitted: 'submit',
+      updated: 'update',
+      uploaded: 'upload',
+    };
+
+  const TRANSACTION_VERBS =
+    new Set([
+      'add',
+      'approve',
+      'assign',
+      'book',
+      'cancel',
+      'checkout',
+      'complete',
+      'confirm',
+      'create',
+      'delete',
+      'finish',
+      'invite',
+      'order',
+      'pay',
+      'publish',
+      'purchase',
+      'register',
+      'remove',
+      'reserve',
+      'save',
+      'send',
+      'submit',
+      'update',
+      'upload',
+    ]);
+
+  function normalizedTokens(
+    value:
+      string,
+  ): string[] {
+    return value
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        ' ',
+      )
+      .split(
+        /\s+/,
+      )
+      .filter(
+        Boolean,
+      )
+      .map(
+        (token) =>
+        TRANSACTION_VERB_ALIASES[
+          token
+        ] ??
+        token,
+      );
+  }
+
+  function transactionSignatures(
+    scenario:
+      GroundedScenarioCandidate,
+  ): string[] {
+    return [
+      ...new Set(
+        scenario.actions
+          .flatMap(
+            (action) =>
+              normalizedTokens(
+                action,
+              )
+                .filter(
+                  (token) =>
+                    TRANSACTION_VERBS.has(
+                      token,
+                    ),
+                ),
+          ),
+      ),
+    ].sort();
+  }
+
+  function respectsBusinessFlowBoundary(
+    scenario:
+      GroundedScenarioCandidate,
+  ): boolean {
+    const transactions =
+      transactionSignatures(
+        scenario,
+      );
+
+    if (
+      transactions.length <=
+      1
+    ) {
+      return true;
+    }
+
+    return scenario
+      .evidenceReferences
+      .some(
+        (reference) =>
+          reference.startsWith(
+            'FLOW-BUSINESS-',
+          ),
+      );
+  }
+
   function stableCandidateKey(
     scenario:
       GroundedScenarioCandidate,
@@ -590,6 +717,8 @@ import type {
                 'COVERAGE PRIORITY:',
                 'Prefer scenarios that reference uncovered coverage targets first, then partially covered targets.',
                 'Avoid generating another variant for already-covered behavior when a supported coverage gap exists.',
+                'Keep each scenario within one business transaction boundary.',
+                'Do not combine unrelated create/book/cancel/delete/remove/pay/checkout/complete transactions into one scenario unless one FLOW-BUSINESS evidence item explicitly describes that combined flow.',
                 ...coverageGaps.map(
                   (gap) =>
                     formatCoverageGap(
@@ -628,6 +757,12 @@ import type {
                 scenario,
                 input.evidence,
               ),
+          )
+          .filter(
+            (scenario) =>
+              respectsBusinessFlowBoundary(
+                scenario,
+              ),
           );
   
       // These are not invented by the model.
@@ -656,7 +791,7 @@ import type {
       );
   
       const deduplicated =
-        deduplicateScenarios(
+        deduplicateScenariosWithReasons(
           allCandidates,
         );
   
@@ -692,13 +827,17 @@ import type {
 
       return deduplicated
         .map(
-          (scenario) =>
+          ({
+            scenario,
+            deduplicationReasons,
+          }) =>
             rankScenario(
               scenario,
               input.evidence,
               {
                 uncoveredEvidenceIds,
                 partiallyCoveredEvidenceIds,
+                deduplicationReasons,
               },
             ),
         )

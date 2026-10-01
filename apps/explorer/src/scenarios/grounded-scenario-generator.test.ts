@@ -456,6 +456,362 @@ describe(
         );
 
         it(
+            'rejects a scenario spanning unrelated transaction boundaries without business-flow evidence',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Book and cancel room',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Book room',
+                                            'Cancel booking',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Booking is cancelled',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Customer can manage a booking.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toEqual([]);
+            },
+        );
+
+        it(
+            'allows a multi-transaction scenario only when one grounded business flow explicitly supports it',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Create and submit order',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Create order',
+                                            'Submit order',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Order is submitted',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'FLOW-BUSINESS-1',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: create order and submit order.',
+
+                                source:
+                                    'behavior-1',
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+            },
+        );
+
+        it(
+            'retains semantic deduplication reasons in scenario ranking reasons',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Add Mechanical Keyboard to Cart',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Add Mechanical Keyboard to Cart',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Mechanical Keyboard added to cart',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+
+                                    {
+                                        title:
+                                            'Add Gaming Mouse to Cart',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Add Gaming Mouse to Cart',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Gaming Mouse added to cart',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Customer can add a product to cart.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+
+                expect(
+                    result[0]
+                        ?.rankingReasons
+                        .some(
+                            (reason) =>
+                                reason.includes(
+                                    'collapsed 2 semantically equivalent scenarios',
+                                ),
+                        ),
+                ).toBe(true);
+            },
+        );
+
+        it(
             'produces reproducible ordering for the same evidence snapshot',
             async () => {
                 let callCount =

@@ -18,6 +18,9 @@ import type {
 
     partiallyCoveredEvidenceIds?:
       Set<string>;
+
+    deduplicationReasons?:
+      string[];
   }
   
   export function rankScenario(
@@ -152,6 +155,11 @@ import type {
             `advances partially covered evidence: ${referencesPartial.join(', ')}`,
           ]
         : []),
+      ...(
+        context
+          .deduplicationReasons ??
+        []
+      ),
     ];
   
     return {
