@@ -71,6 +71,7 @@ import {
 } from '../knowledge/index.js';
 
 import {
+    BoundedModelProvider,
     OllamaProvider,
     RecordingModelProvider,
 } from '../models/index.js';
@@ -95,6 +96,13 @@ export interface RunExplorerInput {
 
     explorationBudget?:
         Partial<ExplorationBudget>;
+
+    timeouts?: {
+        navigationMs?: number;
+        actionMs?: number;
+        modelCallMs?: number;
+        testMs?: number;
+    };
 }
 
 type ApplicationFlow =
@@ -141,6 +149,8 @@ export async function runExplorer(
                 false,
 
             timeoutMs:
+                input.timeouts
+                    ?.actionMs ??
                 15_000,
 
             artifactsDirectory:
@@ -419,9 +429,27 @@ export async function runExplorer(
                         .OLLAMA_COMPLEX_MODEL,
             });
 
+        const boundedModelProvider =
+            new BoundedModelProvider(
+                rawModelProvider,
+                {
+                    maxCalls:
+                        explorationBudget
+                            .maxModelCalls,
+
+                    retryAttempts:
+                        2,
+
+                    timeoutMs:
+                        input.timeouts
+                            ?.modelCallMs ??
+                        60_000,
+                },
+            );
+
         const modelProvider =
             new RecordingModelProvider(
-                rawModelProvider,
+                boundedModelProvider,
 
                 async (
                     task,
@@ -449,11 +477,67 @@ export async function runExplorer(
         const session =
             await browser.createSession();
 
-        await session.navigate(
-            checkpoint
-                ?.currentUrl ??
-            input.targetUrl,
-        );
+        {
+            const navigationTarget =
+                checkpoint
+                    ?.currentUrl ??
+                input.targetUrl;
+
+            let lastNavigationError:
+                unknown;
+
+            for (
+                let attempt = 1;
+                attempt <= 2;
+                attempt += 1
+            ) {
+                try {
+                    await Promise.race([
+                        session.navigate(
+                            navigationTarget,
+                        ),
+
+                        new Promise<never>(
+                            (
+                                _resolve,
+                                reject,
+                            ) => {
+                                setTimeout(
+                                    () => {
+                                        reject(
+                                            new Error(
+                                                'Navigation timed out.',
+                                            ),
+                                        );
+                                    },
+                                    input.timeouts
+                                        ?.navigationMs ??
+                                    30_000,
+                                );
+                            },
+                        ),
+                    ]);
+
+                    lastNavigationError =
+                        undefined;
+
+                    break;
+                } catch (
+                    error:
+                        unknown
+                ) {
+                    lastNavigationError =
+                        error;
+                }
+            }
+
+            if (
+                lastNavigationError !==
+                undefined
+            ) {
+                throw lastNavigationError;
+            }
+        }
 
         logger.info(
             {
