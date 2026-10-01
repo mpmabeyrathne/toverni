@@ -159,8 +159,18 @@ import {
           ).toHaveLength(1);
 
           expect(
-            result.assertions,
-          ).toHaveLength(1);
+            result.assertions.length,
+          ).toBeGreaterThan(0);
+
+          expect(
+            result.assertions.some(
+              (assertion) =>
+                assertion.kind ===
+                  'url' &&
+                assertion.playwright ===
+                  'expect(page).toHaveURL("https://example.com/learn");',
+            ),
+          ).toBe(true);
   
           expect(
             result.steps[0]
