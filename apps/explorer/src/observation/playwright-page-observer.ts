@@ -509,6 +509,9 @@ export class PlaywrightPageObserver
                     checked?:
                     boolean;
 
+                    value?:
+                    string;
+
                     options?: Array<{
                       value:
                       string;
@@ -605,6 +608,18 @@ export class PlaywrightPageObserver
                       : {}),
 
                     ...(
+                      element.type !==
+                        'checkbox' &&
+                      element.type !==
+                        'radio'
+                        ? {
+                          value:
+                            element.value,
+                        }
+                        : {}
+                    ),
+
+                    ...(
                       element.type ===
                         'checkbox' ||
                         element.type ===
@@ -661,6 +676,9 @@ export class PlaywrightPageObserver
                         }
                         : {}
                     ),
+
+                    value:
+                      element.value,
                   };
                 }
 
@@ -678,6 +696,9 @@ export class PlaywrightPageObserver
 
                     multiple:
                       element.multiple,
+
+                    value:
+                      element.value,
 
                     ...(element.name
                       ? {

@@ -276,6 +276,22 @@ import type {
           ),
         0,
       );
+
+    const assertionEligibleScenarios =
+      scenarios.filter(
+        (scenario) =>
+          scenario.executable,
+      );
+
+    const assertionScenarioCount =
+      assertionEligibleScenarios
+        .filter(
+          (scenario) =>
+            scenario
+              .assertionCount >
+            0,
+        )
+        .length;
   
     return {
       scenarioCount,
@@ -329,6 +345,15 @@ import type {
         safeDivide(
           totalHumanEdits,
           scenarioCount,
+        ),
+
+      assertionScenarioCount,
+
+      meaningfulAssertionCoverage:
+        safeDivide(
+          assertionScenarioCount,
+          assertionEligibleScenarios
+            .length,
         ),
     };
   }

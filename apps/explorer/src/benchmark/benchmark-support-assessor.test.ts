@@ -40,6 +40,9 @@ import {
   
                   humanEditsRequired:
                     0,
+
+                  assertionCount:
+                    0,
                 },
               ],
   
@@ -83,6 +86,9 @@ import {
                   unsupportedSteps: [],
   
                   humanEditsRequired:
+                    0,
+
+                  assertionCount:
                     0,
                 },
               ],

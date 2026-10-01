@@ -64,6 +64,9 @@ import {
   
                   humanEditsRequired:
                     0,
+
+                  assertionCount:
+                    1,
                 },
               ],
   
@@ -91,6 +94,9 @@ import {
   
                   humanEditsRequired:
                     1,
+
+                  assertionCount:
+                    0,
                 },
               ],
             });
@@ -111,6 +117,12 @@ import {
             result
               .toverni
               .importantFlowCoverage,
+          ).toBe(1);
+
+          expect(
+            result
+              .toverni
+              .meaningfulAssertionCoverage,
           ).toBe(1);
 
           expect(

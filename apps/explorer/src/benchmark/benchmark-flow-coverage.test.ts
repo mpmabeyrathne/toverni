@@ -70,6 +70,9 @@ describe(
 
                 humanEditsRequired:
                   0,
+
+                assertionCount:
+                  0,
               },
             ],
           );
@@ -142,6 +145,9 @@ describe(
 
                 humanEditsRequired:
                   1,
+
+                assertionCount:
+                  0,
               },
             ],
           );

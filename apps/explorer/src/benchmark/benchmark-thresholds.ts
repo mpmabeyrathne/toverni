@@ -33,6 +33,19 @@ import type {
   
     if (
       toverni
+        .executableScenarioCount >
+        0 &&
+      toverni
+        .meaningfulAssertionCoverage <
+      0.8
+    ) {
+      reasons.push(
+        'Meaningful assertion coverage is below 80%.',
+      );
+    }
+
+    if (
+      toverni
         .unsupportedStepsPerScenario >
       0.15
     ) {

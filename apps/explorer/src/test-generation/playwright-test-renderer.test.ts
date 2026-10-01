@@ -36,6 +36,27 @@ import {
                   'ACTION-1',
                 ],
   
+                assertions: [
+                  {
+                    afterActionId:
+                      'action-1',
+
+                    kind:
+                      'url',
+
+                    description:
+                      'URL changed',
+
+                    playwright:
+                      'expect(page).toHaveURL("https://example.com/learn");',
+
+                    evidenceReferences: [
+                      'ACTION-1',
+                      'FLOW-1',
+                    ],
+                  },
+                ],
+
                 steps: [
                   {
                     actionId:
@@ -57,7 +78,7 @@ import {
           expect(
             source,
           ).toContain(
-            `import { test } from '@playwright/test';`,
+            `import { expect, test } from '@playwright/test';`,
           );
   
           expect(
@@ -76,6 +97,24 @@ import {
             source,
           ).toContain(
             'ACTION-1',
+          );
+
+          expect(
+            source,
+          ).toContain(
+            `import { expect, test } from '@playwright/test';`,
+          );
+
+          expect(
+            source,
+          ).toContain(
+            'expect(page).toHaveURL("https://example.com/learn");',
+          );
+
+          expect(
+            source,
+          ).toContain(
+            'Assertion evidence: ACTION-1, FLOW-1',
           );
         },
       );
@@ -105,6 +144,8 @@ import {
                   evidenceReferences: [
                     'REQ-1',
                   ],
+
+                  assertions: [],
   
                   steps: [],
                 },

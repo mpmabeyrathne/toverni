@@ -145,6 +145,12 @@ function mapToverniScenarios(
 
           humanEditsRequired:
             0,
+
+          assertionCount:
+            generatedTest
+              ?.assertions
+              .length ??
+            0,
         };
       },
     );

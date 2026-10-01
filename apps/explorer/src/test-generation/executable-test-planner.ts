@@ -7,6 +7,11 @@ import type {
 } from './executable-test-contracts.js';
 
 import {
+  buildEvidenceBackedAssertions,
+  type AssertionTransition,
+} from './assertion-planner.js';
+
+import {
   renderPlaywrightLocator,
 } from './playwright-locator-renderer.js';
 
@@ -45,6 +50,9 @@ export interface CreateExecutablePlanInput {
 
   actions:
     StoredAction[];
+
+  transitions?:
+    AssertionTransition[];
 }
 
 function actionCommand(
@@ -245,6 +253,9 @@ export function createExecutableTestPlan(
       steps:
         [],
 
+      assertions:
+        [],
+
       evidenceReferences:
         input.scenario
           .evidenceReferences,
@@ -275,6 +286,64 @@ export function createExecutableTestPlan(
       steps:
         [],
 
+      assertions:
+        [],
+
+      evidenceReferences:
+        input.scenario
+          .evidenceReferences,
+    };
+  }
+
+  const assertions =
+    executableSteps.flatMap(
+      (step) =>
+        buildEvidenceBackedAssertions({
+          actionId:
+            step.actionId,
+
+          actionEvidenceReference:
+            step.evidenceReference,
+
+          actionLabel:
+            step.description,
+
+          scenarioEvidenceReferences:
+            input.scenario
+              .evidenceReferences,
+
+          evidence:
+            input.evidence,
+
+          transitions:
+            input.transitions ??
+            [],
+        }),
+    );
+
+  if (
+    assertions.length ===
+    0
+  ) {
+    return {
+      scenarioId:
+        input.scenario.id,
+
+      title:
+        input.scenario.title,
+
+      status:
+        'manual_required',
+
+      reason:
+        'Browser actions are executable, but no evidence-backed business outcome assertion was observed.',
+
+      steps:
+        [],
+
+      assertions:
+        [],
+
       evidenceReferences:
         input.scenario
           .evidenceReferences,
@@ -300,6 +369,8 @@ export function createExecutableTestPlan(
 
     steps:
       executableSteps,
+
+    assertions,
 
     evidenceReferences:
       input.scenario

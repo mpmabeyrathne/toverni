@@ -1116,6 +1116,20 @@ import {
           'source_code',
         ),
 
+      assertions:
+        jsonb(
+          'assertions',
+        )
+          .$type<Array<{
+            afterActionId: string;
+            kind: string;
+            description: string;
+            playwright: string;
+            evidenceReferences: string[];
+          }>>()
+          .default([])
+          .notNull(),
+
       executionStatus:
         text(
           'execution_status',
