@@ -11,6 +11,14 @@ import type {
     navigation: 45,
     recovery: 85,
   } as const;
+
+  export interface ScenarioRankingContext {
+    uncoveredEvidenceIds?:
+      Set<string>;
+
+    partiallyCoveredEvidenceIds?:
+      Set<string>;
+  }
   
   export function rankScenario(
     scenario:
@@ -18,6 +26,10 @@ import type {
   
     evidence:
       ScenarioEvidence[],
+
+    context:
+      ScenarioRankingContext =
+        {},
   ): GroundedScenario {
     const evidenceMap =
       new Map(
@@ -90,6 +102,57 @@ import type {
         1,
         evidenceCoverage,
       );
+
+    const referencesUncovered =
+      scenario
+        .evidenceReferences
+        .filter(
+          (reference) =>
+            context
+              .uncoveredEvidenceIds
+              ?.has(
+                reference,
+              ) ??
+            false,
+        );
+
+    const referencesPartial =
+      scenario
+        .evidenceReferences
+        .filter(
+          (reference) =>
+            context
+              .partiallyCoveredEvidenceIds
+              ?.has(
+                reference,
+              ) ??
+            false,
+        );
+
+    const rankingReasons = [
+      `scenario type ${scenario.type} has base risk ${TYPE_RISK_SCORE[scenario.type]}`,
+      `matched ${matchedEvidence.length}/${scenario.evidenceReferences.length} evidence references`,
+      ...(requirementEvidence > 0
+        ? [
+            `references ${requirementEvidence} requirement or constraint evidence item(s)`,
+          ]
+        : []),
+      ...(discoveredEvidence > 0
+        ? [
+            `references ${discoveredEvidence} observed state/action/transition evidence item(s)`,
+          ]
+        : []),
+      ...(referencesUncovered.length > 0
+        ? [
+            `closes uncovered coverage evidence: ${referencesUncovered.join(', ')}`,
+          ]
+        : []),
+      ...(referencesPartial.length > 0
+        ? [
+            `advances partially covered evidence: ${referencesPartial.join(', ')}`,
+          ]
+        : []),
+    ];
   
     return {
       ...scenario,
@@ -102,5 +165,7 @@ import type {
         ],
   
       confidence,
+
+      rankingReasons,
     };
   }

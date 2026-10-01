@@ -16,9 +16,34 @@ import type {
     ScenarioEvidence,
   } from './scenario-contracts.js';
   
+  export type ScenarioCoverageGapStatus =
+    | 'uncovered'
+    | 'partially_covered';
+
+  export interface ScenarioCoverageGap {
+    targetId:
+      string;
+
+    kind:
+      | 'requirement'
+      | 'capability'
+      | 'constraint'
+      | 'flow'
+      | 'api_operation';
+
+    status:
+      ScenarioCoverageGapStatus;
+
+    evidenceReferences:
+      string[];
+  }
+
   export interface GenerateGroundedScenariosInput {
     evidence:
       ScenarioEvidence[];
+
+    coverageGaps?:
+      ScenarioCoverageGap[];
   }
   
   function formatEvidence(
@@ -39,29 +64,12 @@ import type {
   ): string | null {
     const trimmed =
       reference.trim();
-  
-    if (
-      validEvidenceIds.has(
-        trimmed,
-      )
-    ) {
-      return trimmed;
-    }
-  
-    for (
-      const evidenceId of
-        validEvidenceIds
-    ) {
-      if (
-        trimmed.includes(
-          evidenceId,
-        )
-      ) {
-        return evidenceId;
-      }
-    }
-  
-    return null;
+
+    return validEvidenceIds.has(
+      trimmed,
+    )
+      ? trimmed
+      : null;
   }
   
   function groundScenario(
@@ -329,6 +337,114 @@ import type {
     return scenarios;
   }
   
+  function stableCandidateKey(
+    scenario:
+      GroundedScenarioCandidate,
+  ): string {
+    return [
+      scenario.type,
+      scenario.title
+        .toLowerCase()
+        .trim(),
+      [...scenario.actions]
+        .map(
+          (value) =>
+            value
+              .toLowerCase()
+              .trim(),
+        )
+        .sort()
+        .join('|'),
+      [...scenario.expectedOutcomes]
+        .map(
+          (value) =>
+            value
+              .toLowerCase()
+              .trim(),
+        )
+        .sort()
+        .join('|'),
+      [...scenario.evidenceReferences]
+        .sort()
+        .join('|'),
+    ].join('||');
+  }
+
+  function getCoveragePriority(
+    scenario:
+      GroundedScenario,
+
+    gaps:
+      ScenarioCoverageGap[],
+  ): number {
+    const references =
+      new Set(
+        scenario
+          .evidenceReferences,
+      );
+
+    return gaps.reduce(
+      (
+        total,
+        gap,
+      ) => {
+        const matches =
+          gap
+            .evidenceReferences
+            .some(
+              (reference) =>
+                references.has(
+                  reference,
+                ),
+            );
+
+        if (!matches) {
+          return total;
+        }
+
+        const statusWeight =
+          gap.status ===
+          'uncovered'
+            ? 100
+            : 50;
+
+        const kindWeight = {
+          flow:
+            25,
+          requirement:
+            20,
+          api_operation:
+            15,
+          capability:
+            10,
+          constraint:
+            10,
+        }[
+          gap.kind
+        ];
+
+        return (
+          total +
+          statusWeight +
+          kindWeight
+        );
+      },
+      0,
+    );
+  }
+
+  function formatCoverageGap(
+    gap:
+      ScenarioCoverageGap,
+  ): string {
+    return [
+      `target=${gap.targetId}`,
+      `kind=${gap.kind}`,
+      `status=${gap.status}`,
+      `evidence=${gap.evidenceReferences.join(',')}`,
+    ].join(' ');
+  }
+
   export class GroundedScenarioGenerator {
     constructor(
       private readonly provider:
@@ -359,7 +475,63 @@ import type {
       const allowedEvidenceIds =
         [
           ...validEvidenceIds,
-        ].join(', ');
+        ]
+          .sort()
+          .join(', ');
+
+      const coverageGaps =
+        (input.coverageGaps ?? [])
+          .filter(
+            (gap) =>
+              gap.status ===
+                'uncovered' ||
+              gap.status ===
+                'partially_covered',
+          )
+          .map(
+            (gap) => ({
+              ...gap,
+
+              evidenceReferences:
+                gap
+                  .evidenceReferences
+                  .filter(
+                    (reference) =>
+                      validEvidenceIds.has(
+                        reference,
+                      ),
+                  )
+                  .sort(),
+            }),
+          )
+          .filter(
+            (gap) =>
+              gap
+                .evidenceReferences
+                .length >
+              0,
+          )
+          .sort(
+            (
+              left,
+              right,
+            ) => {
+              if (
+                left.status !==
+                right.status
+              ) {
+                return left.status ===
+                  'uncovered'
+                  ? -1
+                  : 1;
+              }
+
+              return left.targetId
+                .localeCompare(
+                  right.targetId,
+                );
+            },
+          );
   
       const requirements =
         input.evidence
@@ -415,6 +587,16 @@ import type {
                 'Do not use descriptions as references.',
                 'Do not assume authentication, validation, errors, permissions, UI behavior, recovery behavior, or application states unless evidence explicitly supports them.',
                 '',
+                'COVERAGE PRIORITY:',
+                'Prefer scenarios that reference uncovered coverage targets first, then partially covered targets.',
+                'Avoid generating another variant for already-covered behavior when a supported coverage gap exists.',
+                ...coverageGaps.map(
+                  (gap) =>
+                    formatCoverageGap(
+                      gap,
+                    ),
+                ),
+                '',
                 `Allowed evidence IDs: ${allowedEvidenceIds}`,
               ].join('\n'),
   
@@ -459,19 +641,65 @@ import type {
       const allCandidates = [
         ...groundedModelScenarios,
         ...deterministicActionScenarios,
-      ];
+      ].sort(
+        (
+          left,
+          right,
+        ) =>
+          stableCandidateKey(
+            left,
+          ).localeCompare(
+            stableCandidateKey(
+              right,
+            ),
+          ),
+      );
   
       const deduplicated =
         deduplicateScenarios(
           allCandidates,
         );
   
+      const uncoveredEvidenceIds =
+        new Set(
+          coverageGaps
+            .filter(
+              (gap) =>
+                gap.status ===
+                'uncovered',
+            )
+            .flatMap(
+              (gap) =>
+                gap
+                  .evidenceReferences,
+            ),
+        );
+
+      const partiallyCoveredEvidenceIds =
+        new Set(
+          coverageGaps
+            .filter(
+              (gap) =>
+                gap.status ===
+                'partially_covered',
+            )
+            .flatMap(
+              (gap) =>
+                gap
+                  .evidenceReferences,
+            ),
+        );
+
       return deduplicated
         .map(
           (scenario) =>
             rankScenario(
               scenario,
               input.evidence,
+              {
+                uncoveredEvidenceIds,
+                partiallyCoveredEvidenceIds,
+              },
             ),
         )
         .sort(
@@ -479,6 +707,23 @@ import type {
             left,
             right,
           ) => {
+            const coverageDifference =
+              getCoveragePriority(
+                right,
+                coverageGaps,
+              ) -
+              getCoveragePriority(
+                left,
+                coverageGaps,
+              );
+
+            if (
+              coverageDifference !==
+              0
+            ) {
+              return coverageDifference;
+            }
+
             if (
               right.risk !==
               left.risk
@@ -498,10 +743,23 @@ import type {
                 left.relevance
               );
             }
-  
-            return (
-              right.confidence -
+
+            if (
+              right.confidence !==
               left.confidence
+            ) {
+              return (
+                right.confidence -
+                left.confidence
+              );
+            }
+  
+            return stableCandidateKey(
+              left,
+            ).localeCompare(
+              stableCandidateKey(
+                right,
+              ),
             );
           },
         );

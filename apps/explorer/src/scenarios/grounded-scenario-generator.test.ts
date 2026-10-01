@@ -279,5 +279,354 @@ describe(
                 });
             },
         );
+
+        it(
+            'prioritizes scenarios that close uncovered flow gaps',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Covered booking variant',
+
+                                        type:
+                                            'recovery',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Recover booking',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Booking recovers',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+
+                                    {
+                                        title:
+                                            'Cancel booking',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Cancel booking',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Booking is cancelled',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'FLOW-BUSINESS-2',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Customer can book a room.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-2',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Cancel booking.',
+
+                                source:
+                                    'behavior-2',
+                            },
+                        ],
+
+                        coverageGaps: [
+                            {
+                                targetId:
+                                    'FLOW-BUSINESS-2',
+
+                                kind:
+                                    'flow',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'FLOW-BUSINESS-2',
+                                ],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result[0]?.title,
+                ).toBe(
+                    'Cancel booking',
+                );
+
+                expect(
+                    result[0]
+                        ?.rankingReasons
+                        .some(
+                            (reason) =>
+                                reason.includes(
+                                    'uncovered coverage evidence',
+                                ),
+                        ),
+                ).toBe(
+                    true,
+                );
+            },
+        );
+
+        it(
+            'produces reproducible ordering for the same evidence snapshot',
+            async () => {
+                let callCount =
+                    0;
+
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        callCount +=
+                            1;
+
+                        const scenarios = [
+                            {
+                                title:
+                                    'Book room',
+
+                                type:
+                                    'positive' as const,
+
+                                preconditions: [],
+
+                                actions: [
+                                    'Book room',
+                                ],
+
+                                expectedOutcomes: [
+                                    'Booking succeeds',
+                                ],
+
+                                evidenceReferences: [
+                                    'REQ-1',
+                                ],
+                            },
+
+                            {
+                                title:
+                                    'Cancel booking',
+
+                                type:
+                                    'positive' as const,
+
+                                preconditions: [],
+
+                                actions: [
+                                    'Cancel booking',
+                                ],
+
+                                expectedOutcomes: [
+                                    'Booking is cancelled',
+                                ],
+
+                                evidenceReferences: [
+                                    'REQ-2',
+                                ],
+                            },
+                        ];
+
+                        return {
+                            data: {
+                                scenarios:
+                                    callCount % 2 ===
+                                    0
+                                        ? [
+                                            ...scenarios,
+                                        ].reverse()
+                                        : scenarios,
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const input = {
+                    evidence: [
+                        {
+                            id:
+                                'REQ-1',
+
+                            type:
+                                'requirement' as const,
+
+                            description:
+                                'Customer can book a room.',
+
+                            source:
+                                'requirements.md',
+                        },
+
+                        {
+                            id:
+                                'REQ-2',
+
+                            type:
+                                'requirement' as const,
+
+                            description:
+                                'Customer can cancel a booking.',
+
+                            source:
+                                'requirements.md',
+                        },
+                    ],
+                };
+
+                const first =
+                    await generator.generate(
+                        input,
+                    );
+
+                const second =
+                    await generator.generate(
+                        input,
+                    );
+
+                expect(
+                    first.map(
+                        (scenario) =>
+                            scenario.title,
+                    ),
+                ).toEqual(
+                    second.map(
+                        (scenario) =>
+                            scenario.title,
+                    ),
+                );
+            },
+        );
     },
 );

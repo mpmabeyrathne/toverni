@@ -158,6 +158,8 @@ import {
           '7. If a scenario cannot be supported by the supplied evidence, do not generate it.',
           '8. Avoid duplicate or near-duplicate scenarios.',
           '9. Use only these scenario types: positive, negative, boundary, navigation, recovery.',
+          '10. Return at most 8 concise scenarios.',
+          '11. Keep preconditions, actions, and expected outcomes concise.',
           '',
           JSON.stringify(
             input,
@@ -165,6 +167,10 @@ import {
             2,
           ),
         ].join('\n'),
+        {
+          numPredict:
+            1024,
+        },
       );
     }
   
@@ -177,6 +183,11 @@ import {
   
       prompt:
         string,
+
+      requestOptions: {
+        numPredict?:
+          number;
+      } = {},
     ): Promise<
       ModelResult<T>
     > {
@@ -250,6 +261,16 @@ import {
                   options: {
                     temperature:
                       0,
+
+                    ...(requestOptions
+                      .numPredict !==
+                      undefined
+                      ? {
+                          num_predict:
+                            requestOptions
+                              .numPredict,
+                        }
+                      : {}),
                   },
                 }),
             },
