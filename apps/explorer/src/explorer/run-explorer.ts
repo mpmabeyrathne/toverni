@@ -492,31 +492,49 @@ export async function runExplorer(
                 attempt += 1
             ) {
                 try {
-                    await Promise.race([
-                        session.navigate(
-                            navigationTarget,
-                        ),
+                    let timeoutHandle:
+                        ReturnType<
+                            typeof setTimeout
+                        > |
+                        undefined;
 
-                        new Promise<never>(
-                            (
-                                _resolve,
-                                reject,
-                            ) => {
-                                setTimeout(
-                                    () => {
-                                        reject(
-                                            new Error(
-                                                'Navigation timed out.',
-                                            ),
+                    try {
+                        await Promise.race([
+                            session.navigate(
+                                navigationTarget,
+                            ),
+
+                            new Promise<never>(
+                                (
+                                    _resolve,
+                                    reject,
+                                ) => {
+                                    timeoutHandle =
+                                        setTimeout(
+                                            () => {
+                                                reject(
+                                                    new Error(
+                                                        'Navigation timed out.',
+                                                    ),
+                                                );
+                                            },
+                                            input.timeouts
+                                                ?.navigationMs ??
+                                            30_000,
                                         );
-                                    },
-                                    input.timeouts
-                                        ?.navigationMs ??
-                                    30_000,
-                                );
-                            },
-                        ),
-                    ]);
+                                },
+                            ),
+                        ]);
+                    } finally {
+                        if (
+                            timeoutHandle !==
+                            undefined
+                        ) {
+                            clearTimeout(
+                                timeoutHandle,
+                            );
+                        }
+                    }
 
                     lastNavigationError =
                         undefined;
@@ -667,6 +685,11 @@ export async function runExplorer(
                     explorationBudget,
 
                 checkpoint,
+
+                getModelCallCount:
+                    () =>
+                        boundedModelProvider
+                            .getCallCount(),
             });
 
         const initialObservation =
