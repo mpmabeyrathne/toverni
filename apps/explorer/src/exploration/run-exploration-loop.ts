@@ -826,6 +826,43 @@ const decision =
       persistedToState;
   }
 
+  modelCalls =
+    input.getModelCallCount?.() ??
+    modelCalls;
+
+  await input.repository
+    .saveRunCheckpoint(
+      input.runId,
+      {
+        version:
+          1,
+
+        currentUrl:
+          currentObservation.url,
+
+        depth,
+
+        failures,
+
+        modelCalls,
+
+        startedAt,
+
+        updatedAt:
+          new Date()
+            .toISOString(),
+
+        completedExecutions,
+
+        stopReason:
+          (
+            stopReason as
+              ExplorationStopReason |
+              null
+          ),
+      },
+    );
+
   // --------------------------------
   // Result
   // --------------------------------
