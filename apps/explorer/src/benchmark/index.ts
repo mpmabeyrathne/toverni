@@ -74,3 +74,18 @@ export {
   export {
     buildBenchmarkFlowCoverageReport,
   } from './benchmark-flow-coverage.js';
+
+
+export {
+  aggregateBenchmarkMetrics,
+  BENCHMARK_METRIC_DEFINITIONS,
+  BENCHMARK_METRIC_DEFINITIONS_VERSION,
+} from './benchmark-quality-telemetry.js';
+
+export {
+  BENCHMARK_QUALITY_THRESHOLDS,
+} from './benchmark-thresholds.js';
+
+export type {
+  BenchmarkThresholdResult,
+} from './benchmark-thresholds.js';

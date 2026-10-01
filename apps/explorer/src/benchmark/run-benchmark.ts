@@ -107,15 +107,22 @@ function mapToverniScenarios(
         const executable =
           generatedTest
             ?.generationStatus ===
-          'ready' &&
-          (
-            generatedTest
-              .executionStatus ===
-            'passed' ||
-            generatedTest
-              .executionStatus ===
-            'failed'
-          );
+          'ready';
+
+        const runtimeStatus =
+          generatedTest
+            ?.executionStatus ===
+          'passed'
+            ? 'passed'
+            : generatedTest
+                ?.executionStatus ===
+              'failed'
+              ? 'failed'
+              : generatedTest
+                  ?.executionStatus ===
+                'runtime_error'
+                ? 'runtime_error'
+                : 'not_run';
 
         return {
           title:
@@ -133,6 +140,8 @@ function mapToverniScenarios(
             ),
 
           executable,
+
+          runtimeStatus,
 
           evidenceReferences:
             asStringArray(

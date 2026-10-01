@@ -230,6 +230,66 @@ import type {
         (scenario) =>
           scenario.executable,
       ).length;
+
+    const runtimeExecutedScenarios =
+      scenarios.filter(
+        (scenario) =>
+          scenario.runtimeStatus ===
+            'passed' ||
+          scenario.runtimeStatus ===
+            'failed' ||
+          scenario.runtimeStatus ===
+            'runtime_error',
+      );
+
+    const runtimeExecutedScenarioCount =
+      runtimeExecutedScenarios.length;
+
+    const runtimePassedScenarioCount =
+      runtimeExecutedScenarios
+        .filter(
+          (scenario) =>
+            scenario.runtimeStatus ===
+            'passed',
+        )
+        .length;
+
+    const runtimeFailedScenarioCount =
+      runtimeExecutedScenarios
+        .filter(
+          (scenario) =>
+            scenario.runtimeStatus ===
+              'failed' ||
+            scenario.runtimeStatus ===
+              'runtime_error',
+        )
+        .length;
+
+    const requirementGroundedScenarioCount =
+      scenarios.filter(
+        (scenario) =>
+          scenario
+            .evidenceReferences
+            .some(
+              (reference) =>
+                reference
+                  .toUpperCase()
+                  .startsWith(
+                    'REQ-',
+                  ),
+            ),
+      ).length;
+
+    const totalActionCount =
+      scenarios.reduce(
+        (
+          total,
+          scenario,
+        ) =>
+          total +
+          scenario.actions.length,
+        0,
+      );
   
     const duplicateScenarioCount =
       countDuplicates(
@@ -299,6 +359,16 @@ import type {
       relevantScenarioCount,
   
       executableScenarioCount,
+
+      runtimeExecutedScenarioCount,
+
+      runtimePassedScenarioCount,
+
+      runtimeFailedScenarioCount,
+
+      requirementGroundedScenarioCount,
+
+      totalActionCount,
   
       duplicateScenarioCount,
   
@@ -320,6 +390,30 @@ import type {
       executabilityRate:
         safeDivide(
           executableScenarioCount,
+          scenarioCount,
+        ),
+
+      runtimePassRate:
+        safeDivide(
+          runtimePassedScenarioCount,
+          runtimeExecutedScenarioCount,
+        ),
+
+      requirementGroundingRate:
+        safeDivide(
+          requirementGroundedScenarioCount,
+          scenarioCount,
+        ),
+
+      unsupportedActionRate:
+        safeDivide(
+          unsupportedStepCount,
+          totalActionCount,
+        ),
+
+      coverageEfficiency:
+        safeDivide(
+          coveredImportantFlowCount,
           scenarioCount,
         ),
   
