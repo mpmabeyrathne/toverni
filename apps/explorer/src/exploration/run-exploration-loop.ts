@@ -26,6 +26,12 @@ import {
   DeterministicExplorationPlanner,
 } from './deterministic-exploration-planner.js';
 
+import type {
+  ExplorationBudget,
+  ExplorationCheckpoint,
+  ExplorationStopReason,
+} from './exploration-contracts.js';
+
 import {
   executeExplorationAction,
 } from './execute-exploration-action.js';
@@ -44,6 +50,7 @@ type LoopRepository =
     | 'saveObservationEvidence'
     | 'saveDecision'
     | 'saveTransition'
+    | 'saveRunCheckpoint'
   >;
 
 export interface RunExplorationLoopInput {
@@ -74,6 +81,15 @@ export interface RunExplorationLoopInput {
   analyzeObservation?: (
     observation: Observation,
   ) => Promise<void>;
+
+  budget:
+    ExplorationBudget;
+
+  checkpoint?:
+    ExplorationCheckpoint | null;
+
+  retryAttempts?:
+    number;
 }
 
 export interface RunExplorationLoopResult {
@@ -162,6 +178,111 @@ function getContextualApiOperationIds(
   ].sort();
 }
 
+async function withRetry<T>(
+  operation:
+    () => Promise<T>,
+
+  attempts:
+    number,
+
+  onFailure:
+    () => void,
+): Promise<T> {
+  let lastError:
+    unknown;
+
+  for (
+    let attempt = 1;
+    attempt <= attempts;
+    attempt += 1
+  ) {
+    try {
+      return await operation();
+    } catch (
+      error:
+        unknown
+    ) {
+      lastError =
+        error;
+
+      onFailure();
+
+      if (
+        attempt ===
+        attempts
+      ) {
+        break;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+function runtimeBudgetStop(
+  budget:
+    ExplorationBudget,
+
+  input: {
+    depth:
+      number;
+
+    failures:
+      number;
+
+    modelCalls:
+      number;
+
+    startedAt:
+      string;
+
+    stateVisits:
+      number;
+  },
+):
+  | ExplorationStopReason
+  | null {
+  if (
+    Date.now() -
+      new Date(
+        input.startedAt,
+      ).getTime() >=
+    budget.maxDurationMs
+  ) {
+    return 'max-duration-reached';
+  }
+
+  if (
+    input.depth >=
+    budget.maxDepth
+  ) {
+    return 'max-depth-reached';
+  }
+
+  if (
+    input.stateVisits >=
+    budget.maxVisitsPerState
+  ) {
+    return 'max-visits-per-state-reached';
+  }
+
+  if (
+    input.failures >=
+    budget.maxFailures
+  ) {
+    return 'max-failures-reached';
+  }
+
+  if (
+    input.modelCalls >=
+    budget.maxModelCalls
+  ) {
+    return 'max-model-calls-reached';
+  }
+
+  return null;
+}
+
 export async function runExplorationLoop(
   input:
     RunExplorationLoopInput,
@@ -170,8 +291,56 @@ export async function runExplorationLoop(
   // Initial observation
   // --------------------------------
 
+  const retryAttempts =
+    input.retryAttempts ??
+    2;
+
+  const startedAt =
+    input.checkpoint
+      ?.startedAt ??
+    new Date()
+      .toISOString();
+
+  let failures =
+    input.checkpoint
+      ?.failures ??
+    0;
+
+  let depth =
+    input.checkpoint
+      ?.depth ??
+    0;
+
+  let modelCalls =
+    input.checkpoint
+      ?.modelCalls ??
+    0;
+
+  const completedExecutions =
+    [
+      ...(
+        input.checkpoint
+          ?.completedExecutions ??
+        []
+      ),
+    ];
+
+  input.planner
+    .restoreExecutionHistory(
+      completedExecutions,
+    );
+
   const initialObservation =
-    await input.session.observe();
+    await withRetry(
+      () =>
+        input.session
+          .observe(),
+      retryAttempts,
+      () => {
+        failures +=
+          1;
+      },
+    );
 
   let currentObservation =
     initialObservation;
@@ -247,11 +416,41 @@ export async function runExplorationLoop(
   // Preserve raw observation evidence
   // --------------------------------
 
+  if (
+    !input.checkpoint
+  ) {
+    await input.repository
+      .saveObservationEvidence(
+        input.runId,
+        currentPersistedState.id,
+        currentObservation,
+      );
+  }
+
   await input.repository
-    .saveObservationEvidence(
+    .saveRunCheckpoint(
       input.runId,
-      currentPersistedState.id,
-      currentObservation,
+      {
+        version:
+          1,
+
+        currentUrl:
+          currentObservation.url,
+
+        depth,
+
+        failures,
+
+        modelCalls,
+
+        startedAt,
+
+        updatedAt:
+          new Date()
+            .toISOString(),
+
+        completedExecutions,
+      },
     );
 
   let stopReason:
@@ -264,6 +463,28 @@ export async function runExplorationLoop(
   // --------------------------------
 
   while (true) {
+    const runtimeStop =
+      runtimeBudgetStop(
+        input.budget,
+        {
+          depth,
+          failures,
+          modelCalls,
+          startedAt,
+          stateVisits:
+            currentState.visits,
+        },
+      );
+
+    if (
+      runtimeStop
+    ) {
+      stopReason =
+        runtimeStop;
+
+      break;
+    }
+
     // ------------------------------
     // Plan next action
     // ------------------------------
@@ -337,22 +558,30 @@ const decision =
     // ------------------------------
 
     const executionResult =
-    await executeExplorationAction(
-      input.session,
-      {
-        type:
-          selected.action.type,
-  
-        label:
-          selected.label,
-  
-        target:
-          selected.target,
-  
-        formExecution:
-          selected.formExecution,
-      },
-    );
+      await withRetry(
+        () =>
+          executeExplorationAction(
+            input.session,
+            {
+              type:
+                selected.action.type,
+
+              label:
+                selected.label,
+
+              target:
+                selected.target,
+
+              formExecution:
+                selected.formExecution,
+            },
+          ),
+        retryAttempts,
+        () => {
+          failures +=
+            1;
+        },
+      );
 
     if (
       executionResult.status !==
@@ -378,7 +607,16 @@ const decision =
     // ------------------------------
 
     const nextObservation =
-      await input.session.observe();
+      await withRetry(
+        () =>
+          input.session
+            .observe(),
+        retryAttempts,
+        () => {
+          failures +=
+            1;
+        },
+      );
 
     await input.analyzeObservation?.(
       nextObservation,
@@ -518,6 +756,49 @@ const decision =
           transitionResult
             .transition,
       });
+
+    depth +=
+      1;
+
+    completedExecutions.push({
+      stateId:
+        selected.stateId,
+
+      signature:
+        selected.signature,
+
+      actionType:
+        selected.action.type,
+
+      label:
+        selected.label,
+    });
+
+    await input.repository
+      .saveRunCheckpoint(
+        input.runId,
+        {
+          version:
+            1,
+
+          currentUrl:
+            nextObservation.url,
+
+          depth,
+
+          failures,
+
+          modelCalls,
+
+          startedAt,
+
+          updatedAt:
+            new Date()
+              .toISOString(),
+
+          completedExecutions,
+        },
+      );
 
     // ------------------------------
     // Continue from destination
