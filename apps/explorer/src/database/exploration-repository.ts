@@ -969,6 +969,10 @@ export class ExplorationRepository {
 
             confidence:
               scenario.confidence,
+
+            rankingReasons:
+              scenario
+                .rankingReasons,
           }),
         ),
       )
