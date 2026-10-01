@@ -58,6 +58,12 @@ import {
   
                 humanEditsPerScenario:
                   0.2,
+
+                assertionScenarioCount:
+                  8,
+
+                meaningfulAssertionCoverage:
+                  0.8,
               },
   
               {
@@ -102,6 +108,12 @@ import {
   
                 humanEditsPerScenario:
                   0.5,
+
+                assertionScenarioCount:
+                  0,
+
+                meaningfulAssertionCoverage:
+                  0,
               },
             );
   
