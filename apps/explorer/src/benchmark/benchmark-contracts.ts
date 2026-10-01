@@ -26,6 +26,17 @@ import {
   
       executable:
         z.boolean(),
+
+      runtimeStatus:
+        z.enum([
+          'not_run',
+          'passed',
+          'failed',
+          'runtime_error',
+        ])
+          .default(
+            'not_run',
+          ),
   
       evidenceReferences:
         z.array(
@@ -86,6 +97,31 @@ import {
         z.number()
           .int()
           .nonnegative(),
+
+      runtimeExecutedScenarioCount:
+        z.number()
+          .int()
+          .nonnegative(),
+
+      runtimePassedScenarioCount:
+        z.number()
+          .int()
+          .nonnegative(),
+
+      runtimeFailedScenarioCount:
+        z.number()
+          .int()
+          .nonnegative(),
+
+      requirementGroundedScenarioCount:
+        z.number()
+          .int()
+          .nonnegative(),
+
+      totalActionCount:
+        z.number()
+          .int()
+          .nonnegative(),
   
       duplicateScenarioCount:
         z.number()
@@ -121,6 +157,25 @@ import {
         z.number()
           .min(0)
           .max(1),
+
+      runtimePassRate:
+        z.number()
+          .min(0)
+          .max(1),
+
+      requirementGroundingRate:
+        z.number()
+          .min(0)
+          .max(1),
+
+      unsupportedActionRate:
+        z.number()
+          .min(0)
+          .max(1),
+
+      coverageEfficiency:
+        z.number()
+          .nonnegative(),
   
       duplicateRate:
         z.number()
