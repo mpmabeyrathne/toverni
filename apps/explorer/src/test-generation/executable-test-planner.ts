@@ -305,6 +305,9 @@ export function createExecutableTestPlan(
           actionEvidenceReference:
             step.evidenceReference,
 
+          actionLabel:
+            step.description,
+
           scenarioEvidenceReferences:
             input.scenario
               .evidenceReferences,
@@ -317,6 +320,35 @@ export function createExecutableTestPlan(
             [],
         }),
     );
+
+  if (
+    assertions.length ===
+    0
+  ) {
+    return {
+      scenarioId:
+        input.scenario.id,
+
+      title:
+        input.scenario.title,
+
+      status:
+        'manual_required',
+
+      reason:
+        'Browser actions are executable, but no evidence-backed business outcome assertion was observed.',
+
+      steps:
+        [],
+
+      assertions:
+        [],
+
+      evidenceReferences:
+        input.scenario
+          .evidenceReferences,
+    };
+  }
 
   // --------------------------------
   // Ready
