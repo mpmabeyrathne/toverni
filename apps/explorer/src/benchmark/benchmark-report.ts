@@ -312,6 +312,18 @@ import {
         '',
         `Decision: **${application.decision.decision.toUpperCase()}**`,
         '',
+        '### Quality gates',
+        '',
+        '| Metric | Actual | Gate | Passed |',
+        '| --- | ---: | ---: | --- |',
+        ...application
+          .decision
+          .thresholds
+          .map(
+            (threshold) =>
+              `| ${threshold.metric} | ${percentage(threshold.actual)} | ${threshold.operator} ${percentage(threshold.threshold)} | ${threshold.passed ? 'yes' : 'no'} |`,
+          ),
+        '',
       );
   
       if (
