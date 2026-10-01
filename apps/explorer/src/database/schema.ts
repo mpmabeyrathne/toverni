@@ -1016,6 +1016,14 @@ import {
         real('confidence')
           .notNull(),
 
+      rankingReasons:
+        jsonb(
+          'ranking_reasons',
+        )
+          .$type<string[]>()
+          .default([])
+          .notNull(),
+
       createdAt:
         timestamp(
           'created_at',
