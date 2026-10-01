@@ -19,6 +19,9 @@ export interface AssertionTransition {
   actionId:
     string | null;
 
+  actionTarget:
+    string | null;
+
   explorationBlocked:
     boolean;
 
@@ -37,6 +40,9 @@ export interface BuildAssertionsInput {
     string;
 
   actionEvidenceReference:
+    string;
+
+  actionLabel:
     string;
 
   scenarioEvidenceReferences?:
@@ -177,21 +183,50 @@ function stableTransition(
 
   actionId:
     string,
+
+  actionLabel:
+    string,
 ): AssertionTransition | null {
   const candidates =
     transitions
       .filter(
         (transition) =>
-          transition.actionId ===
-            actionId &&
           !transition
-            .explorationBlocked,
+            .explorationBlocked &&
+          (
+            transition.actionId ===
+              actionId ||
+            transition.actionTarget ===
+              actionLabel
+          ),
       )
       .sort(
         (
           left,
           right,
         ) => {
+          const leftExact =
+            left.actionId ===
+            actionId
+              ? 0
+              : 1;
+
+          const rightExact =
+            right.actionId ===
+            actionId
+              ? 0
+              : 1;
+
+          if (
+            leftExact !==
+            rightExact
+          ) {
+            return (
+              leftExact -
+              rightExact
+            );
+          }
+
           const leftTime =
             new Date(
               left.occurredAt,
@@ -251,6 +286,7 @@ export function buildEvidenceBackedAssertions(
     stableTransition(
       input.transitions,
       input.actionId,
+      input.actionLabel,
     );
 
   if (!transition) {
