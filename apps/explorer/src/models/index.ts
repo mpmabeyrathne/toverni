@@ -48,3 +48,11 @@ export {
     StateAnalysisInput,
     StateAnalysisOutput,
   } from './model-contracts.js';
+
+export {
+  BoundedModelProvider,
+} from './bounded-model-provider.js';
+
+export type {
+  BoundedModelProviderOptions,
+} from './bounded-model-provider.js';
