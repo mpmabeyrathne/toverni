@@ -112,6 +112,15 @@ import {
               .toverni
               .importantFlowCoverage,
           ).toBe(1);
+
+          expect(
+            result
+              .toverniCoverage
+              .entries[0]
+              ?.status,
+          ).toBe(
+            'covered',
+          );
         },
       );
     },

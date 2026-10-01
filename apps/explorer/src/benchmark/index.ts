@@ -70,3 +70,7 @@ export {
   export {
     assessScenarioSupport,
   } from './benchmark-support-assessor.js';
+
+  export {
+    buildBenchmarkFlowCoverageReport,
+  } from './benchmark-flow-coverage.js';

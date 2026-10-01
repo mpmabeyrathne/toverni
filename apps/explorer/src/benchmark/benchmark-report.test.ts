@@ -143,6 +143,18 @@ import {
           ).toContain(
             '80.0%',
           );
+
+          expect(
+            markdown,
+          ).toContain(
+            'Reference flow coverage',
+          );
+
+          expect(
+            markdown,
+          ).toContain(
+            '| Book room | covered | partially_covered |',
+          );
         },
       );
     },

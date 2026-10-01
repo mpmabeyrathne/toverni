@@ -9,6 +9,13 @@ import {
 } from '../test-generation/index.js';
 
 import {
+    buildCoverageReport,
+    buildCoverageTargets,
+    resolveCoverageTestStatus,
+    type CoverageReport,
+} from '../coverage/index.js';
+
+import {
     mapPersistedApplicationGraph,
 } from '../state/persisted-application-graph.js';
 
@@ -110,6 +117,9 @@ export interface RunExplorerResult {
 
     flow:
     ApplicationFlow;
+
+    coverage:
+    CoverageReport;
 }
 
 export async function runExplorer(
@@ -615,20 +625,27 @@ export async function runExplorer(
             'Business flows reconstructed and grounded',
         );
 
-        // --------------------------------
-// Grounded scenario generation
-// --------------------------------
+        const evidence =
+            buildEvidenceCatalog(
+                knowledge,
+                currentFlow,
+                groundedBusinessBehaviors,
+            );
 
-if (
-    modelConfiguration
-      .MODEL_REASONING_ENABLED
-  ) {
-    const evidence =
-      buildEvidenceCatalog(
-        knowledge,
-        currentFlow,
-        groundedBusinessBehaviors,
-      );
+        const coverageTargets =
+            buildCoverageTargets(
+                evidence,
+                groundedBusinessBehaviors,
+            );
+
+        // --------------------------------
+        // Grounded scenario generation
+        // --------------------------------
+
+        if (
+            modelConfiguration
+                .MODEL_REASONING_ENABLED
+        ) {
   
     const scenarioGenerator =
       new GroundedScenarioGenerator(
@@ -1036,6 +1053,56 @@ if (
             );
         }
 
+        const coverage =
+            buildCoverageReport({
+                targets:
+                    coverageTargets,
+
+                scenarios:
+                    flow.generatedScenarios
+                        .filter(
+                            (scenario) =>
+                                scenario.runId ===
+                                run.id,
+                        )
+                        .map(
+                            (scenario) => ({
+                                id:
+                                    scenario.id,
+
+                                evidenceReferences:
+                                    scenario
+                                        .evidenceReferences,
+
+                                accepted:
+                                    true,
+                            }),
+                        ),
+
+                tests:
+                    flow.generatedTests
+                        .filter(
+                            (test) =>
+                                test.runId ===
+                                run.id,
+                        )
+                        .map(
+                            (test) => ({
+                                id:
+                                    test.id,
+
+                                scenarioId:
+                                    test.scenarioId,
+
+                                status:
+                                    resolveCoverageTestStatus(
+                                        test.generationStatus,
+                                        test.executionStatus,
+                                    ),
+                            }),
+                        ),
+            });
+
         logger.info(
             {
                 applicationId:
@@ -1153,6 +1220,23 @@ if (
                         )
                         .length ??
                     0,
+
+                coverage:
+                    coverage.totals,
+
+                coverageGaps:
+                    coverage.gaps.map(
+                        (entry) => ({
+                            targetId:
+                                entry.target.id,
+
+                            kind:
+                                entry.target.kind,
+
+                            status:
+                                entry.status,
+                        }),
+                    ),
             },
             'Application graph persisted',
         );
@@ -1186,6 +1270,8 @@ if (
                 ].join('\n'),
 
             flow,
+
+            coverage,
         };
     } catch (
     error:

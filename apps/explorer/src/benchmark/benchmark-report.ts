@@ -169,6 +169,30 @@ import {
           )} |`,
   
         '',
+        '### Reference flow coverage',
+        '',
+        '| Flow | Toverni | Generic LLM |',
+        '| --- | --- | --- |',
+        ...application
+          .toverniCoverage
+          .entries
+          .map(
+            (entry) => {
+              const baselineEntry =
+                application
+                  .baselineCoverage
+                  .entries
+                  .find(
+                    (candidate) =>
+                      candidate
+                        .target.id ===
+                      entry.target.id,
+                  );
+
+              return `| ${entry.target.label} | ${entry.status} | ${baselineEntry?.status ?? 'uncovered'} |`;
+            },
+          ),
+        '',
         `Decision: **${application.decision.decision.toUpperCase()}**`,
         '',
       );
