@@ -67,6 +67,85 @@ import {
                   },
                 },
               ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-1',
+
+                  actionId:
+                    'action-db-1',
+
+                  actionTarget:
+                    'Learn more',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-01T00:00:00.000Z',
+
+                  beforeObservation: {
+                    capturedAt:
+                      '2026-10-01T00:00:00.000Z',
+
+                    url:
+                      'https://example.com',
+
+                    title:
+                      'Example',
+
+                    semanticText: [
+                      'Home',
+                    ],
+
+                    ariaSnapshot:
+                      '',
+
+                    actions:
+                      [],
+
+                    consoleEvents:
+                      [],
+
+                    networkEvents:
+                      [],
+
+                    supportingArtifacts:
+                      [],
+                  },
+
+                  afterObservation: {
+                    capturedAt:
+                      '2026-10-01T00:00:01.000Z',
+
+                    url:
+                      'https://example.com/learn',
+
+                    title:
+                      'Learn',
+
+                    semanticText: [
+                      'Learn',
+                    ],
+
+                    ariaSnapshot:
+                      '',
+
+                    actions:
+                      [],
+
+                    consoleEvents:
+                      [],
+
+                    networkEvents:
+                      [],
+
+                    supportingArtifacts:
+                      [],
+                  },
+                },
+              ],
             });
   
           expect(
@@ -77,6 +156,10 @@ import {
   
           expect(
             result.steps,
+          ).toHaveLength(1);
+
+          expect(
+            result.assertions,
           ).toHaveLength(1);
   
           expect(
