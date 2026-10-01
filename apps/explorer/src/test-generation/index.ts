@@ -28,6 +28,7 @@ export {
   } from './playwright-locator-renderer.js';
 
   export {
+    compilePlaywrightTest,
     renderPlaywrightTest,
     writePlaywrightTest,
   } from './playwright-test-renderer.js';
