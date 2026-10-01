@@ -44,6 +44,12 @@ import {
           .int()
           .nonnegative()
           .default(0),
+
+      assertionCount:
+        z.number()
+          .int()
+          .nonnegative()
+          .default(0),
     });
   
   export const benchmarkReferenceFlowSchema =
@@ -133,6 +139,16 @@ import {
       humanEditsPerScenario:
         z.number()
           .nonnegative(),
+
+      assertionScenarioCount:
+        z.number()
+          .int()
+          .nonnegative(),
+
+      meaningfulAssertionCoverage:
+        z.number()
+          .min(0)
+          .max(1),
     });
   
   export type BenchmarkMethod =
