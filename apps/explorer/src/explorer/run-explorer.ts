@@ -1160,6 +1160,11 @@ export async function runExplorer(
   
               workingDirectory:
                 process.cwd(),
+
+              timeoutMs:
+                input.timeouts
+                  ?.testMs ??
+                60_000,
             });
   
           await activeRepository
