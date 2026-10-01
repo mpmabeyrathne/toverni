@@ -20,6 +20,9 @@ import {
   
     workingDirectory:
       string;
+
+    timeoutMs?:
+      number;
   }
   
   const require =
@@ -98,6 +101,24 @@ import {
   
         let stdout = '';
         let stderr = '';
+
+        let timedOut =
+          false;
+
+        const timeoutMs =
+          input.timeoutMs ??
+          60_000;
+
+        const timeoutHandle =
+          setTimeout(
+            () => {
+              timedOut =
+                true;
+
+              child.kill();
+            },
+            timeoutMs,
+          );
   
         child.stdout.on(
           'data',
@@ -130,6 +151,10 @@ import {
           (
             error,
           ) => {
+            clearTimeout(
+              timeoutHandle,
+            );
+
             reject(
               new Error(
                 `Failed to start Playwright process: ${error.message}`,
@@ -147,6 +172,10 @@ import {
           (
             code,
           ) => {
+            clearTimeout(
+              timeoutHandle,
+            );
+
             const exitCode =
               code ?? 1;
   
@@ -167,9 +196,11 @@ import {
               stderr,
   
               error:
-                exitCode === 0
-                  ? null
-                  : [
+                timedOut
+                  ? `Playwright test timed out after ${timeoutMs}ms.`
+                  : exitCode === 0
+                    ? null
+                    : [
                       stderr,
                       stdout,
                     ]
