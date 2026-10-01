@@ -6,6 +6,10 @@ import type {
   import {
     calculateBenchmarkMetrics,
   } from './benchmark-metrics.js';
+
+  import {
+    buildBenchmarkFlowCoverageReport,
+  } from './benchmark-flow-coverage.js';
   
   import {
     evaluateBenchmarkThresholds,
@@ -66,6 +70,18 @@ import type {
         input.referenceFlows,
       );
   
+    const toverniCoverage =
+      buildBenchmarkFlowCoverageReport(
+        input.referenceFlows,
+        input.toverniScenarios,
+      );
+
+    const baselineCoverage =
+      buildBenchmarkFlowCoverageReport(
+        input.referenceFlows,
+        input.baselineScenarios,
+      );
+
     const decision =
       evaluateBenchmarkThresholds(
         toverni,
@@ -82,6 +98,10 @@ import type {
       toverni,
   
       baseline,
+
+      toverniCoverage,
+
+      baselineCoverage,
   
       decision,
     };
