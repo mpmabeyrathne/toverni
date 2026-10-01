@@ -66,6 +66,12 @@ import {
   
                   humanEditsPerScenario:
                     0,
+
+                  assertionScenarioCount:
+                    4,
+
+                  meaningfulAssertionCoverage:
+                    0.8,
                 },
   
                 baseline: {
@@ -110,6 +116,12 @@ import {
   
                   humanEditsPerScenario:
                     0.6,
+
+                  assertionScenarioCount:
+                    0,
+
+                  meaningfulAssertionCoverage:
+                    0,
                 },
 
                 toverniCoverage: {
@@ -307,6 +319,12 @@ import {
             markdown,
           ).toContain(
             '80.0%',
+          );
+
+          expect(
+            markdown,
+          ).toContain(
+            'Meaningful assertion coverage',
           );
 
           expect(
