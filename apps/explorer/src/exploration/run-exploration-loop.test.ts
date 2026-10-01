@@ -22,6 +22,10 @@ import {
 } from './deterministic-exploration-planner.js';
 
 import {
+    createActionSignature,
+} from './action-candidate.js';
+
+import {
     runExplorationLoop,
     type RunExplorationLoopInput,
 } from './run-exploration-loop.js';
@@ -1467,7 +1471,9 @@ describe(
                           initialState.id,
 
                         signature:
-                          'button|Next',
+                          createActionSignature(
+                            observation.actions[0]!,
+                          ),
 
                         actionType:
                           'button',
