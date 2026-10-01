@@ -133,6 +133,16 @@ import {
             .baseline
             .importantFlowCoverage,
         )} |`,
+
+        `| Meaningful assertion coverage | ${percentage(
+          application
+            .toverni
+            .meaningfulAssertionCoverage,
+        )} | ${percentage(
+          application
+            .baseline
+            .meaningfulAssertionCoverage,
+        )} |`,
   
         `| Duplicate rate | ${percentage(
           application
