@@ -145,6 +145,62 @@ describe(
     );
 
     it(
+      'does not collapse distinct discovered navigation action instances',
+      () => {
+        const result =
+          deduplicateScenarios([
+            {
+              title:
+                'Navigation: Book Ocean Room',
+
+              type:
+                'navigation',
+
+              preconditions: [],
+
+              actions: [
+                'Use the discovered button "Book Ocean Room"',
+              ],
+
+              expectedOutcomes: [
+                'The discovered button "Book Ocean Room" can be executed from the observed application state.',
+              ],
+
+              evidenceReferences: [
+                'ACTION-1',
+              ],
+            },
+
+            {
+              title:
+                'Navigation: Book Garden Room',
+
+              type:
+                'navigation',
+
+              preconditions: [],
+
+              actions: [
+                'Use the discovered button "Book Garden Room"',
+              ],
+
+              expectedOutcomes: [
+                'The discovered button "Book Garden Room" can be executed from the observed application state.',
+              ],
+
+              evidenceReferences: [
+                'ACTION-2',
+              ],
+            },
+          ]);
+
+        expect(
+          result,
+        ).toHaveLength(2);
+      },
+    );
+
+    it(
       'retains success and error scenario types even when wording overlaps',
       () => {
         const result =
