@@ -167,17 +167,44 @@ import {
               (assertion) =>
                 assertion.kind ===
                   'url' &&
-                assertion.playwright ===
-                  'expect(page).toHaveURL("https://example.com/learn");',
+                assertion.matcher ===
+                  'url' &&
+                assertion.expected ===
+                  'https://example.com/learn',
             ),
           ).toBe(true);
   
           expect(
             result.steps[0]
-              ?.playwright,
-          ).toBe(
-            'page.getByRole("link", { name: "Learn more", exact: true }).click();',
-          );
+              ?.operation,
+          ).toEqual({
+            kind:
+              'click',
+
+            target: {
+              by:
+                'role',
+
+              role:
+                'link',
+
+              name:
+                'Learn more',
+
+              exact:
+                true,
+            },
+          });
+
+          expect(
+            result.metadata,
+          ).toEqual({
+            irVersion:
+              '1',
+
+            generator:
+              'toverni',
+          });
         },
       );
   
