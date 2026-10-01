@@ -55,6 +55,9 @@ import {
   
                   executable:
                     true,
+
+                  runtimeStatus:
+                    'passed',
   
                   evidenceReferences: [
                     'ACTION-1',
@@ -85,6 +88,9 @@ import {
   
                   executable:
                     false,
+
+                  runtimeStatus:
+                    'not_run',
   
                   evidenceReferences: [],
   
@@ -117,6 +123,12 @@ import {
             result
               .toverni
               .importantFlowCoverage,
+          ).toBe(1);
+
+          expect(
+            result
+              .toverni
+              .runtimePassRate,
           ).toBe(1);
 
           expect(
