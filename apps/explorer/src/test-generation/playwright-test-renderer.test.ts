@@ -78,7 +78,7 @@ import {
           expect(
             source,
           ).toContain(
-            `import { test } from '@playwright/test';`,
+            `import { expect, test } from '@playwright/test';`,
           );
   
           expect(
