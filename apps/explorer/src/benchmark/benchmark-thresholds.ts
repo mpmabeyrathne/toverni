@@ -143,9 +143,6 @@ export function evaluateBenchmarkThresholds(
 
         passed:
           toverni
-            .executableScenarioCount ===
-            0 ||
-          toverni
             .meaningfulAssertionCoverage >=
           BENCHMARK_QUALITY_THRESHOLDS
             .meaningfulAssertionCoverage,
