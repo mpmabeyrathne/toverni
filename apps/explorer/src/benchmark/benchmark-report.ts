@@ -10,6 +10,16 @@ import {
   import type {
     BenchmarkApplicationEvaluation,
   } from './benchmark-evaluator.js';
+
+  import type {
+    BenchmarkMetrics,
+  } from './benchmark-contracts.js';
+
+  import {
+    aggregateBenchmarkMetrics,
+    BENCHMARK_METRIC_DEFINITIONS,
+    BENCHMARK_METRIC_DEFINITIONS_VERSION,
+  } from './benchmark-quality-telemetry.js';
   
   export interface BenchmarkReport {
     generatedAt:
@@ -17,6 +27,20 @@ import {
   
     applications:
       BenchmarkApplicationEvaluation[];
+
+    metricDefinitionsVersion:
+      string;
+
+    metricDefinitions:
+      typeof BENCHMARK_METRIC_DEFINITIONS;
+
+    aggregate: {
+      toverni:
+        BenchmarkMetrics;
+
+      baseline:
+        BenchmarkMetrics;
+    };
   
     overallDecision:
       'continue'
@@ -65,6 +89,30 @@ import {
       generatedAt:
         new Date()
           .toISOString(),
+
+      metricDefinitionsVersion:
+        BENCHMARK_METRIC_DEFINITIONS_VERSION,
+
+      metricDefinitions:
+        BENCHMARK_METRIC_DEFINITIONS,
+
+      aggregate: {
+        toverni:
+          aggregateBenchmarkMetrics(
+            applications.map(
+              (application) =>
+                application.toverni,
+            ),
+          ),
+
+        baseline:
+          aggregateBenchmarkMetrics(
+            applications.map(
+              (application) =>
+                application.baseline,
+            ),
+          ),
+      },
   
       applications,
   
@@ -94,6 +142,23 @@ import {
       '',
     );
   
+    lines.push(
+      '## Aggregate quality telemetry',
+      '',
+      '| Metric | Toverni | Generic LLM |',
+      '| --- | ---: | ---: |',
+      `| Executable/runnable rate | ${percentage(report.aggregate.toverni.executabilityRate)} | ${percentage(report.aggregate.baseline.executabilityRate)} |`,
+      `| Runtime pass rate | ${percentage(report.aggregate.toverni.runtimePassRate)} | ${percentage(report.aggregate.baseline.runtimePassRate)} |`,
+      `| Requirement grounding | ${percentage(report.aggregate.toverni.requirementGroundingRate)} | ${percentage(report.aggregate.baseline.requirementGroundingRate)} |`,
+      `| Important-flow coverage | ${percentage(report.aggregate.toverni.importantFlowCoverage)} | ${percentage(report.aggregate.baseline.importantFlowCoverage)} |`,
+      `| Meaningful assertion coverage | ${percentage(report.aggregate.toverni.meaningfulAssertionCoverage)} | ${percentage(report.aggregate.baseline.meaningfulAssertionCoverage)} |`,
+      `| Unsupported/invented action rate | ${percentage(report.aggregate.toverni.unsupportedActionRate)} | ${percentage(report.aggregate.baseline.unsupportedActionRate)} |`,
+      `| Duplicate rate | ${percentage(report.aggregate.toverni.duplicateRate)} | ${percentage(report.aggregate.baseline.duplicateRate)} |`,
+      `| Human edits / scenario | ${report.aggregate.toverni.humanEditsPerScenario.toFixed(2)} | ${report.aggregate.baseline.humanEditsPerScenario.toFixed(2)} |`,
+      `| Coverage efficiency | ${report.aggregate.toverni.coverageEfficiency.toFixed(2)} | ${report.aggregate.baseline.coverageEfficiency.toFixed(2)} |`,
+      '',
+    );
+
     for (
       const application of
         report.applications
@@ -114,7 +179,7 @@ import {
             .relevanceRate,
         )} |`,
   
-        `| Executability | ${percentage(
+        `| Executable/runnable rate | ${percentage(
           application
             .toverni
             .executabilityRate,
@@ -122,6 +187,26 @@ import {
           application
             .baseline
             .executabilityRate,
+        )} |`,
+
+        `| Runtime pass rate | ${percentage(
+          application
+            .toverni
+            .runtimePassRate,
+        )} | ${percentage(
+          application
+            .baseline
+            .runtimePassRate,
+        )} |`,
+
+        `| Requirement grounding | ${percentage(
+          application
+            .toverni
+            .requirementGroundingRate,
+        )} | ${percentage(
+          application
+            .baseline
+            .requirementGroundingRate,
         )} |`,
   
         `| Important-flow coverage | ${percentage(
@@ -154,6 +239,16 @@ import {
             .duplicateRate,
         )} |`,
   
+        `| Unsupported/invented action rate | ${percentage(
+          application
+            .toverni
+            .unsupportedActionRate,
+        )} | ${percentage(
+          application
+            .baseline
+            .unsupportedActionRate,
+        )} |`,
+
         `| Unsupported steps / scenario | ${application
           .toverni
           .unsupportedStepsPerScenario
@@ -255,6 +350,22 @@ import {
       lines.push('');
     }
   
+    lines.push(
+      '## Metric definitions',
+      '',
+      `Definitions version: **${report.metricDefinitionsVersion}**`,
+      '',
+      '| Metric | Deterministic calculation |',
+      '| --- | --- |',
+      ...Object.entries(
+        report.metricDefinitions,
+      ).map(
+        ([metric, definition]) =>
+          `| ${metric} | ${definition} |`,
+      ),
+      '',
+    );
+
     return lines.join(
       '\n',
     );
