@@ -337,6 +337,31 @@ import type {
     return scenarios;
   }
   
+  const TRANSACTION_VERB_ALIASES:
+    Readonly<
+      Record<
+        string,
+        string
+      >
+    > = {
+      added: 'add',
+      booked: 'book',
+      cancelled: 'cancel',
+      canceled: 'cancel',
+      completed: 'complete',
+      created: 'create',
+      deleted: 'delete',
+      ordered: 'order',
+      paid: 'pay',
+      purchased: 'purchase',
+      removed: 'remove',
+      reserved: 'reserve',
+      saved: 'save',
+      submitted: 'submit',
+      updated: 'update',
+      uploaded: 'upload',
+    };
+
   const TRANSACTION_VERBS =
     new Set([
       'add',
@@ -382,24 +407,11 @@ import type {
         Boolean,
       )
       .map(
-        (token) => ({
-          added: 'add',
-          booked: 'book',
-          cancelled: 'cancel',
-          canceled: 'cancel',
-          completed: 'complete',
-          created: 'create',
-          deleted: 'delete',
-          ordered: 'order',
-          paid: 'pay',
-          purchased: 'purchase',
-          removed: 'remove',
-          reserved: 'reserve',
-          saved: 'save',
-          submitted: 'submit',
-          updated: 'update',
-          uploaded: 'upload',
-        }[token] ?? token),
+        (token) =>
+        TRANSACTION_VERB_ALIASES[
+          token
+        ] ??
+        token,
       );
   }
 
