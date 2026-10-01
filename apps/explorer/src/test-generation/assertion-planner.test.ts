@@ -337,11 +337,30 @@ describe(
         ).toHaveLength(1);
 
         expect(
-          result[0]
-            ?.playwright,
-        ).toContain(
-          'test-value',
-        );
+          result[0],
+        ).toMatchObject({
+          kind:
+            'text',
+
+          matcher:
+            'visible',
+
+          target: {
+            kind:
+              'locator',
+
+            target: {
+              by:
+                'text',
+
+              text:
+                'test-value',
+
+              exact:
+                true,
+            },
+          },
+        });
       },
     );
 

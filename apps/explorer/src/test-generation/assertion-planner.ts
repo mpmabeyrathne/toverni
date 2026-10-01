@@ -55,13 +55,7 @@ export interface BuildAssertionsInput {
     AssertionTransition[];
 }
 
-function quote(
-  value: string,
-): string {
-  return JSON.stringify(
-    value,
-  );
-}
+
 
 function observedActionKey(
   action:
@@ -82,12 +76,25 @@ function observedActionKey(
   ].join('|');
 }
 
-function observedLocator(
+function observedTarget(
   action:
     ActionElement,
-): string | null {
-  if (action.testId) {
-    return `page.getByTestId(${quote(action.testId)})`;
+): ExecutableAssertion['target'] | null {
+  if (
+    action.testId
+  ) {
+    return {
+      kind:
+        'locator',
+
+      target: {
+        by:
+          'testId',
+
+        value:
+          action.testId,
+      },
+    };
   }
 
   const name =
@@ -99,11 +106,15 @@ function observedLocator(
   }
 
   const role =
-    action.type === 'input' ||
-    action.type === 'textarea' ||
-    action.type === 'contenteditable'
+    action.type ===
+      'input' ||
+    action.type ===
+      'textarea' ||
+    action.type ===
+      'contenteditable'
       ? 'textbox'
-      : action.type === 'select'
+      : action.type ===
+          'select'
         ? 'combobox'
         : action.type;
 
@@ -125,7 +136,22 @@ function observedLocator(
     return null;
   }
 
-  return `page.getByRole(${quote(role)}, { name: ${quote(name)}, exact: true })`;
+  return {
+    kind:
+      'locator',
+
+    target: {
+      by:
+        'role',
+
+      role,
+
+      name,
+
+      exact:
+        true,
+    },
+  };
 }
 
 function transitionEvidenceReferences(
@@ -305,7 +331,7 @@ export function buildEvidenceBackedAssertions(
   const assertions:
     ExecutableAssertion[] = [];
 
-  const seenPlaywright =
+  const seenAssertions =
     new Set<string>();
 
   const pushAssertion =
@@ -313,16 +339,28 @@ export function buildEvidenceBackedAssertions(
       assertion:
         ExecutableAssertion,
     ): void => {
+      const assertionKey =
+        JSON.stringify({
+          target:
+            assertion.target,
+
+          matcher:
+            assertion.matcher,
+
+          expected:
+            assertion.expected,
+        });
+
       if (
-        seenPlaywright.has(
-          assertion.playwright,
+        seenAssertions.has(
+          assertionKey,
         )
       ) {
         return;
       }
 
-      seenPlaywright.add(
-        assertion.playwright,
+      seenAssertions.add(
+        assertionKey,
       );
 
       assertions.push(
@@ -356,8 +394,16 @@ export function buildEvidenceBackedAssertions(
       description:
         `URL changed to ${after.url}`,
 
-      playwright:
-        `expect(page).toHaveURL(${quote(after.url)});`,
+      target: {
+        kind:
+          'page',
+      },
+
+      matcher:
+        'url',
+
+      expected:
+        after.url,
 
       evidenceReferences,
     });
@@ -464,12 +510,12 @@ export function buildEvidenceBackedAssertions(
       continue;
     }
 
-    const locator =
-      observedLocator(
+    const target =
+      observedTarget(
         representative,
       );
 
-    if (!locator) {
+    if (!target) {
       continue;
     }
 
@@ -488,8 +534,13 @@ export function buildEvidenceBackedAssertions(
         description:
           `${representative.name ?? representative.text ?? representative.type} count became ${afterItems.length}`,
 
-        playwright:
-          `expect(${locator}).toHaveCount(${afterItems.length});`,
+        target,
+
+        matcher:
+          'count',
+
+        expected:
+          afterItems.length,
 
         evidenceReferences,
       });
@@ -513,8 +564,10 @@ export function buildEvidenceBackedAssertions(
         description:
           `${representative.name ?? representative.text ?? representative.type} became visible`,
 
-        playwright:
-          `expect(${locator}).toBeVisible();`,
+        target,
+
+        matcher:
+          'visible',
 
         evidenceReferences,
       });
@@ -544,10 +597,12 @@ export function buildEvidenceBackedAssertions(
           description:
             `${afterItem.name ?? afterItem.text ?? afterItem.type} visibility changed`,
 
-          playwright:
+          target,
+
+          matcher:
             afterItem.visible
-              ? `expect(${locator}).toBeVisible();`
-              : `expect(${locator}).toBeHidden();`,
+              ? 'visible'
+              : 'hidden',
 
           evidenceReferences,
         });
@@ -569,10 +624,12 @@ export function buildEvidenceBackedAssertions(
           description:
             `${afterItem.name ?? afterItem.text ?? afterItem.type} became ${afterItem.disabled ? 'disabled' : 'enabled'}`,
 
-          playwright:
+          target,
+
+          matcher:
             afterItem.disabled
-              ? `expect(${locator}).toBeDisabled();`
-              : `expect(${locator}).toBeEnabled();`,
+              ? 'disabled'
+              : 'enabled',
 
           evidenceReferences,
         });
@@ -604,8 +661,13 @@ export function buildEvidenceBackedAssertions(
           description:
             `${afterItem.name ?? afterItem.text ?? afterItem.type} value became ${afterValue}`,
 
-          playwright:
-            `expect(${locator}).toHaveValue(${quote(afterValue)});`,
+          target,
+
+          matcher:
+            'value',
+
+          expected:
+            afterValue,
 
           evidenceReferences,
         });
@@ -665,8 +727,24 @@ export function buildEvidenceBackedAssertions(
       description:
         `Observed text appeared: ${added}`,
 
-      playwright:
-        `expect(page.getByText(${quote(added)}, { exact: true })).toBeVisible();`,
+      target: {
+        kind:
+          'locator',
+
+        target: {
+          by:
+            'text',
+
+          text:
+            added,
+
+          exact:
+            true,
+        },
+      },
+
+      matcher:
+        'visible',
 
       evidenceReferences,
     });
@@ -686,8 +764,24 @@ export function buildEvidenceBackedAssertions(
       description:
         `Observed text disappeared: ${removed}`,
 
-      playwright:
-        `expect(page.getByText(${quote(removed)}, { exact: true })).toBeHidden();`,
+      target: {
+        kind:
+          'locator',
+
+        target: {
+          by:
+            'text',
+
+          text:
+            removed,
+
+          exact:
+            true,
+        },
+      },
+
+      matcher:
+        'hidden',
 
       evidenceReferences,
     });

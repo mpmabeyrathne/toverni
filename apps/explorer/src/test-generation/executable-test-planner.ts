@@ -11,10 +11,6 @@ import {
   type AssertionTransition,
 } from './assertion-planner.js';
 
-import {
-  renderPlaywrightLocator,
-} from './playwright-locator-renderer.js';
-
 interface StoredScenario {
   id: string;
   title: string;
@@ -55,36 +51,29 @@ export interface CreateExecutablePlanInput {
     AssertionTransition[];
 }
 
-function actionCommand(
+function actionOperation(
   action:
     StoredAction,
-): string | null {
-  // Defense in depth:
-  // a blocked action must never
-  // become executable Playwright.
+): ExecutableTestPlan['steps'][number]['operation'] | null {
   if (
-    action.blocked === true
-  ) {
-    return null;
-  }
-
-  if (
+    action.blocked === true ||
     action.target === null
   ) {
     return null;
   }
-
-  const locator =
-    renderPlaywrightLocator(
-      action.target,
-    );
 
   switch (
     action.type
   ) {
     case 'button':
     case 'link':
-      return `${locator}.click();`;
+      return {
+        kind:
+          'click',
+
+        target:
+          action.target,
+      };
 
     default:
       return null;
@@ -119,7 +108,7 @@ export function createExecutableTestPlan(
     ExecutableTestPlan['steps'] =
       [];
 
-  const seenCommands =
+  const seenOperations =
     new Set<string>();
 
   const blockedActionReasons =
@@ -190,27 +179,32 @@ export function createExecutableTestPlan(
     // Convert to Playwright
     // --------------------------------
 
-    const playwright =
-      actionCommand(
+    const operation =
+      actionOperation(
         action,
       );
 
     if (
-      playwright === null
+      operation === null
     ) {
       continue;
     }
 
+    const operationKey =
+      JSON.stringify(
+        operation,
+      );
+
     if (
-      seenCommands.has(
-        playwright,
+      seenOperations.has(
+        operationKey,
       )
     ) {
       continue;
     }
 
-    seenCommands.add(
-      playwright,
+    seenOperations.add(
+      operationKey,
     );
 
     executableSteps.push({
@@ -220,7 +214,7 @@ export function createExecutableTestPlan(
       description:
         action.label,
 
-      playwright,
+      operation,
 
       evidenceReference,
     });
@@ -259,6 +253,14 @@ export function createExecutableTestPlan(
       evidenceReferences:
         input.scenario
           .evidenceReferences,
+
+      metadata: {
+        irVersion:
+          '1',
+
+        generator:
+          'toverni',
+      },
     };
   }
 
@@ -292,6 +294,14 @@ export function createExecutableTestPlan(
       evidenceReferences:
         input.scenario
           .evidenceReferences,
+
+      metadata: {
+        irVersion:
+          '1',
+
+        generator:
+          'toverni',
+      },
     };
   }
 
@@ -347,6 +357,14 @@ export function createExecutableTestPlan(
       evidenceReferences:
         input.scenario
           .evidenceReferences,
+
+      metadata: {
+        irVersion:
+          '1',
+
+        generator:
+          'toverni',
+      },
     };
   }
 
@@ -375,5 +393,13 @@ export function createExecutableTestPlan(
     evidenceReferences:
       input.scenario
         .evidenceReferences,
+
+    metadata: {
+      irVersion:
+        '1',
+
+      generator:
+        'toverni',
+    },
   };
 }
