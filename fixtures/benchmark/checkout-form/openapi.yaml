@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Local Checkout Benchmark API
+  version: 1.0.0
+paths:
+  /api/checkout:
+    post:
+      operationId: submitCheckout
+      responses:
+        '200': { description: Order confirmed }
+        '400': { description: Validation failed }
