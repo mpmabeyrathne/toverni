@@ -1,4 +1,8 @@
 import type {
+    CoverageReport,
+  } from '../coverage/index.js';
+
+  import type {
     BenchmarkReferenceFlow,
     BenchmarkScenario,
   } from './benchmark-contracts.js';
@@ -32,6 +36,12 @@ import type {
       ReturnType<
         typeof calculateBenchmarkMetrics
       >;
+
+    toverniCoverage:
+      CoverageReport;
+
+    baselineCoverage:
+      CoverageReport;
   
     decision:
       BenchmarkDecision;
