@@ -1095,6 +1095,9 @@ export async function runExplorer(
   
             sourceCode:
               null,
+
+            assertions:
+              [],
           });
   
         logger.error(
