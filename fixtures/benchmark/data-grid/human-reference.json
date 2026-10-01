@@ -1,0 +1,134 @@
+{
+  "flows": [
+    {
+      "id": "GRID-1",
+      "title": "Search table rows",
+      "important": true,
+      "keywords": [
+        "search",
+        "customer",
+        "results"
+      ]
+    },
+    {
+      "id": "GRID-2",
+      "title": "Filter by status",
+      "important": true,
+      "keywords": [
+        "filter",
+        "status",
+        "paid"
+      ]
+    },
+    {
+      "id": "GRID-3",
+      "title": "Sort by amount",
+      "important": true,
+      "keywords": [
+        "sort",
+        "amount"
+      ]
+    },
+    {
+      "id": "GRID-4",
+      "title": "Paginate table",
+      "important": true,
+      "keywords": [
+        "next",
+        "page"
+      ]
+    },
+    {
+      "id": "GRID-5",
+      "title": "Refresh API driven table state",
+      "important": true,
+      "keywords": [
+        "refresh",
+        "updated",
+        "status"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "title": "Search customer",
+      "actions": [
+        "Enter Alice in search"
+      ],
+      "expectedOutcomes": [
+        "Only Alice row remains"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-1"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Filter paid orders",
+      "actions": [
+        "Choose Paid status"
+      ],
+      "expectedOutcomes": [
+        "Only Paid rows remain"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-2"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Sort amounts",
+      "actions": [
+        "Click Sort Amount"
+      ],
+      "expectedOutcomes": [
+        "Rows reorder by amount"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-3"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Move to next page",
+      "actions": [
+        "Click Next Page"
+      ],
+      "expectedOutcomes": [
+        "Page 2 is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-4"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Refresh orders",
+      "actions": [
+        "Click Refresh"
+      ],
+      "expectedOutcomes": [
+        "Order status changes to Updated"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-5"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    }
+  ]
+}
