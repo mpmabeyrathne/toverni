@@ -717,6 +717,8 @@ import type {
                 'COVERAGE PRIORITY:',
                 'Prefer scenarios that reference uncovered coverage targets first, then partially covered targets.',
                 'Avoid generating another variant for already-covered behavior when a supported coverage gap exists.',
+                'Keep each scenario within one business transaction boundary.',
+                'Do not combine unrelated create/book/cancel/delete/remove/pay/checkout/complete transactions into one scenario unless one FLOW-BUSINESS evidence item explicitly describes that combined flow.',
                 ...coverageGaps.map(
                   (gap) =>
                     formatCoverageGap(
