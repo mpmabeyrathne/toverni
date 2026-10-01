@@ -34,9 +34,7 @@ import {
           'failed',
           'runtime_error',
         ])
-          .default(
-            'not_run',
-          ),
+          .optional(),
   
       evidenceReferences:
         z.array(
