@@ -56,6 +56,7 @@ import {
 import {
     DeterministicExplorationPlanner,
     runExplorationLoop,
+    type ExplorationBudget,
 } from '../exploration/index.js';
 
 import {
@@ -89,6 +90,11 @@ export interface RunExplorerInput {
     headless?: boolean;
 
     artifactsDirectory?: string;
+
+    resumeRunId?: string;
+
+    explorationBudget?:
+        Partial<ExplorationBudget>;
 }
 
 type ApplicationFlow =
@@ -145,14 +151,24 @@ export async function runExplorer(
     const stateModel =
         new ApplicationStateModel();
 
+    const explorationBudget:
+        ExplorationBudget = {
+        maxActions: 50,
+        maxActionsPerState: 10,
+        maxStates: 100,
+        maxDepth: 100,
+        maxVisitsPerState: 20,
+        maxFailures: 5,
+        maxModelCalls: 20,
+        maxDurationMs:
+            60 * 60 * 1000,
+        ...input.explorationBudget,
+    };
+
     const planner =
         new DeterministicExplorationPlanner(
             stateModel,
-            {
-                maxActions: 50,
-                maxActionsPerState: 10,
-                maxStates: 100,
-            },
+            explorationBudget,
         );
 
     let databaseConnection:
@@ -291,33 +307,75 @@ export async function runExplorer(
         // Exploration run
         // --------------------------------
 
+        const existingRun =
+            input.resumeRunId
+                ? await activeRepository
+                    .getRun(
+                        input.resumeRunId,
+                    )
+                : null;
+
+        if (
+            input.resumeRunId &&
+            !existingRun
+        ) {
+            throw new Error(
+                'Requested exploration run was not found for resume.',
+            );
+        }
+
+        if (
+            existingRun &&
+            existingRun.applicationId !==
+                application.id
+        ) {
+            throw new Error(
+                'Requested exploration run belongs to a different application.',
+            );
+        }
+
         const run =
-            await activeRepository
-                .startRun({
-                    applicationId:
-                        application.id,
+            existingRun
+                ? await activeRepository
+                    .resumeRun(
+                        existingRun.id,
+                    )
+                : await activeRepository
+                    .startRun({
+                        applicationId:
+                            application.id,
 
-                    entryUrl:
-                        input.targetUrl,
+                        entryUrl:
+                            input.targetUrl,
 
-                    context: {
-                        environment:
-                            environment.NODE_ENV,
+                        context: {
+                            environment:
+                                environment.NODE_ENV,
 
-                        requirementsLoaded:
-                            knowledge.requirements !==
-                            null,
+                            requirementsLoaded:
+                                knowledge.requirements !==
+                                null,
 
-                        openApiLoaded:
-                            knowledge.openApi !==
-                            null,
+                            openApiLoaded:
+                                knowledge.openApi !==
+                                null,
 
-                        apiOperationCount:
-                            knowledge.openApi
-                                ?.operations.length ??
-                            0,
-                    },
-                });
+                            apiOperationCount:
+                                knowledge.openApi
+                                    ?.operations.length ??
+                                0,
+
+                            explorationBudget,
+                        },
+                    });
+
+        const checkpoint =
+            existingRun
+                ? await activeRepository
+                    .getRunCheckpoint(
+                        run.id,
+                    )
+                : null;
 
         currentRunId =
             run.id;
@@ -392,6 +450,8 @@ export async function runExplorer(
             await browser.createSession();
 
         await session.navigate(
+            checkpoint
+                ?.currentUrl ??
             input.targetUrl,
         );
 
@@ -518,6 +578,11 @@ export async function runExplorer(
                 knowledge,
 
                 analyzeObservation,
+
+                budget:
+                    explorationBudget,
+
+                checkpoint,
             });
 
         const initialObservation =
