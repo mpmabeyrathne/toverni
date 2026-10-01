@@ -104,6 +104,9 @@ describe(
                 actionId:
                   'action-1',
 
+                actionTarget:
+                  'Add Todo',
+
                 explorationBlocked:
                   false,
 
@@ -291,6 +294,9 @@ describe(
 
                 actionId:
                   'action-1',
+
+                actionTarget:
+                  'Add Todo',
 
                 explorationBlocked:
                   false,
