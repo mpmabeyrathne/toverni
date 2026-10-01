@@ -64,6 +64,9 @@ import {
   
                   humanEditsRequired:
                     0,
+
+                  assertionCount:
+                    0,
                 },
               ],
   
@@ -91,6 +94,9 @@ import {
   
                   humanEditsRequired:
                     1,
+
+                  assertionCount:
+                    0,
                 },
               ],
             });
