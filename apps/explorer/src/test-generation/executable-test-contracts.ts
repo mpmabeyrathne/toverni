@@ -15,7 +15,15 @@ export const executableTestStatusSchema =
   ]);
 
 export const executableAssertionKindSchema =
-  testPlanAssertionSchema.shape.kind;
+  z.enum([
+    'url',
+    'text',
+    'visibility',
+    'enabled',
+    'disabled',
+    'count',
+    'value',
+  ]);
 
 export const executableAssertionSchema =
   testPlanAssertionSchema;
