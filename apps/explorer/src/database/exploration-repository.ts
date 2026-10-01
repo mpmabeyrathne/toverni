@@ -12,6 +12,7 @@ import type {
 } from '../scenarios/index.js';
 
 import type {
+  ExecutableAssertion,
   ExecutableTestRunResult,
 } from '../test-generation/index.js';
 
@@ -999,13 +1000,7 @@ export class ExplorationRepository {
       string | null;
 
       assertions:
-      Array<{
-        afterActionId: string;
-        kind: string;
-        description: string;
-        playwright: string;
-        evidenceReferences: string[];
-      }>;
+        ExecutableAssertion[];
     },
   ) {
     const [
