@@ -41,6 +41,9 @@ import {
   
                   humanEditsRequired:
                     0,
+
+                  assertionCount:
+                    2,
                 },
   
                 {
@@ -68,6 +71,9 @@ import {
   
                   humanEditsRequired:
                     1,
+
+                  assertionCount:
+                    0,
                 },
               ],
   
@@ -109,6 +115,10 @@ import {
           expect(
             result.humanEditsPerScenario,
           ).toBe(0.5);
+
+          expect(
+            result.meaningfulAssertionCoverage,
+          ).toBe(1);
         },
       );
   
@@ -138,6 +148,9 @@ import {
                   unsupportedSteps: [],
   
                   humanEditsRequired:
+                    0,
+
+                  assertionCount:
                     0,
                 },
               ],
