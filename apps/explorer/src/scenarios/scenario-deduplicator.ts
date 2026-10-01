@@ -25,6 +25,31 @@ const STOP_WORDS =
     'are',
   ]);
 
+const TRANSACTION_VERB_ALIASES:
+  Readonly<
+    Record<
+      string,
+      string
+    >
+  > = {
+    added: 'add',
+    booked: 'book',
+    cancelled: 'cancel',
+    canceled: 'cancel',
+    completed: 'complete',
+    created: 'create',
+    deleted: 'delete',
+    ordered: 'order',
+    paid: 'pay',
+    purchased: 'purchase',
+    removed: 'remove',
+    reserved: 'reserve',
+    saved: 'save',
+    submitted: 'submit',
+    updated: 'update',
+    uploaded: 'upload',
+  };
+
 const TRANSACTION_VERBS =
   new Set([
     'add',
@@ -152,25 +177,11 @@ function canonicalizeSemanticPhrase(
 
   const normalizedTokens =
     tokens.map(
-      (token) => ({
-        added: 'add',
-        booked: 'book',
-        booking: 'booking',
-        cancelled: 'cancel',
-        canceled: 'cancel',
-        completed: 'complete',
-        created: 'create',
-        deleted: 'delete',
-        ordered: 'order',
-        paid: 'pay',
-        purchased: 'purchase',
-        removed: 'remove',
-        reserved: 'reserve',
-        saved: 'save',
-        submitted: 'submit',
-        updated: 'update',
-        uploaded: 'upload',
-      }[token] ?? token),
+      (token) =>
+        TRANSACTION_VERB_ALIASES[
+          token
+        ] ??
+        token,
     );
 
   const transactionIndex =
