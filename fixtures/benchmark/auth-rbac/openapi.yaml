@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Local Auth Benchmark API
+  version: 1.0.0
+paths:
+  /api/session:
+    post:
+      operationId: createSession
+      responses:
+        '200': { description: Session created }
+        '401': { description: Invalid credentials }
+    delete:
+      operationId: deleteSession
+      responses:
+        '204': { description: Signed out }
+  /api/admin:
+    get:
+      operationId: getAdminPanel
+      responses:
+        '200': { description: Admin content }
+        '403': { description: Forbidden }

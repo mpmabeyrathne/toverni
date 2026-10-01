@@ -1,0 +1,119 @@
+{
+  "flows": [
+    {
+      "id": "CHECK-1",
+      "title": "Validate required customer details",
+      "important": true,
+      "keywords": [
+        "name",
+        "required",
+        "continue"
+      ]
+    },
+    {
+      "id": "CHECK-2",
+      "title": "Advance through shipping step",
+      "important": true,
+      "keywords": [
+        "shipping",
+        "address",
+        "payment"
+      ]
+    },
+    {
+      "id": "CHECK-3",
+      "title": "Reject invalid payment data",
+      "important": true,
+      "keywords": [
+        "card",
+        "invalid",
+        "error"
+      ]
+    },
+    {
+      "id": "CHECK-4",
+      "title": "Confirm order through dialog",
+      "important": true,
+      "keywords": [
+        "confirm",
+        "order",
+        "dialog"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "title": "Required field validation",
+      "actions": [
+        "Continue without customer name"
+      ],
+      "expectedOutcomes": [
+        "Name is required is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-1"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Valid shipping details",
+      "actions": [
+        "Enter customer name",
+        "Continue",
+        "Enter shipping address",
+        "Continue"
+      ],
+      "expectedOutcomes": [
+        "Payment step is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-2"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Invalid local card",
+      "actions": [
+        "Complete shipping",
+        "Enter invalid card",
+        "Review order"
+      ],
+      "expectedOutcomes": [
+        "Invalid card is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-3"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Confirm local checkout",
+      "actions": [
+        "Complete shipping",
+        "Enter local test card",
+        "Review order",
+        "Confirm Order"
+      ],
+      "expectedOutcomes": [
+        "Order complete is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-4",
+        "REQ-5"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    }
+  ]
+}

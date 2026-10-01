@@ -1,0 +1,110 @@
+{
+  "flows": [
+    {
+      "id": "UP-1",
+      "title": "Validate upload file type",
+      "important": true,
+      "keywords": [
+        "file",
+        "type",
+        "invalid"
+      ]
+    },
+    {
+      "id": "UP-2",
+      "title": "Surface deterministic upload failure",
+      "important": true,
+      "keywords": [
+        "upload",
+        "failed",
+        "retry"
+      ]
+    },
+    {
+      "id": "UP-3",
+      "title": "Retry failed upload successfully",
+      "important": true,
+      "keywords": [
+        "retry",
+        "uploaded"
+      ]
+    },
+    {
+      "id": "UP-4",
+      "title": "Clear upload state",
+      "important": true,
+      "keywords": [
+        "clear",
+        "reset"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "title": "Reject invalid file type",
+      "actions": [
+        "Choose unsupported file"
+      ],
+      "expectedOutcomes": [
+        "Only .txt files are allowed is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-2"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "First upload fails",
+      "actions": [
+        "Choose valid text file",
+        "Upload"
+      ],
+      "expectedOutcomes": [
+        "Upload failed is displayed",
+        "Retry button is enabled"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-3"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 2
+    },
+    {
+      "title": "Retry upload",
+      "actions": [
+        "Retry failed upload"
+      ],
+      "expectedOutcomes": [
+        "Uploaded is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-4"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    },
+    {
+      "title": "Clear state",
+      "actions": [
+        "Clear upload"
+      ],
+      "expectedOutcomes": [
+        "No file selected is displayed"
+      ],
+      "executable": true,
+      "evidenceReferences": [
+        "REQ-5"
+      ],
+      "unsupportedSteps": [],
+      "humanEditsRequired": 0,
+      "assertionCount": 1
+    }
+  ]
+}

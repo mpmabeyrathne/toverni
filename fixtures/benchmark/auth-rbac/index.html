@@ -1,0 +1,8 @@
+<!doctype html><html><body><main><h1>Account Portal</h1><section id="login"><label>Email <input aria-label="Email" id="email"></label><label>Password <input aria-label="Password" id="password" type="password"></label><button id="signin">Sign In</button><p id="authmsg"></p></section><section id="app" hidden><p id="session">Signed in as admin</p><nav><button id="dashboard">Dashboard</button><button id="profile">Profile</button><button id="admin">Admin Panel</button><button id="signout">Sign Out</button></nav><h2 id="view">Dashboard</h2><p id="message"></p></section></main><script>
+let role='admin'; const login=document.querySelector('#login'), app=document.querySelector('#app'), msg=document.querySelector('#authmsg'), view=document.querySelector('#view'), message=document.querySelector('#message'), session=document.querySelector('#session');
+function route(name){location.hash=name; view.textContent=name==='profile'?'Profile':name==='admin'?'Admin Panel':'Dashboard';}
+document.querySelector('#signin').onclick=()=>{const e=email.value,p=password.value;if(p!=='pass'){msg.textContent='Invalid credentials';return;} role=e.startsWith('user')?'user':'admin';login.hidden=true;app.hidden=false;session.textContent='Signed in as '+role;msg.textContent='';route('dashboard');};
+document.querySelector('#dashboard').onclick=()=>route('dashboard'); document.querySelector('#profile').onclick=()=>route('profile');
+document.querySelector('#admin').onclick=()=>{if(role!=='admin'){message.textContent='Access denied';return;} message.textContent='';route('admin');};
+document.querySelector('#signout').onclick=()=>{app.hidden=true;login.hidden=false;message.textContent='';location.hash='';};
+</script></body></html>
