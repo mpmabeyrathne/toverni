@@ -867,6 +867,35 @@ export async function runExplorer(
                   action.blockReasons,
               }),
             ),
+
+          transitions:
+            currentFlow
+              .transitions
+              .map(
+                (transition) => ({
+                  id:
+                    transition.id,
+
+                  actionId:
+                    transition.actionId,
+
+                  explorationBlocked:
+                    transition
+                      .explorationBlocked,
+
+                  occurredAt:
+                    transition
+                      .occurredAt,
+
+                  beforeObservation:
+                    transition
+                      .beforeObservation,
+
+                  afterObservation:
+                    transition
+                      .afterObservation,
+                }),
+              ),
         });
   
       // ------------------------------
@@ -899,6 +928,9 @@ export async function runExplorer(
   
             sourceCode:
               null,
+
+            assertions:
+              [],
           });
   
         logger.info(
@@ -958,6 +990,9 @@ export async function runExplorer(
   
               sourceCode:
                 writtenTest.source,
+
+              assertions:
+                plan.assertions,
             });
   
         // ----------------------------
