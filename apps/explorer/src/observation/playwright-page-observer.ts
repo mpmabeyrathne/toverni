@@ -607,8 +607,17 @@ export class PlaywrightPageObserver
                       }
                       : {}),
 
-                    value:
-                      element.value,
+                    ...(
+                      element.type !==
+                        'checkbox' &&
+                      element.type !==
+                        'radio'
+                        ? {
+                          value:
+                            element.value,
+                        }
+                        : {}
+                    ),
 
                     ...(
                       element.type ===
