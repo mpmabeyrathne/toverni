@@ -218,6 +218,9 @@ import {
   
           humanEditsRequired:
             0,
+
+          assertionCount:
+            0,
         }),
       );
     }
