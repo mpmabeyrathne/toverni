@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Local Upload Benchmark API
+  version: 1.0.0
+paths:
+  /api/uploads:
+    post:
+      operationId: uploadFile
+      responses:
+        '201': { description: Uploaded }
+        '503': { description: Retryable failure }
