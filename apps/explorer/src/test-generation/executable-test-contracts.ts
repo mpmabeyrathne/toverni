@@ -2,6 +2,12 @@ import {
   z,
 } from 'zod';
 
+import {
+  testPlanAssertionSchema,
+  testPlanIrSchema,
+  testPlanStepSchema,
+} from './test-plan-ir.js';
+
 export const executableTestStatusSchema =
   z.enum([
     'ready',
@@ -9,82 +15,16 @@ export const executableTestStatusSchema =
   ]);
 
 export const executableAssertionKindSchema =
-  z.enum([
-    'url',
-    'text',
-    'visibility',
-    'enabled',
-    'disabled',
-    'count',
-    'value',
-  ]);
+  testPlanAssertionSchema.shape.kind;
 
 export const executableAssertionSchema =
-  z.object({
-    afterActionId:
-      z.string(),
-
-    kind:
-      executableAssertionKindSchema,
-
-    description:
-      z.string(),
-
-    playwright:
-      z.string(),
-
-    evidenceReferences:
-      z.array(
-        z.string(),
-      )
-        .min(1),
-  });
+  testPlanAssertionSchema;
 
 export const executableStepSchema =
-  z.object({
-    actionId:
-      z.string(),
-
-    description:
-      z.string(),
-
-    playwright:
-      z.string(),
-
-    evidenceReference:
-      z.string(),
-  });
+  testPlanStepSchema;
 
 export const executableTestPlanSchema =
-  z.object({
-    scenarioId:
-      z.string(),
-
-    title:
-      z.string(),
-
-    status:
-      executableTestStatusSchema,
-
-    reason:
-      z.string()
-        .nullable(),
-
-    steps:
-      z.array(
-        executableStepSchema,
-      ),
-
-    assertions:
-      z.array(
-        executableAssertionSchema,
-      ),
-
-    evidenceReferences:
-      z.array(
-        z.string(),
-      ),
-  });
+  testPlanIrSchema;
 
 export type ExecutableTestStatus =
   z.infer<
