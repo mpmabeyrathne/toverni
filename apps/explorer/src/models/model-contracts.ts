@@ -197,7 +197,8 @@ export const scenarioGenerationInputSchema =
             )
             .min(1),
         }),
-      ),
+      )
+      .max(8),
   });
 
 export type ReasoningTier =
