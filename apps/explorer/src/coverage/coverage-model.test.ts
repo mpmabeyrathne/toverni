@@ -514,5 +514,158 @@ describe(
         ]);
       },
     );
+
+    it(
+      'traces requirement coverage through a grounded business flow',
+      () => {
+        const targets =
+          buildCoverageTargets(
+            [
+              {
+                id:
+                  'REQ-1',
+
+                type:
+                  'requirement',
+
+                description:
+                  'Customer can book a room.',
+
+                source:
+                  'requirements.md',
+              },
+
+              {
+                id:
+                  'FLOW-BUSINESS-1',
+
+                type:
+                  'transition',
+
+                description:
+                  'Business flow: Book room.',
+
+                source:
+                  'behavior-1',
+              },
+            ],
+
+            [
+              {
+                id:
+                  'behavior-1',
+
+                sourceFlowIds: [
+                  'flow-1',
+                ],
+
+                name:
+                  'Book room',
+
+                startStateId:
+                  'state-1',
+
+                endStateId:
+                  'state-2',
+
+                stateIds: [
+                  'state-1',
+                  'state-2',
+                ],
+
+                transitionIds: [
+                  'transition-1',
+                ],
+
+                preconditionTransitionIds:
+                  [],
+
+                steps: [
+                  {
+                    transitionId:
+                      'transition-1',
+
+                    fromStateId:
+                      'state-1',
+
+                    toStateId:
+                      'state-2',
+
+                    action: {
+                      type:
+                        'click',
+
+                      target:
+                        'Book room',
+                    },
+                  },
+                ],
+
+                complete:
+                  true,
+
+                boundaryEvidence: [
+                  {
+                    source:
+                      'action',
+
+                    transitionId:
+                      'transition-1',
+
+                    detail:
+                      'Observed booking action',
+
+                    networkEventIds:
+                      [],
+                  },
+                ],
+
+                outcome: {
+                  stateId:
+                    'state-2',
+
+                  urlChanged:
+                    false,
+
+                  titleChanged:
+                    false,
+
+                  addedSemanticText: [
+                    'Room booked',
+                  ],
+
+                  removedSemanticText:
+                    [],
+                },
+
+                requirementEvidenceIds: [
+                  'REQ-1',
+                ],
+
+                apiOperationIds:
+                  [],
+
+                apiOperationLinks:
+                  [],
+              },
+            ],
+          );
+
+        const requirement =
+          targets.find(
+            (target) =>
+              target.id ===
+              'REQ-1',
+          );
+
+        expect(
+          requirement
+            ?.evidenceReferences,
+        ).toEqual([
+          'REQ-1',
+          'FLOW-BUSINESS-1',
+        ]);
+      },
+    );
   },
 );
