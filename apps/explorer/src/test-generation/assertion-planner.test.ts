@@ -72,6 +72,9 @@ describe(
             actionEvidenceReference:
               'ACTION-1',
 
+            actionLabel:
+              'Add Todo',
+
             evidence: [
               {
                 id:
@@ -257,6 +260,92 @@ describe(
     );
 
     it(
+      'matches an observed transition by action label when persisted action ids differ',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'scenario-action-id',
+
+            actionEvidenceReference:
+              'ACTION-1',
+
+            actionLabel:
+              'Add Todo',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-1',
+
+                type:
+                  'action',
+
+                source:
+                  'scenario-action-id',
+              },
+
+              {
+                id:
+                  'FLOW-1',
+
+                type:
+                  'transition',
+
+                source:
+                  'transition-1',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-1',
+
+                actionId:
+                  'different-persisted-action-id',
+
+                actionTarget:
+                  'Add Todo',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Todo List',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Todo List',
+                      'test-value',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toHaveLength(1);
+
+        expect(
+          result[0]
+            ?.playwright,
+        ).toContain(
+          'test-value',
+        );
+      },
+    );
+
+    it(
       'does not fabricate an assertion when no observed delta exists',
       () => {
         const state =
@@ -273,6 +362,9 @@ describe(
 
             actionEvidenceReference:
               'ACTION-1',
+
+            actionLabel:
+              'Add Todo',
 
             evidence: [
               {
