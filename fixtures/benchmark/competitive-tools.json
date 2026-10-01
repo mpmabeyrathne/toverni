@@ -1,0 +1,50 @@
+[
+  {
+    "id": "toverni",
+    "name": "Toverni",
+    "category": "toverni",
+    "version": "TOV-113 branch",
+    "source": "local repository",
+    "inputProtocol": "Frozen fixture, requirements.md, OpenAPI, browser exploration",
+    "executionBudget": "Same seven local fixtures and benchmark timeouts",
+    "notes": [
+      "Native system under evaluation"
+    ]
+  },
+  {
+    "id": "generic_llm",
+    "name": "Generic LLM baseline",
+    "category": "generic_llm",
+    "version": "Configured Ollama model",
+    "source": "local Ollama",
+    "inputProtocol": "Frozen requirements.md, OpenAPI, target URL and initial page context",
+    "executionBudget": "One generation pass per fixture using the configured benchmark model",
+    "notes": [
+      "No autonomous browser exploration"
+    ]
+  },
+  {
+    "id": "playwright_agents",
+    "name": "Playwright Test Agents",
+    "category": "framework_agent",
+    "version": "Record installed version at run time",
+    "source": "official Playwright test agents",
+    "inputProtocol": "Frozen reference-flow request plus local fixture URL and requirements context",
+    "executionBudget": "One planner/generator pass per fixture; no manual healing before scoring",
+    "notes": [
+      "Generated outputs must be normalized into BenchmarkScenario before scoring"
+    ]
+  },
+  {
+    "id": "hercules",
+    "name": "TestZeus Hercules",
+    "category": "ai_agent",
+    "version": "Record installed version at run time",
+    "source": "open-source TestZeus Hercules",
+    "inputProtocol": "Frozen reference-flow request plus local fixture URL and requirements context",
+    "executionBudget": "One guided generation/execution pass per fixture with equivalent model limits where supported",
+    "notes": [
+      "Exact model/provider configuration must be recorded"
+    ]
+  }
+]
