@@ -272,6 +272,18 @@ import {
           .toFixed(
             2,
           )} |`,
+
+        `| Coverage efficiency | ${application
+          .toverni
+          .coverageEfficiency
+          .toFixed(
+            2,
+          )} | ${application
+          .baseline
+          .coverageEfficiency
+          .toFixed(
+            2,
+          )} |`,
   
         '',
         '### Reference flow coverage',
