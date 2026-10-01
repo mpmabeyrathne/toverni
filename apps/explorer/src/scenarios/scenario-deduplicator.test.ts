@@ -1,59 +1,39 @@
 import {
-    describe,
-    expect,
-    it,
-  } from 'vitest';
-  
-  import {
-    deduplicateScenarios,
-  } from './scenario-deduplicator.js';
-  
-  describe(
-    'deduplicateScenarios',
-    () => {
-      it(
-        'removes duplicate scenarios',
-        () => {
-          const scenarios = [
+  describe,
+  expect,
+  it,
+} from 'vitest';
+
+import {
+  deduplicateScenarios,
+  deduplicateScenariosWithReasons,
+} from './scenario-deduplicator.js';
+
+describe(
+  'deduplicateScenarios',
+  () => {
+    it(
+      'collapses equivalent product instances when behavior is the same',
+      () => {
+        const result =
+          deduplicateScenariosWithReasons([
             {
               title:
-                'Book available room',
-  
+                'Add Mechanical Keyboard to Cart',
+
               type:
-                'positive' as const,
-  
+                'positive',
+
               preconditions: [],
-  
+
               actions: [
-                'Book an available room',
+                'Add Mechanical Keyboard to Cart',
               ],
-  
+
               expectedOutcomes: [
-                'Booking succeeds',
+                'Mechanical Keyboard added to cart',
               ],
-  
-              evidenceReferences: [
-                'REQ-1',
-              ],
-            },
-  
-            {
-              title:
-                'Book available room',
-  
-              type:
-                'positive' as const,
-  
-              preconditions: [],
-  
-              actions: [
-                'Book an available room',
-              ],
-  
-              expectedOutcomes: [
-                'Booking succeeds',
-              ],
-  
+
               evidenceReferences: [
                 'REQ-1',
               ],
@@ -61,36 +41,163 @@ import {
 
             {
               title:
-                'Book available room',
-  
+                'Add Gaming Mouse to Cart',
+
               type:
-                'boundary' as const,
-  
+                'positive',
+
               preconditions: [],
-  
+
+              actions: [
+                'Add Gaming Mouse to Cart',
+              ],
+
+              expectedOutcomes: [
+                'Gaming Mouse added to cart',
+              ],
+
+              evidenceReferences: [
+                'ACTION-2',
+              ],
+            },
+          ]);
+
+        expect(
+          result,
+        ).toHaveLength(1);
+
+        expect(
+          result[0]
+            ?.scenario
+            .evidenceReferences,
+        ).toEqual([
+          'ACTION-2',
+          'REQ-1',
+        ]);
+
+        expect(
+          result[0]
+            ?.deduplicationReasons
+            .some(
+              (reason) =>
+                reason.includes(
+                  'collapsed 2 semantically equivalent scenarios',
+                ),
+            ),
+        ).toBe(true);
+      },
+    );
+
+    it(
+      'retains meaningful availability variants',
+      () => {
+        const result =
+          deduplicateScenarios([
+            {
+              title:
+                'Book available room',
+
+              type:
+                'positive',
+
+              preconditions: [],
+
               actions: [
                 'Book an available room',
               ],
-  
+
               expectedOutcomes: [
-                'Booking succeeds',
+                'Available room booking succeeds',
               ],
-  
+
               evidenceReferences: [
                 'REQ-1',
               ],
             },
-          ];
-  
-          const result =
-            deduplicateScenarios(
-              scenarios,
-            );
-  
-          expect(
-            result,
-          ).toHaveLength(1);
-        },
-      );
-    },
-  );
+
+            {
+              title:
+                'Book unavailable room',
+
+              type:
+                'positive',
+
+              preconditions: [],
+
+              actions: [
+                'Book an unavailable room',
+              ],
+
+              expectedOutcomes: [
+                'Unavailable room booking is rejected',
+              ],
+
+              evidenceReferences: [
+                'CON-1',
+              ],
+            },
+          ]);
+
+        expect(
+          result,
+        ).toHaveLength(2);
+      },
+    );
+
+    it(
+      'retains success and error scenario types even when wording overlaps',
+      () => {
+        const result =
+          deduplicateScenarios([
+            {
+              title:
+                'Submit booking',
+
+              type:
+                'positive',
+
+              preconditions: [],
+
+              actions: [
+                'Submit booking',
+              ],
+
+              expectedOutcomes: [
+                'Booking succeeds',
+              ],
+
+              evidenceReferences: [
+                'REQ-1',
+              ],
+            },
+
+            {
+              title:
+                'Submit booking error',
+
+              type:
+                'negative',
+
+              preconditions: [],
+
+              actions: [
+                'Submit booking',
+              ],
+
+              expectedOutcomes: [
+                'Booking error is shown',
+              ],
+
+              evidenceReferences: [
+                'CON-1',
+              ],
+            },
+          ]);
+
+        expect(
+          result,
+        ).toHaveLength(2);
+      },
+    );
+  },
+);
