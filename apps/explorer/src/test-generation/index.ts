@@ -53,3 +53,25 @@ export type {
   AssertionTransition,
   BuildAssertionsInput,
 } from './assertion-planner.js';
+
+
+export {
+  testPlanAssertionMatcherSchema,
+  testPlanAssertionSchema,
+  testPlanAssertionTargetSchema,
+  testPlanIrSchema,
+  testPlanMetadataSchema,
+  testPlanStepOperationSchema,
+  testPlanStepSchema,
+  testPlanTargetSchema,
+} from './test-plan-ir.js';
+
+export type {
+  TestPlanAssertion,
+  TestPlanAssertionMatcher,
+  TestPlanAssertionTarget,
+  TestPlanIr,
+  TestPlanStep,
+  TestPlanStepOperation,
+  TestPlanTarget,
+} from './test-plan-ir.js';
