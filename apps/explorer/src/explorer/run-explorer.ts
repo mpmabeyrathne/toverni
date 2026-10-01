@@ -879,6 +879,10 @@ export async function runExplorer(
                   actionId:
                     transition.actionId,
 
+                  actionTarget:
+                    transition
+                      .actionTarget,
+
                   explorationBlocked:
                     transition
                       .explorationBlocked,
