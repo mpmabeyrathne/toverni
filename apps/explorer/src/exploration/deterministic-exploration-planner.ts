@@ -36,6 +36,17 @@ const DEFAULT_BUDGET:
   maxActionsPerState: 10,
 
   maxStates: 100,
+
+  maxDepth: 100,
+
+  maxVisitsPerState: 20,
+
+  maxFailures: 5,
+
+  maxModelCalls: 20,
+
+  maxDurationMs:
+    60 * 60 * 1000,
 };
 
 const SENSITIVE_INPUT_TYPES =
@@ -301,6 +312,76 @@ this.globalActionCounts.set(
   globalActionKey,
   globalActionCount + 1,
 );
+    }
+  }
+
+  restoreExecutionHistory(
+    executions:
+      Array<{
+        stateId: string;
+        signature: string;
+        actionType:
+          ActionElement['type'];
+        label: string;
+      }>,
+  ): void {
+    for (
+      const execution of
+        executions
+    ) {
+      let visited =
+        this.visitedActions.get(
+          execution.stateId,
+        );
+
+      if (!visited) {
+        visited =
+          new Set<string>();
+
+        this.visitedActions.set(
+          execution.stateId,
+          visited,
+        );
+      }
+
+      if (
+        visited.has(
+          execution.signature,
+        )
+      ) {
+        continue;
+      }
+
+      visited.add(
+        execution.signature,
+      );
+
+      this.totalActionsTaken +=
+        1;
+
+      this.stateActionCounts.set(
+        execution.stateId,
+        (
+          this.stateActionCounts.get(
+            execution.stateId,
+          ) ?? 0
+        ) + 1,
+      );
+
+      const globalKey =
+        this.createGlobalActionKey(
+          execution.actionType,
+          execution.label,
+        );
+
+      this.globalActionCounts.set(
+        globalKey,
+        (
+          this.globalActionCounts.get(
+            globalKey,
+          ) ?? 0
+        ) + 1,
+      );
     }
   }
 
