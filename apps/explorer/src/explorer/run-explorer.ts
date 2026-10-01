@@ -443,7 +443,7 @@ export async function runExplorer(
                     timeoutMs:
                         input.timeouts
                             ?.modelCallMs ??
-                        60_000,
+                        600_000,
                 },
             );
 
