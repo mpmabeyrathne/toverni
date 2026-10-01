@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: Local Grid Benchmark API
+  version: 1.0.0
+paths:
+  /api/orders:
+    get:
+      operationId: listOrders
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200': { description: Orders returned }
+  /api/orders/refresh:
+    post:
+      operationId: refreshOrders
+      responses:
+        '200': { description: Updated orders returned }
