@@ -62,6 +62,9 @@ export const formFieldMetadataSchema =
     checked:
       z.boolean().optional(),
 
+    value:
+      z.string().optional(),
+
     options:
       z.array(
         formOptionSchema,
