@@ -303,6 +303,31 @@ function createSemanticScenarioKey(
   scenario:
     GroundedScenarioCandidate,
 ): string {
+  if (
+    scenario.type ===
+    'navigation'
+  ) {
+    return [
+      scenario.type,
+      normalize(
+        scenario.title,
+      ),
+      scenario.actions
+        .map(
+          normalize,
+        )
+        .sort()
+        .join('|'),
+      scenario
+        .expectedOutcomes
+        .map(
+          normalize,
+        )
+        .sort()
+        .join('|'),
+    ].join('||');
+  }
+
   return [
     scenario.type,
     canonicalizeSemanticPhrase(
