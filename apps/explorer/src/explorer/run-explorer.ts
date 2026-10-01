@@ -638,6 +638,77 @@ export async function runExplorer(
                 groundedBusinessBehaviors,
             );
 
+        const preGenerationCoverage =
+            buildCoverageReport({
+                targets:
+                    coverageTargets,
+
+                scenarios:
+                    currentFlow
+                        .generatedScenarios
+                        .map(
+                            (scenario) => ({
+                                id:
+                                    scenario.id,
+
+                                evidenceReferences:
+                                    scenario
+                                        .evidenceReferences,
+
+                                accepted:
+                                    true,
+                            }),
+                        ),
+
+                tests:
+                    currentFlow
+                        .generatedTests
+                        .map(
+                            (test) => ({
+                                id:
+                                    test.id,
+
+                                scenarioId:
+                                    test.scenarioId,
+
+                                status:
+                                    resolveCoverageTestStatus(
+                                        test.generationStatus,
+                                        test.executionStatus,
+                                    ),
+                            }),
+                        ),
+            });
+
+        const scenarioCoverageGaps =
+            preGenerationCoverage
+                .gaps
+                .filter(
+                    (entry) =>
+                        entry.status ===
+                            'uncovered' ||
+                        entry.status ===
+                            'partially_covered',
+                )
+                .map(
+                    (entry) => ({
+                        targetId:
+                            entry.target.id,
+
+                        kind:
+                            entry.target.kind,
+
+                        status:
+                            entry.status as
+                                | 'uncovered'
+                                | 'partially_covered',
+
+                        evidenceReferences:
+                            entry.target
+                                .evidenceReferences,
+                    }),
+                );
+
         // --------------------------------
         // Grounded scenario generation
         // --------------------------------
@@ -656,54 +727,15 @@ export async function runExplorer(
       await scenarioGenerator
         .generate({
           evidence,
+          coverageGaps:
+            scenarioCoverageGaps,
         });
   
-    const actionBackedScenarios =
-      generatedScenarios.filter(
-        (scenario) =>
-          scenario
-            .evidenceReferences
-            .some(
-              (reference) =>
-                reference.startsWith(
-                  'ACTION-',
-                ),
-            ),
-      );
-  
-    const otherScenarios =
-      generatedScenarios.filter(
-        (scenario) =>
-          !scenario
-            .evidenceReferences
-            .some(
-              (reference) =>
-                reference.startsWith(
-                  'ACTION-',
-                ),
-            ),
-      );
-  
-    const selectedActionScenarios =
-      actionBackedScenarios
-        .slice(
-          0,
-          2,
-        );
-  
-    const scenarios = [
-      ...selectedActionScenarios,
-  
-      ...otherScenarios.slice(
+    const scenarios =
+      generatedScenarios.slice(
         0,
-        Math.max(
-          0,
-          8 -
-            selectedActionScenarios
-              .length,
-        ),
-      ),
-    ];
+        8,
+      );
   
     const storedScenarios =
       await activeRepository
@@ -720,6 +752,23 @@ export async function runExplorer(
   
         scenarioCount:
           scenarios.length,
+
+        coverageGapCount:
+          scenarioCoverageGaps.length,
+
+        coverageGaps:
+          scenarioCoverageGaps.map(
+            (gap) => ({
+              targetId:
+                gap.targetId,
+
+              kind:
+                gap.kind,
+
+              status:
+                gap.status,
+            }),
+          ),
   
         scenarios:
           scenarios.map(
@@ -742,6 +791,10 @@ export async function runExplorer(
               evidenceReferences:
                 scenario
                   .evidenceReferences,
+
+              rankingReasons:
+                scenario
+                  .rankingReasons,
             }),
           ),
       },
