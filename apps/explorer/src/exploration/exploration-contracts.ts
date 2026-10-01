@@ -72,6 +72,9 @@ export interface ExplorationCheckpoint {
 
   completedExecutions:
     ExplorationExecutionCheckpoint[];
+
+  stopReason?:
+    ExplorationStopReason | null;
 }
 
 export interface ExplorationProductContext {
