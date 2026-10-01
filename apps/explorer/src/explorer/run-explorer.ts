@@ -56,6 +56,7 @@ import {
 import {
     DeterministicExplorationPlanner,
     runExplorationLoop,
+    type ExplorationBudget,
 } from '../exploration/index.js';
 
 import {
@@ -70,6 +71,7 @@ import {
 } from '../knowledge/index.js';
 
 import {
+    BoundedModelProvider,
     OllamaProvider,
     RecordingModelProvider,
 } from '../models/index.js';
@@ -89,6 +91,18 @@ export interface RunExplorerInput {
     headless?: boolean;
 
     artifactsDirectory?: string;
+
+    resumeRunId?: string;
+
+    explorationBudget?:
+        Partial<ExplorationBudget>;
+
+    timeouts?: {
+        navigationMs?: number;
+        actionMs?: number;
+        modelCallMs?: number;
+        testMs?: number;
+    };
 }
 
 type ApplicationFlow =
@@ -135,6 +149,8 @@ export async function runExplorer(
                 false,
 
             timeoutMs:
+                input.timeouts
+                    ?.actionMs ??
                 15_000,
 
             artifactsDirectory:
@@ -145,14 +161,24 @@ export async function runExplorer(
     const stateModel =
         new ApplicationStateModel();
 
+    const explorationBudget:
+        ExplorationBudget = {
+        maxActions: 50,
+        maxActionsPerState: 10,
+        maxStates: 100,
+        maxDepth: 100,
+        maxVisitsPerState: 20,
+        maxFailures: 5,
+        maxModelCalls: 20,
+        maxDurationMs:
+            60 * 60 * 1000,
+        ...input.explorationBudget,
+    };
+
     const planner =
         new DeterministicExplorationPlanner(
             stateModel,
-            {
-                maxActions: 50,
-                maxActionsPerState: 10,
-                maxStates: 100,
-            },
+            explorationBudget,
         );
 
     let databaseConnection:
@@ -291,33 +317,75 @@ export async function runExplorer(
         // Exploration run
         // --------------------------------
 
+        const existingRun =
+            input.resumeRunId
+                ? await activeRepository
+                    .getRun(
+                        input.resumeRunId,
+                    )
+                : null;
+
+        if (
+            input.resumeRunId &&
+            !existingRun
+        ) {
+            throw new Error(
+                'Requested exploration run was not found for resume.',
+            );
+        }
+
+        if (
+            existingRun &&
+            existingRun.applicationId !==
+                application.id
+        ) {
+            throw new Error(
+                'Requested exploration run belongs to a different application.',
+            );
+        }
+
         const run =
-            await activeRepository
-                .startRun({
-                    applicationId:
-                        application.id,
+            existingRun
+                ? await activeRepository
+                    .resumeRun(
+                        existingRun.id,
+                    )
+                : await activeRepository
+                    .startRun({
+                        applicationId:
+                            application.id,
 
-                    entryUrl:
-                        input.targetUrl,
+                        entryUrl:
+                            input.targetUrl,
 
-                    context: {
-                        environment:
-                            environment.NODE_ENV,
+                        context: {
+                            environment:
+                                environment.NODE_ENV,
 
-                        requirementsLoaded:
-                            knowledge.requirements !==
-                            null,
+                            requirementsLoaded:
+                                knowledge.requirements !==
+                                null,
 
-                        openApiLoaded:
-                            knowledge.openApi !==
-                            null,
+                            openApiLoaded:
+                                knowledge.openApi !==
+                                null,
 
-                        apiOperationCount:
-                            knowledge.openApi
-                                ?.operations.length ??
-                            0,
-                    },
-                });
+                            apiOperationCount:
+                                knowledge.openApi
+                                    ?.operations.length ??
+                                0,
+
+                            explorationBudget,
+                        },
+                    });
+
+        const checkpoint =
+            existingRun
+                ? await activeRepository
+                    .getRunCheckpoint(
+                        run.id,
+                    )
+                : null;
 
         currentRunId =
             run.id;
@@ -361,9 +429,27 @@ export async function runExplorer(
                         .OLLAMA_COMPLEX_MODEL,
             });
 
+        const boundedModelProvider =
+            new BoundedModelProvider(
+                rawModelProvider,
+                {
+                    maxCalls:
+                        explorationBudget
+                            .maxModelCalls,
+
+                    retryAttempts:
+                        2,
+
+                    timeoutMs:
+                        input.timeouts
+                            ?.modelCallMs ??
+                        600_000,
+                },
+            );
+
         const modelProvider =
             new RecordingModelProvider(
-                rawModelProvider,
+                boundedModelProvider,
 
                 async (
                     task,
@@ -391,9 +477,85 @@ export async function runExplorer(
         const session =
             await browser.createSession();
 
-        await session.navigate(
-            input.targetUrl,
-        );
+        {
+            const navigationTarget =
+                checkpoint
+                    ?.currentUrl ??
+                input.targetUrl;
+
+            let lastNavigationError:
+                unknown;
+
+            for (
+                let attempt = 1;
+                attempt <= 2;
+                attempt += 1
+            ) {
+                try {
+                    let timeoutHandle:
+                        ReturnType<
+                            typeof setTimeout
+                        > |
+                        undefined;
+
+                    try {
+                        await Promise.race([
+                            session.navigate(
+                                navigationTarget,
+                            ),
+
+                            new Promise<never>(
+                                (
+                                    _resolve,
+                                    reject,
+                                ) => {
+                                    timeoutHandle =
+                                        setTimeout(
+                                            () => {
+                                                reject(
+                                                    new Error(
+                                                        'Navigation timed out.',
+                                                    ),
+                                                );
+                                            },
+                                            input.timeouts
+                                                ?.navigationMs ??
+                                            30_000,
+                                        );
+                                },
+                            ),
+                        ]);
+                    } finally {
+                        if (
+                            timeoutHandle !==
+                            undefined
+                        ) {
+                            clearTimeout(
+                                timeoutHandle,
+                            );
+                        }
+                    }
+
+                    lastNavigationError =
+                        undefined;
+
+                    break;
+                } catch (
+                    error:
+                        unknown
+                ) {
+                    lastNavigationError =
+                        error;
+                }
+            }
+
+            if (
+                lastNavigationError !==
+                undefined
+            ) {
+                throw lastNavigationError;
+            }
+        }
 
         logger.info(
             {
@@ -518,6 +680,16 @@ export async function runExplorer(
                 knowledge,
 
                 analyzeObservation,
+
+                budget:
+                    explorationBudget,
+
+                checkpoint,
+
+                getModelCallCount:
+                    () =>
+                        boundedModelProvider
+                            .getCallCount(),
             });
 
         const initialObservation =
@@ -1011,6 +1183,11 @@ export async function runExplorer(
   
               workingDirectory:
                 process.cwd(),
+
+              timeoutMs:
+                input.timeouts
+                  ?.testMs ??
+                60_000,
             });
   
           await activeRepository

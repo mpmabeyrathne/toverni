@@ -10,6 +10,8 @@ export {
   
   export type {
     ExplorationBudget,
+    ExplorationCheckpoint,
+    ExplorationExecutionCheckpoint,
     ExplorationCandidate,
     ExplorationDecision,
     ExplorationProductContext,

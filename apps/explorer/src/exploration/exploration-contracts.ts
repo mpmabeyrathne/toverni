@@ -25,6 +25,56 @@ export interface ExplorationBudget {
   maxActionsPerState: number;
 
   maxStates: number;
+
+  maxDepth: number;
+
+  maxVisitsPerState: number;
+
+  maxFailures: number;
+
+  maxModelCalls: number;
+
+  maxDurationMs: number;
+}
+
+export interface ExplorationExecutionCheckpoint {
+  stateId: string;
+
+  signature: string;
+
+  actionType:
+    ActionElement['type'];
+
+  label: string;
+}
+
+export interface ExplorationCheckpoint {
+  version:
+    1;
+
+  currentUrl:
+    string;
+
+  depth:
+    number;
+
+  failures:
+    number;
+
+  modelCalls:
+    number;
+
+  startedAt:
+    string;
+
+  updatedAt:
+    string;
+
+  completedExecutions:
+    ExplorationExecutionCheckpoint[];
+
+  stopReason?:
+    ExplorationStopReason | null;
 }
 
 export interface ExplorationProductContext {
@@ -113,6 +163,11 @@ export type ExplorationStopReason =
   | 'max-actions-reached'
   | 'max-actions-per-state-reached'
   | 'max-states-reached'
+  | 'max-depth-reached'
+  | 'max-visits-per-state-reached'
+  | 'max-failures-reached'
+  | 'max-model-calls-reached'
+  | 'max-duration-reached'
   | 'no-eligible-actions';
 
 export interface ExplorationDecision {

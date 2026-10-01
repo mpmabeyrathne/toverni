@@ -22,6 +22,10 @@ import {
 } from './deterministic-exploration-planner.js';
 
 import {
+    createActionSignature,
+} from './action-candidate.js';
+
+import {
     runExplorationLoop,
     type RunExplorationLoopInput,
 } from './run-exploration-loop.js';
@@ -32,6 +36,17 @@ type Observation =
             BrowserSession['observe']
         >
     >;
+
+const TEST_BUDGET = {
+    maxActions: 10,
+    maxActionsPerState: 5,
+    maxStates: 10,
+    maxDepth: 10,
+    maxVisitsPerState: 10,
+    maxFailures: 3,
+    maxModelCalls: 10,
+    maxDurationMs: 60_000,
+} as const;
 
 function createObservation(
     input: {
@@ -697,6 +712,13 @@ describe(
                         saveDecision,
 
                         saveTransition,
+
+                        saveRunCheckpoint:
+                            vi.fn(
+                                async () => {
+                                    // No-op.
+                                },
+                            ),
                     } as unknown as
                     RunExplorationLoopInput[
                     'repository'
@@ -724,6 +746,9 @@ describe(
 
                         priorityTerms:
                             [],
+
+                        budget:
+                            TEST_BUDGET,
                     });
 
                 // --------------------------------
@@ -987,6 +1012,13 @@ describe(
                 saveObservationEvidence,
                 saveDecision,
                 saveTransition,
+
+                saveRunCheckpoint:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
               } as unknown as
                 RunExplorationLoopInput[
                   'repository'
@@ -1012,6 +1044,9 @@ describe(
                     'run-openapi-context',
           
                   priorityTerms: [],
+
+                  budget:
+                    TEST_BUDGET,
           
                   knowledge,
                 });
@@ -1188,6 +1223,13 @@ describe(
                 saveObservationEvidence,
                 saveDecision,
                 saveTransition,
+
+                saveRunCheckpoint:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
               } as unknown as
                 RunExplorationLoopInput[
                   'repository'
@@ -1210,6 +1252,9 @@ describe(
                     'run-network-scope',
           
                   priorityTerms: [],
+
+                  budget:
+                    TEST_BUDGET,
           
                   knowledge:
                     createRuntimeKnowledge(),
@@ -1265,6 +1310,303 @@ describe(
                 result.stopReason,
               ).toBe(
                 'no-eligible-actions',
+              );
+            },
+          );
+
+          it(
+            'resumes from checkpoint without re-executing a completed action',
+            async () => {
+              const observation =
+                createObservation({
+                  semanticText: [
+                    'Page A',
+                    'Next',
+                  ],
+
+                  actionName:
+                    'Next',
+                });
+
+              const observe =
+                vi.fn(
+                  async () =>
+                    observation,
+                );
+
+              const click =
+                vi.fn(
+                  async () => {
+                    // Must not run for completed action.
+                  },
+                );
+
+              const session = {
+                observe,
+                click,
+              } as unknown as
+                BrowserSession;
+
+              const stateModel =
+                new ApplicationStateModel();
+
+              const initialState =
+                stateModel
+                  .registerObservation(
+                    observation,
+                  )
+                  .state;
+
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                  TEST_BUDGET,
+                );
+
+              const saveRunCheckpoint =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+
+              const repository = {
+                saveState:
+                  vi.fn(
+                    async (
+                      _applicationId:
+                        string,
+
+                      state: {
+                        id:
+                          string;
+                      },
+                    ) => ({
+                      id:
+                        state.id,
+                    }),
+                  ),
+
+                saveObservationEvidence:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+
+                saveDecision:
+                  vi.fn(
+                    async () => ({
+                      decision: {
+                        id:
+                          'decision-resume',
+                      },
+
+                      selectedActionId:
+                        null,
+                    }),
+                  ),
+
+                saveTransition:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+
+                saveRunCheckpoint,
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+
+              const result =
+                await runExplorationLoop({
+                  session,
+
+                  stateModel,
+
+                  planner,
+
+                  repository,
+
+                  applicationId:
+                    'application-1',
+
+                  runId:
+                    'run-resume',
+
+                  priorityTerms: [],
+
+                  budget:
+                    TEST_BUDGET,
+
+                  checkpoint: {
+                    version:
+                      1,
+
+                    currentUrl:
+                      observation.url,
+
+                    depth:
+                      1,
+
+                    failures:
+                      0,
+
+                    modelCalls:
+                      0,
+
+                    startedAt:
+                      new Date()
+                        .toISOString(),
+
+                    updatedAt:
+                      new Date()
+                        .toISOString(),
+
+                    completedExecutions: [
+                      {
+                        stateId:
+                          initialState.id,
+
+                        signature:
+                          createActionSignature(
+                            observation.actions[0]!,
+                          ),
+
+                        actionType:
+                          'button',
+
+                        label:
+                          'Next',
+                      },
+                    ],
+                  },
+                });
+
+              expect(
+                click,
+              ).not.toHaveBeenCalled();
+
+              expect(
+                result.stopReason,
+              ).toBe(
+                'no-eligible-actions',
+              );
+            },
+          );
+
+          it(
+            'stops with an explainable runtime budget reason',
+            async () => {
+              const observation =
+                createObservation({
+                  semanticText: [
+                    'Page A',
+                    'Next',
+                  ],
+
+                  actionName:
+                    'Next',
+                });
+
+              const session = {
+                observe:
+                  vi.fn(
+                    async () =>
+                      observation,
+                  ),
+
+                click:
+                  vi.fn(
+                    async () => {
+                      // Should not execute.
+                    },
+                  ),
+              } as unknown as
+                BrowserSession;
+
+              const stateModel =
+                new ApplicationStateModel();
+
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                  TEST_BUDGET,
+                );
+
+              const repository = {
+                saveState:
+                  vi.fn(
+                    async (
+                      _applicationId:
+                        string,
+
+                      state: {
+                        id:
+                          string;
+                      },
+                    ) => ({
+                      id:
+                        state.id,
+                    }),
+                  ),
+
+                saveObservationEvidence:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+
+                saveDecision:
+                  vi.fn(),
+
+                saveTransition:
+                  vi.fn(),
+
+                saveRunCheckpoint:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+
+              const result =
+                await runExplorationLoop({
+                  session,
+
+                  stateModel,
+
+                  planner,
+
+                  repository,
+
+                  applicationId:
+                    'application-1',
+
+                  runId:
+                    'run-budget',
+
+                  priorityTerms: [],
+
+                  budget: {
+                    ...TEST_BUDGET,
+
+                    maxDepth:
+                      0,
+                  },
+                });
+
+              expect(
+                result.stopReason,
+              ).toBe(
+                'max-depth-reached',
               );
             },
           );
