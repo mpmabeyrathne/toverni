@@ -64,7 +64,7 @@ import {
     }
   
     const lines: string[] = [
-      `import { test } from '@playwright/test';`,
+      `import { expect, test } from '@playwright/test';`,
       '',
       'const scenario = {',
       `  id: ${quote(
@@ -103,6 +103,33 @@ import {
       lines.push(
         `  await ${step.playwright}`,
       );
+
+      const assertions =
+        input.plan
+          .assertions
+          .filter(
+            (assertion) =>
+              assertion
+                .afterActionId ===
+              step.actionId,
+          );
+
+      for (
+        const assertion of
+          assertions
+      ) {
+        lines.push(
+          `  // Assertion evidence: ${assertion.evidenceReferences.join(', ')}`,
+        );
+
+        lines.push(
+          `  // ${assertion.description}`,
+        );
+
+        lines.push(
+          `  await ${assertion.playwright}`,
+        );
+      }
   
       lines.push('');
     }
