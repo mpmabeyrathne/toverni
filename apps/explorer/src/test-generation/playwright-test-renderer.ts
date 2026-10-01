@@ -7,11 +7,16 @@ import {
   join,
 } from 'node:path';
 
+import type {
+  BrowserTarget,
+} from '../browser/index.js';
+
 import {
   testPlanIrSchema,
   type TestPlanAssertion,
   type TestPlanIr,
   type TestPlanStepOperation,
+  type TestPlanTarget,
 } from './test-plan-ir.js';
 
 import {
@@ -43,6 +48,92 @@ function quote(
   );
 }
 
+function toBrowserTarget(
+  target:
+    TestPlanTarget,
+): BrowserTarget {
+  switch (
+    target.by
+  ) {
+    case 'role':
+      return {
+        by:
+          'role',
+
+        role:
+          target.role,
+
+        ...(target.name !==
+          undefined
+          ? {
+              name:
+                target.name,
+            }
+          : {}),
+
+        ...(target.exact !==
+          undefined
+          ? {
+              exact:
+                target.exact,
+            }
+          : {}),
+      };
+
+    case 'label':
+      return {
+        by:
+          'label',
+
+        label:
+          target.label,
+
+        ...(target.exact !==
+          undefined
+          ? {
+              exact:
+                target.exact,
+            }
+          : {}),
+      };
+
+    case 'text':
+      return {
+        by:
+          'text',
+
+        text:
+          target.text,
+
+        ...(target.exact !==
+          undefined
+          ? {
+              exact:
+                target.exact,
+            }
+          : {}),
+      };
+
+    case 'testId':
+      return {
+        by:
+          'testId',
+
+        value:
+          target.value,
+      };
+
+    case 'css':
+      return {
+        by:
+          'css',
+
+        selector:
+          target.selector,
+      };
+  }
+}
+
 function createSafeFileName(
   scenarioId:
     string,
@@ -68,7 +159,9 @@ function compileOperation(
   ) {
     case 'click':
       return `${renderPlaywrightLocator(
-        operation.target,
+        toBrowserTarget(
+          operation.target,
+        ),
       )}.click();`;
   }
 }
@@ -82,8 +175,10 @@ function compileAssertion(
     'page'
       ? 'page'
       : renderPlaywrightLocator(
-          assertion.target
-            .target,
+          toBrowserTarget(
+            assertion.target
+              .target,
+          ),
         );
 
   switch (
