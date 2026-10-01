@@ -139,7 +139,7 @@ function compileAssertion(
   }
 }
 
-export function renderPlaywrightTest(
+export function compilePlaywrightTest(
   input:
     RenderPlaywrightTestInput,
 ): string {
@@ -248,7 +248,7 @@ export async function writePlaywrightTest(
   WrittenPlaywrightTest
 > {
   const source =
-    renderPlaywrightTest(
+    compilePlaywrightTest(
       input,
     );
 
@@ -282,3 +282,7 @@ export async function writePlaywrightTest(
     source,
   };
 }
+
+
+export const renderPlaywrightTest =
+  compilePlaywrightTest;
