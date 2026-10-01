@@ -141,6 +141,8 @@ function mapToverniScenarios(
 
           executable,
 
+          runtimeStatus,
+
           evidenceReferences:
             asStringArray(
               scenario
