@@ -58,6 +58,28 @@ import {
                 'REQ-1',
               ],
             },
+
+            {
+              title:
+                'Book available room',
+  
+              type:
+                'boundary' as const,
+  
+              preconditions: [],
+  
+              actions: [
+                'Book an available room',
+              ],
+  
+              expectedOutcomes: [
+                'Booking succeeds',
+              ],
+  
+              evidenceReferences: [
+                'REQ-1',
+              ],
+            },
           ];
   
           const result =
