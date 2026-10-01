@@ -186,7 +186,78 @@ export const testPlanAssertionSchema =
         z.string(),
       )
         .min(1),
-  });
+  })
+    .superRefine(
+      (
+        assertion,
+        context,
+      ) => {
+        if (
+          assertion.matcher ===
+          'url'
+        ) {
+          if (
+            assertion.target.kind !==
+              'page' ||
+            typeof assertion.expected !==
+              'string'
+          ) {
+            context.addIssue({
+              code:
+                'custom',
+
+              message:
+                'URL assertions require a page target and string expected value.',
+            });
+          }
+
+          return;
+        }
+
+        if (
+          assertion.target.kind !==
+          'locator'
+        ) {
+          context.addIssue({
+            code:
+              'custom',
+
+            message:
+              'Non-URL assertions require a locator target.',
+          });
+        }
+
+        if (
+          assertion.matcher ===
+            'count' &&
+          typeof assertion.expected !==
+            'number'
+        ) {
+          context.addIssue({
+            code:
+              'custom',
+
+            message:
+              'Count assertions require a numeric expected value.',
+          });
+        }
+
+        if (
+          assertion.matcher ===
+            'value' &&
+          typeof assertion.expected !==
+            'string'
+        ) {
+          context.addIssue({
+            code:
+              'custom',
+
+            message:
+              'Value assertions require a string expected value.',
+          });
+        }
+      },
+    );
 
 export const testPlanMetadataSchema =
   z.object({
