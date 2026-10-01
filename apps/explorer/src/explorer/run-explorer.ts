@@ -596,56 +596,6 @@ export async function runExplorer(
                 knowledge,
             });
 
-        const coverage =
-            buildCoverageReport({
-                targets:
-                    coverageTargets,
-
-                scenarios:
-                    flow.generatedScenarios
-                        .filter(
-                            (scenario) =>
-                                scenario.runId ===
-                                run.id,
-                        )
-                        .map(
-                            (scenario) => ({
-                                id:
-                                    scenario.id,
-
-                                evidenceReferences:
-                                    scenario
-                                        .evidenceReferences,
-
-                                accepted:
-                                    true,
-                            }),
-                        ),
-
-                tests:
-                    flow.generatedTests
-                        .filter(
-                            (test) =>
-                                test.runId ===
-                                run.id,
-                        )
-                        .map(
-                            (test) => ({
-                                id:
-                                    test.id,
-
-                                scenarioId:
-                                    test.scenarioId,
-
-                                status:
-                                    resolveCoverageTestStatus(
-                                        test.generationStatus,
-                                        test.executionStatus,
-                                    ),
-                            }),
-                        ),
-            });
-
         logger.info(
             {
                 applicationId:
@@ -685,6 +635,7 @@ export async function runExplorer(
         const coverageTargets =
             buildCoverageTargets(
                 evidence,
+                groundedBusinessBehaviors,
             );
 
         // --------------------------------
@@ -1101,6 +1052,56 @@ export async function runExplorer(
                 'Application flow was not available after exploration.',
             );
         }
+
+        const coverage =
+            buildCoverageReport({
+                targets:
+                    coverageTargets,
+
+                scenarios:
+                    flow.generatedScenarios
+                        .filter(
+                            (scenario) =>
+                                scenario.runId ===
+                                run.id,
+                        )
+                        .map(
+                            (scenario) => ({
+                                id:
+                                    scenario.id,
+
+                                evidenceReferences:
+                                    scenario
+                                        .evidenceReferences,
+
+                                accepted:
+                                    true,
+                            }),
+                        ),
+
+                tests:
+                    flow.generatedTests
+                        .filter(
+                            (test) =>
+                                test.runId ===
+                                run.id,
+                        )
+                        .map(
+                            (test) => ({
+                                id:
+                                    test.id,
+
+                                scenarioId:
+                                    test.scenarioId,
+
+                                status:
+                                    resolveCoverageTestStatus(
+                                        test.generationStatus,
+                                        test.executionStatus,
+                                    ),
+                            }),
+                        ),
+            });
 
         logger.info(
             {
