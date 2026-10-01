@@ -21,6 +21,7 @@ import type {
 } from '../models/index.js';
 
 import type {
+  ExplorationCheckpoint,
   ExplorationDecision,
 } from '../exploration/exploration-contracts.js';
 
@@ -146,6 +147,142 @@ export class ExplorationRepository {
     }
 
     return run;
+  }
+
+  async getRun(
+    runId:
+      string,
+  ) {
+    const [run] =
+      await this.db
+        .select()
+        .from(
+          explorationRuns,
+        )
+        .where(
+          eq(
+            explorationRuns.id,
+            runId,
+          ),
+        )
+        .limit(1);
+
+    return run ??
+      null;
+  }
+
+  async resumeRun(
+    runId:
+      string,
+  ) {
+    const [run] =
+      await this.db
+        .update(
+          explorationRuns,
+        )
+        .set({
+          status:
+            'running',
+
+          completedAt:
+            null,
+        })
+        .where(
+          eq(
+            explorationRuns.id,
+            runId,
+          ),
+        )
+        .returning();
+
+    if (!run) {
+      throw new Error(
+        'Exploration run not found for resume.',
+      );
+    }
+
+    return run;
+  }
+
+  async saveRunCheckpoint(
+    runId:
+      string,
+
+    checkpoint:
+      ExplorationCheckpoint,
+  ): Promise<void> {
+    const run =
+      await this.getRun(
+        runId,
+      );
+
+    if (!run) {
+      throw new Error(
+        'Exploration run not found for checkpoint.',
+      );
+    }
+
+    await this.db
+      .update(
+        explorationRuns,
+      )
+      .set({
+        context: {
+          ...(run.context ??
+            {}),
+
+          explorationCheckpoint:
+            checkpoint,
+        },
+      })
+      .where(
+        eq(
+          explorationRuns.id,
+          runId,
+        ),
+      );
+  }
+
+  async getRunCheckpoint(
+    runId:
+      string,
+  ): Promise<
+    ExplorationCheckpoint | null
+  > {
+    const run =
+      await this.getRun(
+        runId,
+      );
+
+    if (
+      !run ||
+      !run.context ||
+      typeof run.context !==
+        'object'
+    ) {
+      return null;
+    }
+
+    const checkpoint =
+      (
+        run.context as
+          Record<
+            string,
+            unknown
+          >
+      )
+        .explorationCheckpoint;
+
+    if (
+      !checkpoint ||
+      typeof checkpoint !==
+        'object'
+    ) {
+      return null;
+    }
+
+    return checkpoint as
+      ExplorationCheckpoint;
   }
 
   async completeRun(
