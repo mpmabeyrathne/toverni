@@ -199,6 +199,25 @@ function createTransitionAction(
       if (
         selected.formExecution
           ?.kind ===
+        'upload-file'
+      ) {
+        return {
+          type:
+            'set-input-files',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .file
+              .name,
+        };
+      }
+
+      if (
+        selected.formExecution
+          ?.kind ===
         'fill'
       ) {
         return {
