@@ -190,6 +190,19 @@ function compileOperation(
       )}.setChecked(${String(
         operation.checked,
       )});`;
+
+    case 'set-input-files':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setInputFiles({ name: ${quote(
+        operation.file.name,
+      )}, mimeType: ${quote(
+        operation.file.mimeType,
+      )}, buffer: Buffer.from(${quote(
+        operation.file.content,
+      )}, "utf8") });`;
   }
 }
 
