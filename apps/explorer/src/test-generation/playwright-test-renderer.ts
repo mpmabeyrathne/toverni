@@ -163,6 +163,33 @@ function compileOperation(
           operation.target,
         ),
       )}.click();`;
+
+    case 'fill':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.fill(${quote(
+        operation.value,
+      )});`;
+
+    case 'select':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.selectOption(${quote(
+        operation.value,
+      )});`;
+
+    case 'set-checked':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setChecked(${String(
+        operation.checked,
+      )});`;
   }
 }
 
