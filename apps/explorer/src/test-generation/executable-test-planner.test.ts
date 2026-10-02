@@ -489,5 +489,217 @@ import {
         },
       );
 
+
+      it(
+        'replays business-flow preconditions before the target transition',
+        () => {
+          const observation = (
+            text:
+              string,
+          ) => ({
+            capturedAt:
+              '2026-10-02T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Example',
+
+            semanticText: [
+              text,
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions:
+              [],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          });
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-business-flow',
+
+                title:
+                  'Retry uploaded file',
+
+                evidenceReferences: [
+                  'FLOW-BUSINESS-1',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'FLOW-BUSINESS-1',
+
+                  type:
+                    'transition',
+
+                  source:
+                    'behavior-1',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-upload',
+
+                  label:
+                    'Upload',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Upload',
+
+                    exact:
+                      true,
+                  },
+                },
+
+                {
+                  id:
+                    'action-retry',
+
+                  label:
+                    'Retry',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Retry',
+
+                    exact:
+                      true,
+                  },
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-upload',
+
+                  actionId:
+                    'action-upload',
+
+                  actionTarget:
+                    'Upload',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-02T00:00:00.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Ready',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Upload failed',
+                    ),
+                },
+
+                {
+                  id:
+                    'transition-retry',
+
+                  actionId:
+                    'action-retry',
+
+                  actionTarget:
+                    'Retry',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-02T00:00:01.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Upload failed',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Upload succeeded',
+                    ),
+                },
+              ],
+
+              businessBehaviors: [
+                {
+                  id:
+                    'behavior-1',
+
+                  preconditionTransitionIds: [
+                    'transition-upload',
+                  ],
+
+                  transitionIds: [
+                    'transition-retry',
+                  ],
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps.map(
+              (step) =>
+                step.description,
+            ),
+          ).toEqual([
+            'Upload',
+            'Retry',
+          ]);
+
+          expect(
+            result.assertions.length,
+          ).toBeGreaterThan(
+            0,
+          );
+        },
+      );
+
     },
   );
