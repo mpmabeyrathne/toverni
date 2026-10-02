@@ -52,7 +52,6 @@ const DEFAULT_BUDGET:
 const SENSITIVE_INPUT_TYPES =
   new Set([
     'password',
-    'file',
     'hidden',
   ]);
 
@@ -769,6 +768,150 @@ this.globalActionCounts.set(
     );
   }
 
+  private createDeterministicUpload(
+    action:
+      ActionElement,
+  ):
+    | ExplorationFormExecution
+    | null {
+    const inputType =
+      action.formField
+        ?.inputType ??
+      action.inputType;
+
+    if (
+      action.type !==
+        'input' ||
+      inputType
+        ?.toLowerCase() !==
+        'file'
+    ) {
+      return null;
+    }
+
+    const accept =
+      action.formField
+        ?.accept
+        ?.split(',')
+        .map(
+          (value) =>
+            value.trim(),
+        )
+        .find(
+          (value) =>
+            value.length >
+            0,
+        );
+
+    let extension =
+      'txt';
+
+    let mimeType =
+      'text/plain';
+
+    if (
+      accept?.startsWith(
+        '.',
+      )
+    ) {
+      extension =
+        accept
+          .slice(1)
+          .replace(
+            /[^a-z0-9]+/gi,
+            '',
+          ) ||
+        'txt';
+
+      const mimeByExtension:
+        Record<
+          string,
+          string
+        > = {
+          txt:
+            'text/plain',
+
+          csv:
+            'text/csv',
+
+          json:
+            'application/json',
+
+          pdf:
+            'application/pdf',
+
+          png:
+            'image/png',
+
+          jpg:
+            'image/jpeg',
+
+          jpeg:
+            'image/jpeg',
+        };
+
+      mimeType =
+        mimeByExtension[
+          extension
+            .toLowerCase()
+        ] ??
+        'application/octet-stream';
+    } else if (
+      accept?.includes(
+        '/',
+      )
+    ) {
+      mimeType =
+        accept;
+
+      const subtype =
+        accept
+          .split('/')[1]
+          ?.split('+')[0]
+          ?.replace(
+            /[^a-z0-9]+/gi,
+            '',
+          );
+
+      if (subtype) {
+        extension =
+          subtype ===
+            'plain'
+            ? 'txt'
+            : subtype;
+      }
+    }
+
+    return {
+      kind:
+        'upload-file',
+
+      file: {
+        name:
+          `toverni-test.${extension}`,
+
+        mimeType,
+
+        content:
+          'Toverni deterministic upload fixture',
+      },
+
+      evidence: [
+        {
+          source:
+            accept
+              ? 'ui'
+              : 'fallback',
+
+          detail:
+            accept
+              ? `File input accept constraint: ${accept}`
+              : 'Deterministic file payload for unconstrained file input',
+        },
+      ],
+    };
+  }
+
   private createFormExecution(
     action:
       ActionElement,
@@ -789,6 +932,15 @@ this.globalActionCounts.set(
       )
     ) {
       return null;
+    }
+
+    const uploadExecution =
+      this.createDeterministicUpload(
+        action,
+      );
+
+    if (uploadExecution) {
+      return uploadExecution;
     }
 
     const resolutionContext =
