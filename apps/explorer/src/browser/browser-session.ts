@@ -26,6 +26,15 @@ import type {
         | string
         | string[],
     ): Promise<void>;
+
+    setInputFiles(
+      target: BrowserTarget,
+      file: {
+        name: string;
+        mimeType: string;
+        content: string;
+      },
+    ): Promise<void>;
   
     submit(
       target: BrowserTarget,
