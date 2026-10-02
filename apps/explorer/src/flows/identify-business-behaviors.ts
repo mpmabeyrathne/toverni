@@ -247,6 +247,7 @@ export function identifyBusinessBehaviors(
           compareBusinessBehaviorCandidates(
             behavior,
             existing,
+            transitionById,
           ) < 0
             ? behavior
             : existing;
@@ -594,14 +595,73 @@ function createBusinessBoundaryKey(
   );
 }
 
+const REPLAY_SETUP_ACTION_TYPES =
+  new Set([
+    'fill',
+    'select',
+    'set-input-files',
+  ]);
+
+function countReplaySetupPreconditions(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): number {
+  return behavior
+    .preconditionTransitionIds
+    .filter(
+      (transitionId) => {
+        const transition =
+          transitionById.get(
+            transitionId,
+          );
+
+        return (
+          transition !==
+            undefined &&
+          REPLAY_SETUP_ACTION_TYPES.has(
+            transition.action.type,
+          )
+        );
+      },
+    )
+    .length;
+}
+
 function compareBusinessBehaviorCandidates(
   first:
     BusinessBehaviorFlow,
 
   second:
     BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
 ): number {
+  const firstSetupCount =
+    countReplaySetupPreconditions(
+      first,
+      transitionById,
+    );
+
+  const secondSetupCount =
+    countReplaySetupPreconditions(
+      second,
+      transitionById,
+    );
+
   return (
+    secondSetupCount -
+      firstSetupCount ||
+
     first
       .preconditionTransitionIds
       .length -
