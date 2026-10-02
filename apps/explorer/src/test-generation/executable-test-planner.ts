@@ -468,34 +468,31 @@ function resolveActionBindings(
           []
         );
 
-  return transitionSequence
-    .map(
-      (transition) => {
-        const action =
-          actionForTransition(
-            transition,
-            actions,
-          );
+  const bindings:
+    ActionBinding[] = [];
 
-        if (!action) {
-          return null;
-        }
+  for (
+    const transition of
+      transitionSequence
+  ) {
+    const action =
+      actionForTransition(
+        transition,
+        actions,
+      );
 
-        return {
-          action,
-          transition,
-          evidenceReference,
-        };
-      },
-    )
-    .filter(
-      (
-        binding,
-      ): binding is
-        ActionBinding =>
-        binding !==
-        null,
-    );
+    if (!action) {
+      continue;
+    }
+
+    bindings.push({
+      action,
+      transition,
+      evidenceReference,
+    });
+  }
+
+  return bindings;
 }
 
 export function createExecutableTestPlan(
