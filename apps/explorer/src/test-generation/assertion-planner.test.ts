@@ -429,5 +429,78 @@ describe(
         ).toEqual([]);
       },
     );
+    it(
+      'uses equivalent-state transitions as assertion evidence',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-page',
+
+            actionEvidenceReference:
+              'ACTION-PAGE',
+
+            actionLabel:
+              'Next Page',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-PAGE',
+
+                type:
+                  'action',
+
+                source:
+                  'action-page',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-page',
+
+                actionId:
+                  'action-page',
+
+                actionTarget:
+                  'Next Page',
+
+                explorationBlocked:
+                  true,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Page 1',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Page 2',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (item) =>
+              item.description ===
+              'Observed text appeared: Page 2',
+          ),
+        ).toBe(
+          true,
+        );
+      },
+    );
+
   },
 );
