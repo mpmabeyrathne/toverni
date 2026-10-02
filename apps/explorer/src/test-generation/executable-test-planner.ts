@@ -6,6 +6,10 @@ import type {
   ActionElement,
 } from '../contracts/page-observation.js';
 
+import {
+  createBrowserTarget,
+} from '../exploration/action-candidate.js';
+
 import type {
   ExecutableTestPlan,
 } from './executable-test-contracts.js';
@@ -147,7 +151,79 @@ function matchingObservedAction(
         ) ===
         action.label,
     ) ??
+    transition
+      .beforeObservation
+      .actions
+      .find(
+        (observed) =>
+          observedActionLabel(
+            observed,
+          ) ===
+          action.label,
+      ) ??
     null;
+}
+
+function replayActionFromTransition(
+  transition:
+    AssertionTransition,
+): StoredAction | null {
+  const targetLabel =
+    transition.actionTarget
+      ?.trim();
+
+  if (!targetLabel) {
+    return null;
+  }
+
+  const observed =
+    [
+      ...transition
+        .afterObservation
+        .actions,
+      ...transition
+        .beforeObservation
+        .actions,
+    ].find(
+      (candidate) =>
+        observedActionLabel(
+          candidate,
+        ) ===
+        targetLabel,
+    );
+
+  if (!observed) {
+    return null;
+  }
+
+  const target =
+    createBrowserTarget(
+      observed,
+    );
+
+  if (!target) {
+    return null;
+  }
+
+  return {
+    id:
+      transition.actionId ??
+      `transition:${transition.id}`,
+
+    label:
+      targetLabel,
+
+    type:
+      observed.type,
+
+    target,
+
+    blocked:
+      false,
+
+    blockReasons:
+      [],
+  };
 }
 
 function stableTransitionForAction(
@@ -330,6 +406,35 @@ function actionOperation(
     return null;
   }
 
+  if (
+    transition
+      ?.actionType ===
+      'set-input-files'
+  ) {
+    const observed =
+      matchingObservedAction(
+        action,
+        transition,
+      );
+
+    if (!observed) {
+      return null;
+    }
+
+    return {
+      kind:
+        'set-input-files',
+
+      target:
+        action.target,
+
+      file:
+        deterministicFilePayload(
+          observed,
+        ),
+    };
+  }
+
   switch (
     action.type
   ) {
@@ -499,17 +604,21 @@ function actionForTransition(
   if (
     transition.actionTarget
   ) {
-    return (
+    const byLabel =
       actions.find(
         (action) =>
           action.label ===
           transition.actionTarget,
-      ) ??
-      null
-    );
+      );
+
+    if (byLabel) {
+      return byLabel;
+    }
   }
 
-  return null;
+  return replayActionFromTransition(
+    transition,
+  );
 }
 
 function resolveActionBindings(
