@@ -108,6 +108,30 @@ function observedTarget(
     return null;
   }
 
+  if (
+    action
+      .formField
+      ?.inputType
+      ?.toLowerCase() ===
+    'file'
+  ) {
+    return {
+      kind:
+        'locator',
+
+      target: {
+        by:
+          'label',
+
+        label:
+          name,
+
+        exact:
+          true,
+      },
+    };
+  }
+
   const role =
     action.type ===
       'input' ||
@@ -644,7 +668,20 @@ export function buildEvidenceBackedAssertions(
           .formField
           ?.value;
 
+      const fileInput =
+        beforeItem
+          .formField
+          ?.inputType
+          ?.toLowerCase() ===
+          'file' ||
+        afterItem
+          .formField
+          ?.inputType
+          ?.toLowerCase() ===
+          'file';
+
       if (
+        !fileInput &&
         afterValue !==
           undefined &&
         beforeValue !==
