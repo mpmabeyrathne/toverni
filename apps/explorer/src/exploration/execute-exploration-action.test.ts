@@ -788,5 +788,72 @@ describe(
         );
       },
     );
+
+    it(
+      'uploads a grounded deterministic file payload',
+      async () => {
+        const session =
+          createSession();
+
+        const target = {
+          by:
+            'label',
+
+          label:
+            'Upload file',
+
+          exact:
+            true,
+        } as const;
+
+        const file = {
+          name:
+            'toverni-test.txt',
+
+          mimeType:
+            'text/plain',
+
+          content:
+            'Toverni deterministic upload fixture',
+        };
+
+        const result =
+          await executeExplorationAction(
+            session,
+            {
+              type:
+                'input',
+
+              label:
+                'Upload file',
+
+              target,
+
+              formExecution: {
+                kind:
+                  'upload-file',
+
+                file,
+
+                evidence: [],
+              },
+            },
+          );
+
+        expect(
+          session.setInputFiles,
+        ).toHaveBeenCalledWith(
+          target,
+          file,
+        );
+
+        expect(
+          result.status,
+        ).toBe(
+          'executed',
+        );
+      },
+    );
+
   },
 );
