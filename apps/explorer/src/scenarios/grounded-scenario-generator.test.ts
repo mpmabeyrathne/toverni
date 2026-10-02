@@ -1118,5 +1118,231 @@ describe(
                 ]);
             },
         );
+
+        it(
+            'seeds a deterministic scenario from a grounded business behavior',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retrying succeeds and shows Uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Retry.',
+
+                                source:
+                                    'behavior-retry',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-retry',
+
+                                sourceFlowIds: [
+                                    'flow-1',
+                                ],
+
+                                name:
+                                    'Retry',
+
+                                startStateId:
+                                    'failed',
+
+                                endStateId:
+                                    'uploaded',
+
+                                stateIds: [
+                                    'failed',
+                                    'uploaded',
+                                ],
+
+                                transitionIds: [
+                                    'transition-retry',
+                                ],
+
+                                preconditionTransitionIds: [
+                                    'transition-upload',
+                                ],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-retry',
+
+                                        fromStateId:
+                                            'failed',
+
+                                        toStateId:
+                                            'uploaded',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Retry',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-retry',
+
+                                        detail:
+                                            'Observed recovery action Retry',
+
+                                        networkEventIds: [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'uploaded',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Uploaded',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Upload failed',
+                                    ],
+                                },
+
+                                requirementEvidenceIds: [
+                                    'REQ-4',
+                                ],
+
+                                apiOperationIds: [],
+
+                                apiOperationLinks: [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+
+                expect(
+                    result[0],
+                ).toMatchObject({
+                    title:
+                        'Observed flow: Retry',
+
+                    type:
+                        'recovery',
+
+                    actions: [
+                        'Retry',
+                    ],
+
+                    expectedOutcomes: [
+                        'Uploaded',
+                    ],
+
+                    evidenceReferences: [
+                        'FLOW-BUSINESS-1',
+                        'REQ-4',
+                    ],
+                });
+            },
+        );
+
     },
 );
