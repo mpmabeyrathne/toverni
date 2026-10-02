@@ -92,6 +92,45 @@ export const testPlanStepOperationSchema =
         target:
           testPlanTargetSchema,
       }),
+
+      z.object({
+        kind:
+          z.literal(
+            'fill',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        value:
+          z.string(),
+      }),
+
+      z.object({
+        kind:
+          z.literal(
+            'select',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        value:
+          z.string(),
+      }),
+
+      z.object({
+        kind:
+          z.literal(
+            'set-checked',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        checked:
+          z.boolean(),
+      }),
     ],
   );
 
