@@ -202,6 +202,118 @@ function stableTransitionForAction(
     null;
 }
 
+function deterministicFilePayload(
+  action:
+    ActionElement,
+): {
+  name: string;
+  mimeType: string;
+  content: string;
+} {
+  const accept =
+    action.formField
+      ?.accept
+      ?.split(',')
+      .map(
+        (value) =>
+          value.trim(),
+      )
+      .find(
+        (value) =>
+          value.length >
+          0,
+      );
+
+  let extension =
+    'txt';
+
+  let mimeType =
+    'text/plain';
+
+  if (
+    accept?.startsWith(
+      '.',
+    )
+  ) {
+    extension =
+      accept
+        .slice(1)
+        .replace(
+          /[^a-z0-9]+/gi,
+          '',
+        ) ||
+      'txt';
+
+    const mimeByExtension:
+      Record<
+        string,
+        string
+      > = {
+        txt:
+          'text/plain',
+
+        csv:
+          'text/csv',
+
+        json:
+          'application/json',
+
+        pdf:
+          'application/pdf',
+
+        png:
+          'image/png',
+
+        jpg:
+          'image/jpeg',
+
+        jpeg:
+          'image/jpeg',
+      };
+
+    mimeType =
+      mimeByExtension[
+        extension
+          .toLowerCase()
+      ] ??
+      'application/octet-stream';
+  } else if (
+    accept?.includes(
+      '/',
+    )
+  ) {
+    mimeType =
+      accept;
+
+    const subtype =
+      accept
+        .split('/')[1]
+        ?.split('+')[0]
+        ?.replace(
+          /[^a-z0-9]+/gi,
+          '',
+        );
+
+    if (subtype) {
+      extension =
+        subtype ===
+          'plain'
+          ? 'txt'
+          : subtype;
+    }
+  }
+
+  return {
+    name:
+      `toverni-test.${extension}`,
+
+    mimeType,
+
+    content:
+      'Toverni deterministic upload fixture',
+  };
+}
+
 function actionOperation(
   action:
     StoredAction,
@@ -240,6 +352,27 @@ function actionOperation(
           action,
           transition,
         );
+
+      if (
+        observed
+          ?.formField
+          ?.inputType
+          ?.toLowerCase() ===
+        'file'
+      ) {
+        return {
+          kind:
+            'set-input-files',
+
+          target:
+            action.target,
+
+          file:
+            deterministicFilePayload(
+              observed,
+            ),
+        };
+      }
 
       const value =
         observed
