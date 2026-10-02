@@ -984,5 +984,139 @@ describe(
                 );
             },
         );
+
+
+        it(
+            'propagates linked requirement provenance from grounded business-flow evidence',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Upload valid file',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Upload valid file',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Upload is accepted',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'FLOW-BUSINESS-1',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'A valid text file can be uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: upload valid file.',
+
+                                source:
+                                    'behavior-1',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-1',
+                                ],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+
+                expect(
+                    result[0]
+                        ?.evidenceReferences,
+                ).toEqual([
+                    'FLOW-BUSINESS-1',
+                    'REQ-1',
+                ]);
+            },
+        );
     },
 );
