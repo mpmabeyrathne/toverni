@@ -252,5 +252,64 @@ describe(
         );
       },
     );
+
+    it(
+      'compiles deterministic file payloads into setInputFiles calls',
+      () => {
+        const source =
+          compilePlaywrightTest({
+            targetUrl:
+              'https://example.com',
+
+            plan: {
+              ...readyPlan,
+
+              steps: [
+                {
+                  ...readyPlan
+                    .steps[0],
+
+                  description:
+                    'Upload file',
+
+                  operation: {
+                    kind:
+                      'set-input-files',
+
+                    target: {
+                      by:
+                        'label',
+
+                      label:
+                        'Upload file',
+
+                      exact:
+                        true,
+                    },
+
+                    file: {
+                      name:
+                        'toverni-test.txt',
+
+                      mimeType:
+                        'text/plain',
+
+                      content:
+                        'Toverni deterministic upload fixture',
+                    },
+                  },
+                },
+              ],
+            },
+          });
+
+        expect(
+          source,
+        ).toContain(
+          '.setInputFiles({ name: "toverni-test.txt", mimeType: "text/plain", buffer: Buffer.from("Toverni deterministic upload fixture", "utf8") });',
+        );
+      },
+    );
+
   },
 );
