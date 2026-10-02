@@ -37,6 +37,45 @@ interface EvidenceItem {
   source: string;
 }
 
+const EXPLORATION_ONLY_BLOCK_REASONS =
+  new Set([
+    'Action has already been visited in this state',
+    'Action already exists in the discovered flow graph',
+  ]);
+
+function generationBlockingReasons(
+  action:
+    StoredAction,
+): string[] {
+  if (
+    action.blocked !==
+    true
+  ) {
+    return [];
+  }
+
+  const reasons =
+    action.blockReasons ??
+    [];
+
+  if (
+    reasons.length ===
+    0
+  ) {
+    return [
+      'action is blocked',
+    ];
+  }
+
+  return reasons.filter(
+    (reason) =>
+      !EXPLORATION_ONLY_BLOCK_REASONS
+        .has(
+          reason,
+        ),
+  );
+}
+
 export interface CreateExecutablePlanInput {
   scenario:
     StoredScenario;
@@ -56,7 +95,6 @@ function actionOperation(
     StoredAction,
 ): ExecutableTestPlan['steps'][number]['operation'] | null {
   if (
-    action.blocked === true ||
     action.target === null
   ) {
     return null;
@@ -147,29 +185,22 @@ export function createExecutableTestPlan(
     // Block unsafe/non-actionable action
     // --------------------------------
 
-    if (
-      action.blocked === true
-    ) {
-      const reasons =
-        action.blockReasons ??
-        [];
+    const blockingReasons =
+      generationBlockingReasons(
+        action,
+      );
 
-      if (
-        reasons.length ===
-        0
+    if (
+      blockingReasons.length >
+      0
+    ) {
+      for (
+        const reason of
+          blockingReasons
       ) {
         blockedActionReasons.add(
-          `${action.label}: action is blocked`,
+          `${action.label}: ${reason}`,
         );
-      } else {
-        for (
-          const reason of
-            reasons
-        ) {
-          blockedActionReasons.add(
-            `${action.label}: ${reason}`,
-          );
-        }
       }
 
       continue;
