@@ -901,6 +901,9 @@ export async function runExplorer(
           evidence,
           coverageGaps:
             scenarioCoverageGaps,
+
+          businessBehaviors:
+            groundedBusinessBehaviors,
         });
   
     const scenarios =
