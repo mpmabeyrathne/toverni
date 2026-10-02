@@ -1084,6 +1084,10 @@ export async function runExplorer(
                   id:
                     behavior.id,
 
+                  preconditionTransitionIds:
+                    behavior
+                      .preconditionTransitionIds,
+
                   transitionIds:
                     behavior
                       .transitionIds,
