@@ -131,6 +131,30 @@ export const testPlanStepOperationSchema =
         checked:
           z.boolean(),
       }),
+
+      z.object({
+        kind:
+          z.literal(
+            'set-input-files',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        file:
+          z.object({
+            name:
+              z.string()
+                .min(1),
+
+            mimeType:
+              z.string()
+                .min(1),
+
+            content:
+              z.string(),
+          }),
+      }),
     ],
   );
 
