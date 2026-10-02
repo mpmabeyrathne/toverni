@@ -328,5 +328,166 @@ import {
           ).toEqual([]);
         },
       );
+      it(
+        'allows exploration-history blocks to be replayed in generated tests',
+        () => {
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-history-replay',
+
+                title:
+                  'Navigate to next page',
+
+                evidenceReferences: [
+                  'ACTION-HISTORY',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'ACTION-HISTORY',
+
+                  type:
+                    'action',
+
+                  source:
+                    'action-history',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-history',
+
+                  label:
+                    'Next Page',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Next Page',
+
+                    exact:
+                      true,
+                  },
+
+                  blocked:
+                    true,
+
+                  blockReasons: [
+                    'Action has already been visited in this state',
+                    'Action already exists in the discovered flow graph',
+                  ],
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-history',
+
+                  actionId:
+                    'action-history',
+
+                  actionTarget:
+                    'Next Page',
+
+                  explorationBlocked:
+                    true,
+
+                  occurredAt:
+                    '2026-10-01T00:00:00.000Z',
+
+                  beforeObservation: {
+                    capturedAt:
+                      '2026-10-01T00:00:00.000Z',
+
+                    url:
+                      'https://example.com',
+
+                    title:
+                      'Example',
+
+                    semanticText: [
+                      'Page 1',
+                    ],
+
+                    ariaSnapshot:
+                      '',
+
+                    actions:
+                      [],
+
+                    consoleEvents:
+                      [],
+
+                    networkEvents:
+                      [],
+
+                    supportingArtifacts:
+                      [],
+                  },
+
+                  afterObservation: {
+                    capturedAt:
+                      '2026-10-01T00:00:01.000Z',
+
+                    url:
+                      'https://example.com',
+
+                    title:
+                      'Example',
+
+                    semanticText: [
+                      'Page 2',
+                    ],
+
+                    ariaSnapshot:
+                      '',
+
+                    actions:
+                      [],
+
+                    consoleEvents:
+                      [],
+
+                    networkEvents:
+                      [],
+
+                    supportingArtifacts:
+                      [],
+                  },
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps,
+          ).toHaveLength(1);
+
+          expect(
+            result.assertions.length,
+          ).toBeGreaterThan(0);
+        },
+      );
+
     },
   );
