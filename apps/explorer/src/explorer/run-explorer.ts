@@ -1055,6 +1055,10 @@ export async function runExplorer(
                     transition
                       .actionTarget,
 
+                  actionType:
+                    transition
+                      .actionType,
+
                   explorationBlocked:
                     transition
                       .explorationBlocked,
@@ -1070,6 +1074,19 @@ export async function runExplorer(
                   afterObservation:
                     transition
                       .afterObservation,
+                }),
+              ),
+
+          businessBehaviors:
+            groundedBusinessBehaviors
+              .map(
+                (behavior) => ({
+                  id:
+                    behavior.id,
+
+                  transitionIds:
+                    behavior
+                      .transitionIds,
                 }),
               ),
         });
