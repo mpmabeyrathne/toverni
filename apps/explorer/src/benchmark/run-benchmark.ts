@@ -165,17 +165,64 @@ function mapToverniScenarios(
     );
 }
 
+const allFixtureIds = [
+  'booking',
+  'todo',
+  'commerce',
+  'auth-rbac',
+  'checkout-form',
+  'data-grid',
+  'upload-retry',
+] as const;
+
+type BenchmarkFixtureId =
+  typeof allFixtureIds[
+    number
+  ];
+
+function resolveFixtureIds():
+  BenchmarkFixtureId[] {
+  const requested =
+    process.env
+      .BENCHMARK_FIXTURE
+      ?.trim();
+
+  if (!requested) {
+    return [
+      ...allFixtureIds,
+    ];
+  }
+
+  if (
+    !allFixtureIds.includes(
+      requested as
+        BenchmarkFixtureId,
+    )
+  ) {
+    throw new Error(
+      `Unknown BENCHMARK_FIXTURE "${requested}". Expected one of: ${allFixtureIds.join(', ')}`,
+    );
+  }
+
+  return [
+    requested as
+      BenchmarkFixtureId,
+  ];
+}
+
 async function main():
   Promise<void> {
-  const fixtureIds = [
-    'booking',
-    'todo',
-    'commerce',
-    'auth-rbac',
-    'checkout-form',
-    'data-grid',
-    'upload-retry',
-  ] as const;
+  const fixtureIds =
+    resolveFixtureIds();
+
+  if (
+    process.env
+      .BENCHMARK_FIXTURE
+  ) {
+    console.log(
+      `Benchmark fixture filter: ${fixtureIds.join(', ')}`,
+    );
+  }
 
   const modelConfiguration =
     getModelConfiguration();
