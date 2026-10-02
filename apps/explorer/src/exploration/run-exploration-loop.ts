@@ -20,6 +20,7 @@ import type {
 
 import {
   ApplicationStateModel,
+  type TransitionAction,
 } from '../state/index.js';
 
 import {
@@ -30,6 +31,7 @@ import type {
   ExplorationBudget,
   ExplorationCheckpoint,
   ExplorationStopReason,
+  ExplorationCandidate,
 } from './exploration-contracts.js';
 
 import {
@@ -179,6 +181,109 @@ function getContextualApiOperationIds(
         ),
     ),
   ].sort();
+}
+
+function createTransitionAction(
+  selected:
+    ExplorationCandidate,
+): TransitionAction {
+  const target =
+    selected.label;
+
+  switch (
+    selected.action.type
+  ) {
+    case 'input':
+    case 'textarea':
+    case 'contenteditable':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'fill'
+      ) {
+        return {
+          type:
+            'fill',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+
+    case 'select':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'select'
+      ) {
+        return {
+          type:
+            'select',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+
+    case 'combobox':
+    case 'listbox':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'fill'
+      ) {
+        return {
+          type:
+            'fill',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      if (
+        selected.formExecution
+          ?.kind ===
+        'choose-option'
+      ) {
+        return {
+          type:
+            'select',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+  }
+
+  return {
+    type:
+      'click',
+
+    target,
+  };
 }
 
 async function withRetry<T>(
@@ -643,13 +748,10 @@ const decision =
           after:
             nextObservation,
 
-          action: {
-            type:
-              'click',
-
-            target:
-              selected.label,
-          },
+          action:
+            createTransitionAction(
+              selected,
+            ),
         });
 
     // ------------------------------
