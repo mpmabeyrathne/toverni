@@ -72,12 +72,69 @@ import type {
       : null;
   }
   
+  function expandLinkedEvidenceReferences(
+    evidenceReferences:
+      string[],
+
+    evidenceById:
+      Map<
+        string,
+        ScenarioEvidence
+      >,
+
+    validEvidenceIds:
+      Set<string>,
+  ): string[] {
+    const expanded =
+      new Set(
+        evidenceReferences,
+      );
+
+    for (
+      const reference of
+        evidenceReferences
+    ) {
+      const linked =
+        evidenceById
+          .get(
+            reference,
+          )
+          ?.linkedEvidenceReferences ??
+        [];
+
+      for (
+        const linkedReference of
+          linked
+      ) {
+        if (
+          validEvidenceIds.has(
+            linkedReference,
+          )
+        ) {
+          expanded.add(
+            linkedReference,
+          );
+        }
+      }
+    }
+
+    return [
+      ...expanded,
+    ].sort();
+  }
+
   function groundScenario(
     scenario:
       GroundedScenarioCandidate,
   
     validEvidenceIds:
       Set<string>,
+
+    evidenceById:
+      Map<
+        string,
+        ScenarioEvidence
+      >,
   ): GroundedScenarioCandidate | null {
     const normalizedReferences =
       scenario
@@ -100,16 +157,21 @@ import type {
     }
   
     const evidenceReferences =
-      [
-        ...new Set(
-          normalizedReferences.filter(
-            (
-              reference,
-            ): reference is string =>
-              reference !== null,
+      expandLinkedEvidenceReferences(
+        [
+          ...new Set(
+            normalizedReferences.filter(
+              (
+                reference,
+              ): reference is string =>
+                reference !== null,
+            ),
           ),
-        ),
-      ];
+        ],
+
+        evidenceById,
+        validEvidenceIds,
+      );
   
     if (
       evidenceReferences.length ===
@@ -598,6 +660,16 @@ import type {
               item.id,
           ),
         );
+
+      const evidenceById =
+        new Map(
+          input.evidence.map(
+            (item) => [
+              item.id,
+              item,
+            ],
+          ),
+        );
   
       const allowedEvidenceIds =
         [
@@ -743,6 +815,7 @@ import type {
               groundScenario(
                 scenario,
                 validEvidenceIds,
+                evidenceById,
               ),
           )
           .filter(
