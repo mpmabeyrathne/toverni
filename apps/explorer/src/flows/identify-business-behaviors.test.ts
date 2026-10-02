@@ -867,6 +867,86 @@ import {
         },
       );
 
+
+      it(
+        'keeps file selection as replay setup for the upload business behavior',
+        () => {
+          const states = [
+            createState(
+              'start',
+            ),
+            createState(
+              'ready',
+            ),
+            createState(
+              'failed',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'start',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors.map(
+              (behavior) =>
+                behavior.name,
+            ),
+          ).toEqual([
+            'Upload',
+          ]);
+
+          expect(
+            behaviors[0]
+              ?.preconditionTransitionIds,
+          ).toContain(
+            'select-file',
+          );
+        },
+      );
+
     },
   );
   
