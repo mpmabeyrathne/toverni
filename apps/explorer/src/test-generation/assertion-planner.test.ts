@@ -20,6 +20,7 @@ function observation(
       visible: boolean;
       formField?: {
         required: boolean;
+        inputType?: string;
         value?: string;
       };
     }>;
