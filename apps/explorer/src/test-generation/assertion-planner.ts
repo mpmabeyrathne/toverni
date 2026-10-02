@@ -22,6 +22,9 @@ export interface AssertionTransition {
   actionTarget:
     string | null;
 
+  actionType?:
+    string;
+
   explorationBlocked:
     boolean;
 
