@@ -1141,7 +1141,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1149,7 +1154,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1168,7 +1178,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1176,7 +1191,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1407,7 +1427,12 @@ function setupWithObservation(
           const generatedValue =
             seatsCandidate
               ?.formExecution
-              ?.value;
+              ?.kind ===
+            'fill'
+              ? seatsCandidate
+                  .formExecution
+                  .value
+              : undefined;
       
           expect(
             typeof generatedValue,
