@@ -860,10 +860,11 @@ import {
 
           expect(
             uploadBehavior
-              ?.preconditionTransitionIds,
-          ).toContain(
+              ?.transitionIds,
+          ).toEqual([
             'select-file',
-          );
+            'upload-with-setup',
+          ]);
         },
       );
 
@@ -940,10 +941,11 @@ import {
 
           expect(
             behaviors[0]
-              ?.preconditionTransitionIds,
-          ).toContain(
+              ?.transitionIds,
+          ).toEqual([
             'select-file',
-          );
+            'upload',
+          ]);
         },
       );
 
