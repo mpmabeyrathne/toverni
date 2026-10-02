@@ -44,6 +44,9 @@ interface EvidenceItem {
 interface BusinessBehaviorReference {
   id: string;
 
+  preconditionTransitionIds:
+    string[];
+
   transitionIds:
     string[];
 }
@@ -575,13 +578,27 @@ function resolveActionBindings(
           directTransition,
         ]
       : (
-          businessBehaviors
-            .find(
-              (behavior) =>
-                behavior.id ===
-                evidence.source,
-            )
-            ?.transitionIds
+          (() => {
+            const behavior =
+              businessBehaviors
+                .find(
+                  (candidate) =>
+                    candidate.id ===
+                    evidence.source,
+                );
+
+            if (!behavior) {
+              return [];
+            }
+
+            return [
+              ...behavior
+                .preconditionTransitionIds,
+
+              ...behavior
+                .transitionIds,
+            ];
+          })()
             .map(
               (transitionId) =>
                 transitions.find(
