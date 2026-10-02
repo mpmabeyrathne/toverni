@@ -701,5 +701,201 @@ import {
         },
       );
 
+
+      it(
+        'reconstructs a file upload replay step directly from transition evidence',
+        () => {
+          const beforeObservation = {
+            capturedAt:
+              '2026-10-02T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Upload',
+
+            semanticText: [
+              'No file selected',
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Upload file',
+
+                inputType:
+                  'file',
+
+                formField: {
+                  required:
+                    false,
+
+                  inputType:
+                    'file',
+
+                  accept:
+                    '.txt',
+
+                  value:
+                    '',
+                },
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          };
+
+          const afterObservation = {
+            ...beforeObservation,
+
+            semanticText: [
+              'toverni-test.txt ready',
+            ],
+
+            actions: [
+              {
+                ...beforeObservation
+                  .actions[0],
+
+                formField: {
+                  ...beforeObservation
+                    .actions[0]
+                    ?.formField,
+
+                  value:
+                    'C:\\fakepath\\toverni-test.txt',
+                },
+              },
+            ],
+          };
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-upload-transition',
+
+                title:
+                  'Upload selected file',
+
+                evidenceReferences: [
+                  'FLOW-BUSINESS-UPLOAD',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'FLOW-BUSINESS-UPLOAD',
+
+                  type:
+                    'transition',
+
+                  source:
+                    'behavior-upload',
+                },
+              ],
+
+              actions: [],
+
+              transitions: [
+                {
+                  id:
+                    'transition-select-file',
+
+                  actionId:
+                    null,
+
+                  actionTarget:
+                    'Upload file',
+
+                  actionType:
+                    'set-input-files',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-02T00:00:00.000Z',
+
+                  beforeObservation,
+
+                  afterObservation,
+                },
+              ],
+
+              businessBehaviors: [
+                {
+                  id:
+                    'behavior-upload',
+
+                  preconditionTransitionIds:
+                    [],
+
+                  transitionIds: [
+                    'transition-select-file',
+                  ],
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps[0]
+              ?.operation,
+          ).toMatchObject({
+            kind:
+              'set-input-files',
+
+            target: {
+              by:
+                'label',
+
+              label:
+                'Upload file',
+
+              exact:
+                true,
+            },
+
+            file: {
+              name:
+                'toverni-test.txt',
+
+              mimeType:
+                'text/plain',
+            },
+          });
+        },
+      );
+
     },
   );
