@@ -123,6 +123,69 @@ import type {
   
       saved:
         'update',
+
+      upload:
+        'upload',
+
+      uploaded:
+        'upload',
+
+      uploading:
+        'upload',
+
+      retry:
+        'retry',
+
+      retried:
+        'retry',
+
+      retrying:
+        'retry',
+
+      recover:
+        'retry',
+
+      recovered:
+        'retry',
+
+      recovery:
+        'retry',
+
+      clear:
+        'clear',
+
+      cleared:
+        'clear',
+
+      clearing:
+        'clear',
+
+      reset:
+        'reset',
+
+      resets:
+        'reset',
+
+      resetting:
+        'reset',
+
+      failed:
+        'fail',
+
+      fails:
+        'fail',
+
+      failure:
+        'fail',
+
+      succeeds:
+        'success',
+
+      succeeded:
+        'success',
+
+      successful:
+        'success',
     };
   
   const TRANSACTION_TOKENS =
@@ -146,6 +209,9 @@ import type {
       'submit',
       'update',
       'upload',
+      'retry',
+      'clear',
+      'reset',
     ]);
   
   const STOP_WORDS =
