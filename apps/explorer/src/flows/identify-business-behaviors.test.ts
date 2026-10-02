@@ -769,6 +769,104 @@ import {
         },
       );
 
+
+      it(
+        'prefers duplicate business behavior candidates that preserve replay-safe setup',
+        () => {
+          const states = [
+            createState(
+              'start',
+            ),
+
+            createState(
+              'ready',
+            ),
+
+            createState(
+              'failed',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'start',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload-with-setup',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+
+            createTransition(
+              'upload-direct',
+              'start',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          const uploadBehavior =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Upload',
+            );
+
+          expect(
+            uploadBehavior,
+          ).toBeDefined();
+
+          expect(
+            uploadBehavior
+              ?.preconditionTransitionIds,
+          ).toContain(
+            'select-file',
+          );
+        },
+      );
+
     },
   );
   
