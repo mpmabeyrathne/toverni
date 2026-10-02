@@ -364,6 +364,10 @@ businessBehaviors.forEach(
 
         source:
           behavior.id,
+
+        linkedEvidenceReferences:
+          behavior
+            .requirementEvidenceIds,
       },
     );
   },
