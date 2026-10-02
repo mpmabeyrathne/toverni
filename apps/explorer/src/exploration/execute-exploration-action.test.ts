@@ -19,6 +19,7 @@ function createSession(): BrowserSession {
     click: vi.fn(),
     fill: vi.fn(),
     select: vi.fn(),
+    setInputFiles: vi.fn(),
     submit: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
