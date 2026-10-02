@@ -717,6 +717,7 @@ export async function runExplorer(
             await activeRepository
                 .getApplicationFlow(
                     application.id,
+                    run.id,
                 );
 
         if (!currentFlow) {
@@ -1370,6 +1371,7 @@ export async function runExplorer(
             await activeRepository
                 .getApplicationFlow(
                     application.id,
+                    run.id,
                 );
 
         if (
