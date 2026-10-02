@@ -607,7 +607,7 @@ function createBusinessBoundaryKey(
   );
 }
 
-function countReplaySetupPreconditions(
+function countReplaySetupTransitions(
   behavior:
     BusinessBehaviorFlow,
 
@@ -617,8 +617,19 @@ function countReplaySetupPreconditions(
       ApplicationTransition
     >,
 ): number {
-  return behavior
-    .preconditionTransitionIds
+  const replayTransitionIds =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+      ...behavior
+        .transitionIds,
+    ];
+
+  return [
+    ...new Set(
+      replayTransitionIds,
+    ),
+  ]
     .filter(
       (transitionId) => {
         const transition =
@@ -652,13 +663,13 @@ function compareBusinessBehaviorCandidates(
     >,
 ): number {
   const firstSetupCount =
-    countReplaySetupPreconditions(
+    countReplaySetupTransitions(
       first,
       transitionById,
     );
 
   const secondSetupCount =
-    countReplaySetupPreconditions(
+    countReplaySetupTransitions(
       second,
       transitionById,
     );
