@@ -680,6 +680,95 @@ import {
           );
         },
       );
+
+      it(
+        'treats retry and clear actions as recovery business boundaries',
+        () => {
+          const states = [
+            createState(
+              'ready',
+            ),
+            createState(
+              'failed',
+            ),
+            createState(
+              'uploaded',
+            ),
+            createState(
+              'cleared',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              1,
+            ),
+
+            createTransition(
+              'retry',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              2,
+            ),
+
+            createTransition(
+              'clear',
+              'uploaded',
+              'cleared',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Clear',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors.map(
+              (behavior) =>
+                behavior.name,
+            ),
+          ).toEqual([
+            'Upload',
+            'Retry',
+            'Clear',
+          ]);
+        },
+      );
+
     },
   );
   
