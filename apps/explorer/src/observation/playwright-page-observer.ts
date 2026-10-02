@@ -500,6 +500,9 @@ export class PlaywrightPageObserver
                     pattern?:
                     string;
 
+                    accept?:
+                    string;
+
                     multiple?:
                     boolean;
 
@@ -604,6 +607,13 @@ export class PlaywrightPageObserver
                       ? {
                         pattern:
                           element.pattern,
+                      }
+                      : {}),
+
+                    ...(element.accept
+                      ? {
+                        accept:
+                          element.accept,
                       }
                       : {}),
 
