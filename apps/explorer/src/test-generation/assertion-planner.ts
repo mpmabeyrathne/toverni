@@ -217,14 +217,10 @@ function stableTransition(
     transitions
       .filter(
         (transition) =>
-          !transition
-            .explorationBlocked &&
-          (
-            transition.actionId ===
-              actionId ||
-            transition.actionTarget ===
-              actionLabel
-          ),
+          transition.actionId ===
+            actionId ||
+          transition.actionTarget ===
+            actionLabel,
       )
       .sort(
         (
