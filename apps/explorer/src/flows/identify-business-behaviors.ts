@@ -57,6 +57,13 @@ const MUTATING_HTTP_METHODS =
     'DELETE',
   ]);
 
+const REPLAY_SETUP_ACTION_TYPES =
+  new Set([
+    'fill',
+    'select',
+    'set-input-files',
+  ]);
+
 export interface IdentifyBusinessBehaviorsInput {
   states:
   ApplicationStateNode[];
@@ -319,9 +326,14 @@ function getBoundaryEvidence(
 
   if (
     transition.action.type ===
-    'submit' ||
-    hasTransactionVerb(
-      transition.action.target,
+      'submit' ||
+    (
+      !REPLAY_SETUP_ACTION_TYPES.has(
+        transition.action.type,
+      ) &&
+      hasTransactionVerb(
+        transition.action.target,
+      )
     )
   ) {
     evidence.push({
@@ -594,13 +606,6 @@ function createBusinessBoundaryKey(
     '::',
   );
 }
-
-const REPLAY_SETUP_ACTION_TYPES =
-  new Set([
-    'fill',
-    'select',
-    'set-input-files',
-  ]);
 
 function countReplaySetupPreconditions(
   behavior:
