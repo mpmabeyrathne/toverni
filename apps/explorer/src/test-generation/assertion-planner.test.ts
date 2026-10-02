@@ -502,5 +502,145 @@ describe(
       },
     );
 
+
+    it(
+      'does not emit a brittle value assertion for file inputs',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-upload',
+
+            actionEvidenceReference:
+              'ACTION-UPLOAD',
+
+            actionLabel:
+              'Upload',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-UPLOAD',
+
+                type:
+                  'action',
+
+                source:
+                  'action-upload',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-upload',
+
+                actionId:
+                  'action-upload',
+
+                actionTarget:
+                  'Upload',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-02T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'No file selected',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          value:
+                            '',
+                        },
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'toverni-test.txt ready',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          inputType:
+                            'file',
+
+                          value:
+                            'C:\\fakepath\\toverni-test.txt',
+                        },
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'value',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'text' &&
+              assertion.description.includes(
+                'toverni-test.txt ready',
+              ),
+          ),
+        ).toBe(true);
+      },
+    );
+
   },
 );
