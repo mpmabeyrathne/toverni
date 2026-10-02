@@ -5,6 +5,7 @@ export type BrowserOperation =
   | 'click'
   | 'fill'
   | 'select'
+  | 'setInputFiles'
   | 'submit'
   | 'back'
   | 'forward'
