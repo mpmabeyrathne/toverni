@@ -1,6 +1,10 @@
 import type {
     ModelProvider,
   } from '../models/index.js';
+
+  import type {
+    GroundedBusinessBehavior,
+  } from '../flows/index.js';
   
   import {
     deduplicateScenariosWithReasons,
@@ -44,6 +48,9 @@ import type {
 
     coverageGaps?:
       ScenarioCoverageGap[];
+
+    businessBehaviors?:
+      GroundedBusinessBehavior[];
   }
   
   function formatEvidence(
@@ -399,6 +406,145 @@ import type {
     return scenarios;
   }
   
+  function createBusinessBehaviorScenarios(
+    behaviors:
+      GroundedBusinessBehavior[],
+
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate[] {
+    const flowEvidenceBySource =
+      new Map(
+        evidence
+          .filter(
+            (item) =>
+              item.type ===
+                'transition' &&
+              item.id.startsWith(
+                'FLOW-BUSINESS-',
+              ),
+          )
+          .map(
+            (item) => [
+              item.source,
+              item,
+            ],
+          ),
+      );
+
+    return behaviors
+      .filter(
+        (behavior) =>
+          behavior.complete,
+      )
+      .flatMap(
+        (behavior) => {
+          const flowEvidence =
+            flowEvidenceBySource
+              .get(
+                behavior.id,
+              );
+
+          if (!flowEvidence) {
+            return [];
+          }
+
+          const actions =
+            behavior.steps
+              .map(
+                (step) =>
+                  step.action
+                    .target
+                    ?.trim() ||
+                  step.action.type,
+              )
+              .filter(
+                (value) =>
+                  value.length >
+                  0,
+              );
+
+          if (
+            actions.length ===
+            0
+          ) {
+            return [];
+          }
+
+          const observedOutcomes =
+            [
+              ...behavior
+                .outcome
+                .addedSemanticText,
+            ]
+              .map(
+                (value) =>
+                  value.trim(),
+              )
+              .filter(
+                (value) =>
+                  value.length >
+                  0,
+              );
+
+          const expectedOutcomes =
+            observedOutcomes.length >
+              0
+              ? observedOutcomes
+              : [
+                  `Observed business flow "${behavior.name}" reaches its recorded outcome state.`,
+                ];
+
+          const normalizedName =
+            behavior.name
+              .toLowerCase();
+
+          const recovery =
+            [
+              'retry',
+              'recover',
+              'clear',
+              'reset',
+            ].some(
+              (term) =>
+                normalizedName
+                  .includes(
+                    term,
+                  ),
+            );
+
+          return [
+            {
+              title:
+                `Observed flow: ${behavior.name}`,
+
+              type:
+                recovery
+                  ? 'recovery'
+                  : 'positive',
+
+              preconditions: [],
+
+              actions,
+
+              expectedOutcomes,
+
+              evidenceReferences:
+                [
+                  flowEvidence.id,
+
+                  ...(
+                    flowEvidence
+                      .linkedEvidenceReferences ??
+                    []
+                  ),
+                ],
+            },
+          ];
+        },
+      );
+  }
+
   const TRANSACTION_VERB_ALIASES:
     Readonly<
       Record<
@@ -845,9 +991,17 @@ import type {
         createActionNavigationScenarios(
           input.evidence,
         );
+
+      const deterministicBusinessScenarios =
+        createBusinessBehaviorScenarios(
+          input.businessBehaviors ??
+            [],
+          input.evidence,
+        );
   
       const allCandidates = [
         ...groundedModelScenarios,
+        ...deterministicBusinessScenarios,
         ...deterministicActionScenarios,
       ].sort(
         (
