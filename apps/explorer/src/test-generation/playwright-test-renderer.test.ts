@@ -266,8 +266,11 @@ describe(
 
               steps: [
                 {
-                  ...readyPlan
-                    .steps[0],
+                  actionId:
+                    'action-1',
+
+                  evidenceReference:
+                    'ACTION-1',
 
                   description:
                     'Upload file',
