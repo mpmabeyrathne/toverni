@@ -3,6 +3,10 @@ import type {
 } from '../browser/index.js';
 
 import type {
+  ActionElement,
+} from '../contracts/page-observation.js';
+
+import type {
   ExecutableTestPlan,
 } from './executable-test-contracts.js';
 
@@ -35,6 +39,24 @@ interface EvidenceItem {
   id: string;
   type: string;
   source: string;
+}
+
+interface BusinessBehaviorReference {
+  id: string;
+
+  transitionIds:
+    string[];
+}
+
+interface ActionBinding {
+  action:
+    StoredAction;
+
+  transition:
+    AssertionTransition | null;
+
+  evidenceReference:
+    string;
 }
 
 const EXPLORATION_ONLY_BLOCK_REASONS =
@@ -88,11 +110,104 @@ export interface CreateExecutablePlanInput {
 
   transitions?:
     AssertionTransition[];
+
+  businessBehaviors?:
+    BusinessBehaviorReference[];
+}
+
+function observedActionLabel(
+  action:
+    ActionElement,
+): string {
+  return (
+    action.name ??
+    action.text ??
+    action.testId ??
+    `${action.type}:${action.tagName}`
+  );
+}
+
+function matchingObservedAction(
+  action:
+    StoredAction,
+
+  transition:
+    AssertionTransition,
+): ActionElement | null {
+  return transition
+    .afterObservation
+    .actions
+    .find(
+      (observed) =>
+        observedActionLabel(
+          observed,
+        ) ===
+        action.label,
+    ) ??
+    null;
+}
+
+function stableTransitionForAction(
+  action:
+    StoredAction,
+
+  transitions:
+    AssertionTransition[],
+): AssertionTransition | null {
+  return transitions
+    .filter(
+      (transition) =>
+        transition.actionId ===
+          action.id ||
+        transition.actionTarget ===
+          action.label,
+    )
+    .sort(
+      (
+        left,
+        right,
+      ) => {
+        const leftExact =
+          left.actionId ===
+          action.id
+            ? 0
+            : 1;
+
+        const rightExact =
+          right.actionId ===
+          action.id
+            ? 0
+            : 1;
+
+        if (
+          leftExact !==
+          rightExact
+        ) {
+          return (
+            leftExact -
+            rightExact
+          );
+        }
+
+        return (
+          new Date(
+            left.occurredAt,
+          ).getTime() -
+          new Date(
+            right.occurredAt,
+          ).getTime()
+        );
+      },
+    )[0] ??
+    null;
 }
 
 function actionOperation(
   action:
     StoredAction,
+
+  transition:
+    AssertionTransition | null,
 ): ExecutableTestPlan['steps'][number]['operation'] | null {
   if (
     action.target === null
@@ -113,9 +228,274 @@ function actionOperation(
           action.target,
       };
 
+    case 'input':
+    case 'textarea':
+    case 'contenteditable': {
+      if (!transition) {
+        return null;
+      }
+
+      const observed =
+        matchingObservedAction(
+          action,
+          transition,
+        );
+
+      const value =
+        observed
+          ?.formField
+          ?.value;
+
+      if (
+        typeof value !==
+        'string'
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          'fill',
+
+        target:
+          action.target,
+
+        value,
+      };
+    }
+
+    case 'select': {
+      if (!transition) {
+        return null;
+      }
+
+      const observed =
+        matchingObservedAction(
+          action,
+          transition,
+        );
+
+      const value =
+        observed
+          ?.formField
+          ?.value;
+
+      if (
+        typeof value !==
+        'string'
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          'select',
+
+        target:
+          action.target,
+
+        value,
+      };
+    }
+
+    case 'checkbox':
+    case 'radio': {
+      if (!transition) {
+        return null;
+      }
+
+      const observed =
+        matchingObservedAction(
+          action,
+          transition,
+        );
+
+      const checked =
+        observed
+          ?.formField
+          ?.checked;
+
+      if (
+        typeof checked !==
+        'boolean'
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          'set-checked',
+
+        target:
+          action.target,
+
+        checked,
+      };
+    }
+
     default:
       return null;
   }
+}
+
+function actionForTransition(
+  transition:
+    AssertionTransition,
+
+  actions:
+    StoredAction[],
+): StoredAction | null {
+  if (
+    transition.actionId
+  ) {
+    const exact =
+      actions.find(
+        (action) =>
+          action.id ===
+          transition.actionId,
+      );
+
+    if (exact) {
+      return exact;
+    }
+  }
+
+  if (
+    transition.actionTarget
+  ) {
+    return (
+      actions.find(
+        (action) =>
+          action.label ===
+          transition.actionTarget,
+      ) ??
+      null
+    );
+  }
+
+  return null;
+}
+
+function resolveActionBindings(
+  evidenceReference:
+    string,
+
+  evidence:
+    EvidenceItem,
+
+  actions:
+    StoredAction[],
+
+  transitions:
+    AssertionTransition[],
+
+  businessBehaviors:
+    BusinessBehaviorReference[],
+): ActionBinding[] {
+  if (
+    evidence.type ===
+    'action'
+  ) {
+    const action =
+      actions.find(
+        (candidate) =>
+          candidate.id ===
+          evidence.source,
+      );
+
+    if (!action) {
+      return [];
+    }
+
+    return [
+      {
+        action,
+
+        transition:
+          stableTransitionForAction(
+            action,
+            transitions,
+          ),
+
+        evidenceReference,
+      },
+    ];
+  }
+
+  if (
+    evidence.type !==
+    'transition'
+  ) {
+    return [];
+  }
+
+  const directTransition =
+    transitions.find(
+      (transition) =>
+        transition.id ===
+        evidence.source,
+    );
+
+  const transitionSequence =
+    directTransition
+      ? [
+          directTransition,
+        ]
+      : (
+          businessBehaviors
+            .find(
+              (behavior) =>
+                behavior.id ===
+                evidence.source,
+            )
+            ?.transitionIds
+            .map(
+              (transitionId) =>
+                transitions.find(
+                  (transition) =>
+                    transition.id ===
+                    transitionId,
+                ),
+            )
+            .filter(
+              (
+                transition,
+              ): transition is
+                AssertionTransition =>
+                transition !==
+                undefined,
+            ) ??
+          []
+        );
+
+  return transitionSequence
+    .map(
+      (transition) => {
+        const action =
+          actionForTransition(
+            transition,
+            actions,
+          );
+
+        if (!action) {
+          return null;
+        }
+
+        return {
+          action,
+          transition,
+          evidenceReference,
+        };
+      },
+    )
+    .filter(
+      (
+        binding,
+      ): binding is
+        ActionBinding =>
+        binding !==
+        null,
+    );
 }
 
 export function createExecutableTestPlan(
@@ -132,21 +512,19 @@ export function createExecutableTestPlan(
       ),
     );
 
-  const actionsMap =
-    new Map(
-      input.actions.map(
-        (action) => [
-          action.id,
-          action,
-        ],
-      ),
-    );
+  const transitions =
+    input.transitions ??
+    [];
+
+  const businessBehaviors =
+    input.businessBehaviors ??
+    [];
 
   const executableSteps:
     ExecutableTestPlan['steps'] =
       [];
 
-  const seenOperations =
+  const seenSteps =
     new Set<string>();
 
   const blockedActionReasons =
@@ -162,98 +540,101 @@ export function createExecutableTestPlan(
         evidenceReference,
       );
 
-    if (
-      !evidence ||
-      evidence.type !==
-        'action'
-    ) {
+    if (!evidence) {
       continue;
     }
 
-    const action =
-      actionsMap.get(
-        evidence.source,
+    const bindings =
+      resolveActionBindings(
+        evidenceReference,
+        evidence,
+        input.actions,
+        transitions,
+        businessBehaviors,
       );
 
-    if (
-      !action
+    for (
+      const binding of
+        bindings
     ) {
-      continue;
-    }
-
-    // --------------------------------
-    // Block unsafe/non-actionable action
-    // --------------------------------
-
-    const blockingReasons =
-      generationBlockingReasons(
+      const {
         action,
-      );
+        transition,
+      } =
+        binding;
 
-    if (
-      blockingReasons.length >
-      0
-    ) {
-      for (
-        const reason of
-          blockingReasons
-      ) {
-        blockedActionReasons.add(
-          `${action.label}: ${reason}`,
+      const blockingReasons =
+        generationBlockingReasons(
+          action,
         );
+
+      if (
+        blockingReasons.length >
+        0
+      ) {
+        for (
+          const reason of
+            blockingReasons
+        ) {
+          blockedActionReasons.add(
+            `${action.label}: ${reason}`,
+          );
+        }
+
+        continue;
       }
 
-      continue;
-    }
+      const operation =
+        actionOperation(
+          action,
+          transition ??
+            stableTransitionForAction(
+              action,
+              transitions,
+            ),
+        );
 
-    // --------------------------------
-    // Convert to Playwright
-    // --------------------------------
+      if (
+        operation === null
+      ) {
+        continue;
+      }
 
-    const operation =
-      actionOperation(
-        action,
+      const stepKey =
+        JSON.stringify({
+          actionId:
+            action.id,
+
+          operation,
+        });
+
+      if (
+        seenSteps.has(
+          stepKey,
+        )
+      ) {
+        continue;
+      }
+
+      seenSteps.add(
+        stepKey,
       );
 
-    if (
-      operation === null
-    ) {
-      continue;
-    }
+      executableSteps.push({
+        actionId:
+          action.id,
 
-    const operationKey =
-      JSON.stringify(
+        description:
+          action.label,
+
         operation,
-      );
 
-    if (
-      seenOperations.has(
-        operationKey,
-      )
-    ) {
-      continue;
+        evidenceReference:
+          binding
+            .evidenceReference,
+      });
     }
-
-    seenOperations.add(
-      operationKey,
-    );
-
-    executableSteps.push({
-      actionId:
-        action.id,
-
-      description:
-        action.label,
-
-      operation,
-
-      evidenceReference,
-    });
   }
-
-  // --------------------------------
-  // Referenced blocked action
-  // --------------------------------
 
   if (
     blockedActionReasons.size >
@@ -294,10 +675,6 @@ export function createExecutableTestPlan(
       },
     };
   }
-
-  // --------------------------------
-  // No executable discovered actions
-  // --------------------------------
 
   if (
     executableSteps.length ===
@@ -356,9 +733,7 @@ export function createExecutableTestPlan(
           evidence:
             input.evidence,
 
-          transitions:
-            input.transitions ??
-            [],
+          transitions,
         }),
     );
 
@@ -398,10 +773,6 @@ export function createExecutableTestPlan(
       },
     };
   }
-
-  // --------------------------------
-  // Ready
-  // --------------------------------
 
   return {
     scenarioId:
