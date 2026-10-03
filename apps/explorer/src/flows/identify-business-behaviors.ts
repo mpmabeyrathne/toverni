@@ -73,6 +73,9 @@ export interface IdentifyBusinessBehaviorsInput {
 
   flows:
   ReconstructedBusinessFlow[];
+
+  initialStateId?:
+  string;
 }
 
 export function identifyBusinessBehaviors(
@@ -255,6 +258,7 @@ export function identifyBusinessBehaviors(
             behavior,
             existing,
             transitionById,
+            input.initialStateId,
           ) < 0
             ? behavior
             : existing;
@@ -649,6 +653,37 @@ function countReplaySetupTransitions(
     .length;
 }
 
+function replayStartStateId(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string {
+  const firstTransitionId =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+      ...behavior
+        .transitionIds,
+    ][0];
+
+  if (!firstTransitionId) {
+    return behavior
+      .startStateId;
+  }
+
+  return transitionById
+    .get(
+      firstTransitionId,
+    )
+    ?.fromStateId ??
+    behavior.startStateId;
+}
+
 function compareBusinessBehaviorCandidates(
   first:
     BusinessBehaviorFlow,
@@ -661,7 +696,32 @@ function compareBusinessBehaviorCandidates(
       string,
       ApplicationTransition
     >,
+
+  initialStateId?:
+    string,
 ): number {
+  const firstStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      first,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
+  const secondStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      second,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
   const firstSetupCount =
     countReplaySetupTransitions(
       first,
@@ -675,6 +735,9 @@ function compareBusinessBehaviorCandidates(
     );
 
   return (
+    firstStartsAtInitial -
+      secondStartsAtInitial ||
+
     secondSetupCount -
       firstSetupCount ||
 
