@@ -16,6 +16,12 @@ interface EvidenceItem {
 export interface AssertionTransition {
   id: string;
 
+  fromStateId?:
+    string;
+
+  toStateId?:
+    string;
+
   actionId:
     string | null;
 
