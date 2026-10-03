@@ -923,5 +923,341 @@ import {
         },
       );
 
+
+      it(
+        'replays enclosing business prerequisites for action evidence',
+        () => {
+          const observation = (
+            text:
+              string,
+          ) => ({
+            capturedAt:
+              '2026-10-03T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Upload',
+
+            semanticText: [
+              text,
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions:
+              [],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          });
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-action-retry',
+
+                title:
+                  'Retry button click',
+
+                evidenceReferences: [
+                  'ACTION-RETRY',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'ACTION-RETRY',
+
+                  type:
+                    'action',
+
+                  source:
+                    'action-retry',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-select',
+
+                  label:
+                    'Upload file',
+
+                  type:
+                    'input',
+
+                  target: {
+                    by:
+                      'label',
+
+                    label:
+                      'Upload file',
+
+                    exact:
+                      true,
+                  },
+                },
+
+                {
+                  id:
+                    'action-upload',
+
+                  label:
+                    'Upload',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Upload',
+
+                    exact:
+                      true,
+                  },
+                },
+
+                {
+                  id:
+                    'action-retry',
+
+                  label:
+                    'Retry',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Retry',
+
+                    exact:
+                      true,
+                  },
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-select',
+
+                  actionId:
+                    'action-select',
+
+                  actionTarget:
+                    'Upload file',
+
+                  actionType:
+                    'set-input-files',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-03T00:00:00.000Z',
+
+                  beforeObservation:
+                    {
+                      ...observation(
+                        'No file selected',
+                      ),
+
+                      actions: [
+                        {
+                          type:
+                            'input',
+
+                          tagName:
+                            'input',
+
+                          name:
+                            'Upload file',
+
+                          inputType:
+                            'file',
+
+                          formField: {
+                            required:
+                              false,
+
+                            inputType:
+                              'file',
+
+                            accept:
+                              '.txt',
+
+                            value:
+                              '',
+                          },
+
+                          disabled:
+                            false,
+
+                          visible:
+                            true,
+                        },
+                      ],
+                    },
+
+                  afterObservation:
+                    {
+                      ...observation(
+                        'Ready',
+                      ),
+
+                      actions: [
+                        {
+                          type:
+                            'input',
+
+                          tagName:
+                            'input',
+
+                          name:
+                            'Upload file',
+
+                          inputType:
+                            'file',
+
+                          formField: {
+                            required:
+                              false,
+
+                            inputType:
+                              'file',
+
+                            accept:
+                              '.txt',
+
+                            value:
+                              'C:\\fakepath\\toverni-test.txt',
+                          },
+
+                          disabled:
+                            false,
+
+                          visible:
+                            true,
+                        },
+                      ],
+                    },
+                },
+
+                {
+                  id:
+                    'transition-upload',
+
+                  actionId:
+                    'action-upload',
+
+                  actionTarget:
+                    'Upload',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-03T00:00:01.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Ready',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Upload failed',
+                    ),
+                },
+
+                {
+                  id:
+                    'transition-retry',
+
+                  actionId:
+                    'action-retry',
+
+                  actionTarget:
+                    'Retry',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-03T00:00:02.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Upload failed',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Uploaded',
+                    ),
+                },
+              ],
+
+              businessBehaviors: [
+                {
+                  id:
+                    'behavior-retry',
+
+                  preconditionTransitionIds:
+                    [],
+
+                  transitionIds: [
+                    'transition-select',
+                    'transition-upload',
+                    'transition-retry',
+                  ],
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps.map(
+              (step) =>
+                step.operation.kind,
+            ),
+          ).toEqual([
+            'set-input-files',
+            'click',
+            'click',
+          ]);
+        },
+      );
+
     },
   );
