@@ -1246,43 +1246,60 @@ import type {
             formatEvidence,
           );
   
-      const result =
-        await this.provider
-          .generateScenarios({
-            applicationSummary:
-              [
-                'Generate only evidence-grounded QA scenarios.',
-                '',
-                'IMPORTANT:',
-                'Every evidenceReferences value must be copied exactly from the allowed evidence IDs.',
-                'Do not create new evidence IDs.',
-                'Do not use descriptions as references.',
-                'Do not assume authentication, validation, errors, permissions, UI behavior, recovery behavior, or application states unless evidence explicitly supports them.',
-                '',
-                'COVERAGE PRIORITY:',
-                'Prefer scenarios that reference uncovered coverage targets first, then partially covered targets.',
-                'Avoid generating another variant for already-covered behavior when a supported coverage gap exists.',
-                'Keep each scenario within one business transaction boundary.',
-                'Do not combine unrelated create/book/cancel/delete/remove/pay/checkout/complete transactions into one scenario unless one FLOW-BUSINESS evidence item explicitly describes that combined flow.',
-                ...coverageGaps.map(
-                  (gap) =>
-                    formatCoverageGap(
-                      gap,
-                    ),
-                ),
-                '',
-                `Allowed evidence IDs: ${allowedEvidenceIds}`,
-              ].join('\n'),
-  
-            requirements,
-  
-            capabilities,
-  
-            discoveredFlows,
-          });
+      let generatedModelScenarios:
+        GroundedScenarioCandidate[] =
+          [];
+
+      try {
+        const result =
+          await this.provider
+            .generateScenarios({
+              applicationSummary:
+                [
+                  'Generate only evidence-grounded QA scenarios.',
+                  '',
+                  'IMPORTANT:',
+                  'Every evidenceReferences value must be copied exactly from the allowed evidence IDs.',
+                  'Do not create new evidence IDs.',
+                  'Do not use descriptions as references.',
+                  'Do not assume authentication, validation, errors, permissions, UI behavior, recovery behavior, or application states unless evidence explicitly supports them.',
+                  '',
+                  'COVERAGE PRIORITY:',
+                  'Prefer scenarios that reference uncovered coverage targets first, then partially covered targets.',
+                  'Avoid generating another variant for already-covered behavior when a supported coverage gap exists.',
+                  'Keep each scenario within one business transaction boundary.',
+                  'Do not combine unrelated create/book/cancel/delete/remove/pay/checkout/complete transactions into one scenario unless one FLOW-BUSINESS evidence item explicitly describes that combined flow.',
+                  ...coverageGaps.map(
+                    (gap) =>
+                      formatCoverageGap(
+                        gap,
+                      ),
+                  ),
+                  '',
+                  `Allowed evidence IDs: ${allowedEvidenceIds}`,
+                ].join('\n'),
+
+              requirements,
+
+              capabilities,
+
+              discoveredFlows,
+            });
+
+        generatedModelScenarios =
+          result.data.scenarios;
+      } catch {
+        // Model-generated scenarios are an
+        // augmentation layer. Deterministic
+        // requirement, business-flow, and
+        // discovered-action candidates below
+        // remain valid evidence-grounded input
+        // when a local model emits malformed
+        // structured output.
+      }
   
       const groundedModelScenarios =
-        result.data.scenarios
+        generatedModelScenarios
           .map(
             (scenario) =>
               groundScenario(
