@@ -342,6 +342,21 @@ function createSemanticScenarioKey(
   ].join('||');
 }
 
+function isExplicitNegativeRequirementScenario(
+  scenario:
+    GroundedScenarioCandidate,
+): boolean {
+  return (
+    scenario.type ===
+      'negative' &&
+    scenario.title
+      .toLowerCase()
+      .startsWith(
+        'negative requirement:',
+      )
+  );
+}
+
 function selectRepresentative(
   left:
     GroundedScenarioCandidate,
@@ -349,6 +364,25 @@ function selectRepresentative(
   right:
     GroundedScenarioCandidate,
 ): GroundedScenarioCandidate {
+  const leftExplicitNegative =
+    isExplicitNegativeRequirementScenario(
+      left,
+    );
+
+  const rightExplicitNegative =
+    isExplicitNegativeRequirementScenario(
+      right,
+    );
+
+  if (
+    leftExplicitNegative !==
+    rightExplicitNegative
+  ) {
+    return rightExplicitNegative
+      ? right
+      : left;
+  }
+
   const leftEvidence =
     new Set(
       left.evidenceReferences,
