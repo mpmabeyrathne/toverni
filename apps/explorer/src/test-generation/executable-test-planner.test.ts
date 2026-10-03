@@ -1452,5 +1452,247 @@ import {
         },
       );
 
+
+      it(
+        'executes negative file requirements with a disallowed deterministic payload',
+        () => {
+          const observation = {
+            capturedAt:
+              '2026-10-04T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Upload',
+
+            semanticText: [
+              'No file selected',
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Upload file',
+
+                inputType:
+                  'file',
+
+                formField: {
+                  required:
+                    false,
+
+                  inputType:
+                    'file',
+
+                  accept:
+                    '.txt',
+
+                  value:
+                    '',
+                },
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Upload',
+
+                disabled:
+                  true,
+
+                visible:
+                  true,
+              },
+            ],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          };
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-invalid-file',
+
+                title:
+                  'Unsupported file type',
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'REQ-2',
+
+                  type:
+                    'requirement',
+
+                  source:
+                    'requirements.md',
+
+                  description:
+                    'Unsupported file types show a validation error.',
+                },
+              ],
+
+              actions: [],
+
+              transitions: [
+                {
+                  id:
+                    'transition-select-valid-file',
+
+                  actionId:
+                    null,
+
+                  actionTarget:
+                    'Upload file',
+
+                  actionType:
+                    'set-input-files',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:00.000Z',
+
+                  beforeObservation:
+                    observation,
+
+                  afterObservation: {
+                    ...observation,
+
+                    semanticText: [
+                      'toverni-test.txt ready',
+                    ],
+
+                    actions: [
+                      {
+                        ...observation
+                          .actions[0],
+
+                        formField: {
+                          ...observation
+                            .actions[0]
+                            ?.formField,
+
+                          required:
+                            false,
+
+                          inputType:
+                            'file',
+
+                          accept:
+                            '.txt',
+
+                          value:
+                            'C:\\fakepath\\toverni-test.txt',
+                        },
+                      },
+
+                      {
+                        ...observation
+                          .actions[1],
+
+                        disabled:
+                          false,
+                      },
+                    ],
+                  },
+                },
+              ],
+
+              businessBehaviors: [],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps[0]
+              ?.operation,
+          ).toMatchObject({
+            kind:
+              'set-input-files',
+
+            file: {
+              name:
+                'toverni-invalid.bin',
+
+              mimeType:
+                'application/octet-stream',
+            },
+          });
+
+          expect(
+            result.assertions,
+          ).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                kind:
+                  'disabled',
+
+                matcher:
+                  'disabled',
+
+                target: {
+                  kind:
+                    'locator',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Upload',
+
+                    exact:
+                      true,
+                  },
+                },
+              }),
+            ]),
+          );
+        },
+      );
+
     },
   );
