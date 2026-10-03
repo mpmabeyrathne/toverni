@@ -1723,5 +1723,292 @@ describe(
             },
         );
 
+
+        it(
+            'does not let stacked coverage references crowd out a distinct uncovered flow',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Combined recovery requirements',
+
+                                        type:
+                                            'recovery',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Retry',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Uploaded',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-3',
+                                            'REQ-4',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-3',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'First upload attempt fails.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retry succeeds.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-CLEAR',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Clear.',
+
+                                source:
+                                    'behavior-clear',
+                            },
+                        ],
+
+                        coverageGaps: [
+                            {
+                                targetId:
+                                    'REQ-3',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-3',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'REQ-4',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'FLOW-BUSINESS-CLEAR',
+
+                                kind:
+                                    'flow',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'FLOW-BUSINESS-CLEAR',
+                                ],
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-clear',
+
+                                sourceFlowIds: [
+                                    'flow-clear',
+                                ],
+
+                                name:
+                                    'Clear',
+
+                                startStateId:
+                                    'uploaded',
+
+                                endStateId:
+                                    'cleared',
+
+                                stateIds: [
+                                    'uploaded',
+                                    'cleared',
+                                ],
+
+                                transitionIds: [
+                                    'transition-clear',
+                                ],
+
+                                preconditionTransitionIds:
+                                    [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-clear',
+
+                                        fromStateId:
+                                            'uploaded',
+
+                                        toStateId:
+                                            'cleared',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Clear',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-clear',
+
+                                        detail:
+                                            'Observed recovery action Clear',
+
+                                        networkEventIds:
+                                            [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'cleared',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'No file selected',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Uploaded',
+                                    ],
+                                },
+
+                                requirementEvidenceIds:
+                                    [],
+
+                                apiOperationIds:
+                                    [],
+
+                                apiOperationLinks:
+                                    [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result[0]
+                        ?.evidenceReferences,
+                ).toContain(
+                    'FLOW-BUSINESS-CLEAR',
+                );
+            },
+        );
+
     },
 );
