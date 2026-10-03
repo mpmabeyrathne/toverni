@@ -1011,6 +1011,10 @@ export async function runExplorer(
                 .evidenceReferences,
           },
   
+          initialStateId:
+            explorationResult
+              .initialStateId,
+
           evidence:
             evidence.map(
               (item) => ({
@@ -1058,6 +1062,14 @@ export async function runExplorer(
                 (transition) => ({
                   id:
                     transition.id,
+
+                  fromStateId:
+                    transition
+                      .fromStateId,
+
+                  toStateId:
+                    transition
+                      .toStateId,
 
                   actionId:
                     transition.actionId,
