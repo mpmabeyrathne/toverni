@@ -643,5 +643,192 @@ describe(
       },
     );
 
+
+    it(
+      'ignores semantic text composed only of visible action labels',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-retry',
+
+            actionEvidenceReference:
+              'ACTION-RETRY',
+
+            actionLabel:
+              'Retry',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-RETRY',
+
+                type:
+                  'action',
+
+                source:
+                  'action-retry',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-retry',
+
+                actionId:
+                  'action-retry',
+
+                actionTarget:
+                  'Retry',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-03T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Upload failed',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'UploadClear',
+                      'Uploaded',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: UploadClear',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: Uploaded',
+          ),
+        ).toBe(true);
+      },
+    );
+
   },
 );
