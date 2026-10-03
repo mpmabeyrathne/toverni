@@ -1022,6 +1022,9 @@ export async function runExplorer(
   
                 source:
                   item.source,
+
+                description:
+                  item.description,
               }),
             ),
   
