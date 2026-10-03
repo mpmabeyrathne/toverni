@@ -122,6 +122,9 @@ export interface CreateExecutablePlanInput {
   scenario:
     StoredScenario;
 
+  initialStateId?:
+    string;
+
   evidence:
     EvidenceItem[];
 
@@ -806,6 +809,20 @@ function actionOperation(
           ?.toLowerCase() ===
         'file'
       ) {
+        const file =
+          filePayloadMode ===
+            'invalid'
+            ? invalidFilePayload(
+                observed,
+              )
+            : deterministicFilePayload(
+                observed,
+              );
+
+        if (!file) {
+          return null;
+        }
+
         return {
           kind:
             'set-input-files',
@@ -813,10 +830,7 @@ function actionOperation(
           target:
             action.target,
 
-          file:
-            deterministicFilePayload(
-              observed,
-            ),
+          file,
         };
       }
 
@@ -959,6 +973,230 @@ function actionForTransition(
   );
 }
 
+function compareReplayTransitions(
+  first:
+    AssertionTransition,
+
+  second:
+    AssertionTransition,
+): number {
+  return (
+    new Date(
+      first.occurredAt,
+    ).getTime() -
+      new Date(
+        second.occurredAt,
+      ).getTime() ||
+    first.id.localeCompare(
+      second.id,
+    )
+  );
+}
+
+function replayPathToState(
+  initialStateId:
+    string,
+
+  targetStateId:
+    string,
+
+  transitions:
+    AssertionTransition[],
+): AssertionTransition[] {
+  if (
+    initialStateId ===
+    targetStateId
+  ) {
+    return [];
+  }
+
+  const outgoing =
+    new Map<
+      string,
+      AssertionTransition[]
+    >();
+
+  for (
+    const transition of
+      transitions
+  ) {
+    if (
+      !transition.fromStateId ||
+      !transition.toStateId
+    ) {
+      continue;
+    }
+
+    const existing =
+      outgoing.get(
+        transition.fromStateId,
+      ) ?? [];
+
+    existing.push(
+      transition,
+    );
+
+    outgoing.set(
+      transition.fromStateId,
+      existing,
+    );
+  }
+
+  for (
+    const candidates of
+      outgoing.values()
+  ) {
+    candidates.sort(
+      compareReplayTransitions,
+    );
+  }
+
+  const queue:
+    Array<{
+      stateId:
+        string;
+
+      path:
+        AssertionTransition[];
+    }> = [
+      {
+        stateId:
+          initialStateId,
+
+        path:
+          [],
+      },
+    ];
+
+  const visited =
+    new Set([
+      initialStateId,
+    ]);
+
+  while (
+    queue.length >
+    0
+  ) {
+    const current =
+      queue.shift();
+
+    if (!current) {
+      break;
+    }
+
+    for (
+      const transition of
+        outgoing.get(
+          current.stateId,
+        ) ??
+        []
+    ) {
+      const nextStateId =
+        transition.toStateId;
+
+      if (!nextStateId) {
+        continue;
+      }
+
+      const nextPath = [
+        ...current.path,
+        transition,
+      ];
+
+      if (
+        nextStateId ===
+        targetStateId
+      ) {
+        return nextPath;
+      }
+
+      if (
+        visited.has(
+          nextStateId,
+        )
+      ) {
+        continue;
+      }
+
+      visited.add(
+        nextStateId,
+      );
+
+      queue.push({
+        stateId:
+          nextStateId,
+
+        path:
+          nextPath,
+      });
+    }
+  }
+
+  return [];
+}
+
+function ensureReplayStartsAtInitial(
+  sequence:
+    AssertionTransition[],
+
+  initialStateId:
+    string | undefined,
+
+  transitions:
+    AssertionTransition[],
+): AssertionTransition[] {
+  const first =
+    sequence[0];
+
+  if (
+    !first ||
+    !initialStateId ||
+    !first.fromStateId ||
+    first.fromStateId ===
+      initialStateId
+  ) {
+    return sequence;
+  }
+
+  const prefix =
+    replayPathToState(
+      initialStateId,
+      first.fromStateId,
+      transitions,
+    );
+
+  if (
+    prefix.length ===
+    0
+  ) {
+    return sequence;
+  }
+
+  const seen =
+    new Set<string>();
+
+  return [
+    ...prefix,
+    ...sequence,
+  ].filter(
+    (transition) => {
+      if (
+        seen.has(
+          transition.id,
+        )
+      ) {
+        return false;
+      }
+
+      seen.add(
+        transition.id,
+      );
+
+      return true;
+    },
+  );
+}
+
 function resolveActionBindings(
   evidenceReference:
     string,
@@ -974,6 +1212,9 @@ function resolveActionBindings(
 
   businessBehaviors:
     BusinessBehaviorReference[],
+
+  initialStateId?:
+    string,
 ): ActionBinding[] {
   const negativeFile =
     negativeFileBinding(
@@ -1070,23 +1311,27 @@ function resolveActionBindings(
         ),
     ];
 
-    return replayTransitionIds
-      .map(
-        (transitionId) =>
-          transitions.find(
-            (transition) =>
-              transition.id ===
-              transitionId,
-          ),
-      )
-      .filter(
-        (
-          transition,
-        ): transition is
-          AssertionTransition =>
-          transition !==
-          undefined,
-      )
+    return ensureReplayStartsAtInitial(
+      replayTransitionIds
+        .map(
+          (transitionId) =>
+            transitions.find(
+              (transition) =>
+                transition.id ===
+                transitionId,
+            ),
+        )
+        .filter(
+          (
+            transition,
+          ): transition is
+            AssertionTransition =>
+            transition !==
+            undefined,
+        ),
+      initialStateId,
+      transitions,
+    )
       .flatMap(
         (transition) => {
           const replayAction =
@@ -1129,7 +1374,7 @@ function resolveActionBindings(
         evidence.source,
     );
 
-  const transitionSequence =
+  const baseTransitionSequence =
     directTransition
       ? [
           directTransition,
@@ -1174,6 +1419,13 @@ function resolveActionBindings(
             ) ??
           []
         );
+
+  const transitionSequence =
+    ensureReplayStartsAtInitial(
+      baseTransitionSequence,
+      initialStateId,
+      transitions,
+    );
 
   const bindings:
     ActionBinding[] = [];
@@ -1276,6 +1528,7 @@ export function createExecutableTestPlan(
         input.actions,
         transitions,
         businessBehaviors,
+        input.initialStateId,
       );
 
     for (
