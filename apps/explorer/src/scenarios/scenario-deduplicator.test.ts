@@ -255,5 +255,84 @@ describe(
         ).toHaveLength(2);
       },
     );
+
+      it(
+        'preserves an explicit negative requirement representative during semantic deduplication',
+        () => {
+          const result =
+            deduplicateScenariosWithReasons([
+              {
+                title:
+                  'Unsupported file validation',
+
+                type:
+                  'negative',
+
+                preconditions:
+                  [],
+
+                actions: [
+                  'Exercise unsupported file type',
+                ],
+
+                expectedOutcomes: [
+                  'Show validation error',
+                ],
+
+                evidenceReferences: [
+                  'REQ-2',
+                  'CON-1',
+                ],
+              },
+
+              {
+                title:
+                  'Negative requirement: Unsupported file types show a validation error.',
+
+                type:
+                  'negative',
+
+                preconditions:
+                  [],
+
+                actions: [
+                  'Exercise the invalid or unsupported case described by: Unsupported file types show a validation error.',
+                ],
+
+                expectedOutcomes: [
+                  'Unsupported file types show a validation error.',
+                ],
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+              },
+            ]);
+
+          expect(
+            result,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            result[0]
+              ?.scenario
+              .title,
+          ).toBe(
+            'Negative requirement: Unsupported file types show a validation error.',
+          );
+
+          expect(
+            result[0]
+              ?.scenario
+              .evidenceReferences,
+          ).toEqual([
+            'CON-1',
+            'REQ-2',
+          ]);
+        },
+      );
+
   },
 );
