@@ -263,7 +263,7 @@ describe(
             deduplicateScenariosWithReasons([
               {
                 title:
-                  'Unsupported file validation',
+                  'Unsupported file types show a validation error.',
 
                 type:
                   'negative',
@@ -272,11 +272,11 @@ describe(
                   [],
 
                 actions: [
-                  'Exercise unsupported file type',
+                  'Exercise the invalid or unsupported case described by: Unsupported file types show a validation error.',
                 ],
 
                 expectedOutcomes: [
-                  'Show validation error',
+                  'Unsupported file types show a validation error.',
                 ],
 
                 evidenceReferences: [
