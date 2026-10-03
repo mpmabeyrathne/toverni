@@ -2013,5 +2013,439 @@ import {
         },
       );
 
+
+      it(
+        'prepends a replay path from the initial state to a business transition',
+        () => {
+          const observation = (
+            text:
+              string,
+          ): PageObservation => ({
+            capturedAt:
+              '2026-10-04T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Upload',
+
+            semanticText: [
+              text,
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions:
+              [],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          });
+
+          const fileObservation: PageObservation = {
+            ...observation(
+              'No file selected',
+            ),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Upload file',
+
+                inputType:
+                  'file',
+
+                formField: {
+                  required:
+                    false,
+
+                  inputType:
+                    'file',
+
+                  accept:
+                    '.txt',
+
+                  value:
+                    '',
+                },
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const result =
+            createExecutableTestPlan({
+              initialStateId:
+                'state-initial',
+
+              scenario: {
+                id:
+                  'scenario-upload',
+
+                title:
+                  'Observed flow: Upload',
+
+                evidenceReferences: [
+                  'FLOW-BUSINESS-UPLOAD',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'FLOW-BUSINESS-UPLOAD',
+
+                  type:
+                    'transition',
+
+                  source:
+                    'behavior-upload',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-upload',
+
+                  label:
+                    'Upload',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Upload',
+
+                    exact:
+                      true,
+                  },
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-select',
+
+                  fromStateId:
+                    'state-initial',
+
+                  toStateId:
+                    'state-ready',
+
+                  actionId:
+                    null,
+
+                  actionTarget:
+                    'Upload file',
+
+                  actionType:
+                    'set-input-files',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:00.000Z',
+
+                  beforeObservation:
+                    fileObservation,
+
+                  afterObservation: {
+                    ...fileObservation,
+
+                    semanticText: [
+                      'toverni-test.txt ready',
+                    ],
+                  },
+                },
+
+                {
+                  id:
+                    'transition-upload',
+
+                  fromStateId:
+                    'state-ready',
+
+                  toStateId:
+                    'state-failed',
+
+                  actionId:
+                    'action-upload',
+
+                  actionTarget:
+                    'Upload',
+
+                  actionType:
+                    'click',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:01.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Ready',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Upload failed',
+                    ),
+                },
+              ],
+
+              businessBehaviors: [
+                {
+                  id:
+                    'behavior-upload',
+
+                  preconditionTransitionIds:
+                    [],
+
+                  transitionIds: [
+                    'transition-upload',
+                  ],
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps.map(
+              (step) =>
+                step.transitionId,
+            ),
+          ).toEqual([
+            'transition-select',
+            'transition-upload',
+          ]);
+
+          expect(
+            result.steps[0]
+              ?.operation,
+          ).toMatchObject({
+            kind:
+              'set-input-files',
+
+            file: {
+              name:
+                'toverni-test.txt',
+            },
+          });
+        },
+      );
+
+
+      it(
+        'uses an invalid payload for negative file requirements in the generic file-input path',
+        () => {
+          const beforeObservation:
+            PageObservation = {
+            capturedAt:
+              '2026-10-04T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Upload',
+
+            semanticText: [
+              'No file selected',
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Upload file',
+
+                inputType:
+                  'file',
+
+                formField: {
+                  required:
+                    false,
+
+                  inputType:
+                    'file',
+
+                  accept:
+                    '.txt',
+
+                  value:
+                    '',
+                },
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Upload',
+
+                disabled:
+                  true,
+
+                visible:
+                  true,
+              },
+            ],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          };
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-invalid-generic-file',
+
+                title:
+                  'Unsupported file type',
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'REQ-2',
+
+                  type:
+                    'requirement',
+
+                  source:
+                    'requirements.md',
+
+                  description:
+                    'Unsupported file types show a validation error.',
+                },
+              ],
+
+              actions: [],
+
+              transitions: [
+                {
+                  id:
+                    'transition-other',
+
+                  fromStateId:
+                    'state-initial',
+
+                  toStateId:
+                    'state-ready',
+
+                  actionId:
+                    null,
+
+                  actionTarget:
+                    'Something else',
+
+                  actionType:
+                    'click',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:00.000Z',
+
+                  beforeObservation,
+
+                  afterObservation:
+                    beforeObservation,
+                },
+              ],
+
+              businessBehaviors: [],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps[0]
+              ?.operation,
+          ).toMatchObject({
+            kind:
+              'set-input-files',
+
+            file: {
+              name:
+                'toverni-invalid.bin',
+
+              mimeType:
+                'application/octet-stream',
+            },
+          });
+        },
+      );
+
     },
   );
