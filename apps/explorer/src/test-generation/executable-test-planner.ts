@@ -68,6 +68,9 @@ interface ActionBinding {
   evidenceReference:
     string;
 
+  assertOutcome?:
+    boolean;
+
   filePayloadMode?:
     'valid' |
     'invalid';
@@ -698,6 +701,9 @@ function negativeFileBinding(
 
       evidenceReference,
 
+      assertOutcome:
+        true,
+
       filePayloadMode:
         'invalid',
 
@@ -1012,6 +1018,9 @@ function resolveActionBindings(
             null,
 
           evidenceReference,
+
+          assertOutcome:
+            true,
         },
       ];
     }
@@ -1035,6 +1044,9 @@ function resolveActionBindings(
             actionTransition,
 
           evidenceReference,
+
+          assertOutcome:
+            true,
         },
       ];
     }
@@ -1092,6 +1104,10 @@ function resolveActionBindings(
                   transition,
 
                   evidenceReference,
+
+                  assertOutcome:
+                    transition.id ===
+                    actionTransition.id,
                 },
               ]
             : [];
@@ -1162,6 +1178,12 @@ function resolveActionBindings(
   const bindings:
     ActionBinding[] = [];
 
+  const assertionTransitionId =
+    transitionSequence[
+      transitionSequence.length -
+      1
+    ]?.id;
+
   for (
     const transition of
       transitionSequence
@@ -1180,6 +1202,10 @@ function resolveActionBindings(
       action,
       transition,
       evidenceReference,
+
+      assertOutcome:
+        transition.id ===
+        assertionTransitionId,
     });
   }
 
@@ -1216,6 +1242,9 @@ export function createExecutableTestPlan(
     new Set<string>();
 
   const blockedActionReasons =
+    new Set<string>();
+
+  const assertionEligibleSteps =
     new Set<string>();
 
   const negativeAssertions =
@@ -1344,6 +1373,30 @@ export function createExecutableTestPlan(
           binding
             .evidenceReference,
       });
+
+      const assertionStepKey =
+        JSON.stringify({
+          actionId:
+            action.id,
+
+          transitionId:
+            transition
+              ?.id ??
+            null,
+
+          evidenceReference:
+            binding
+              .evidenceReference,
+        });
+
+      if (
+        binding.assertOutcome !==
+        false
+      ) {
+        assertionEligibleSteps.add(
+          assertionStepKey,
+        );
+      }
 
       if (
         binding
@@ -1483,26 +1536,37 @@ export function createExecutableTestPlan(
   const assertions =
     executableSteps.flatMap(
       (step) => {
+        const assertionStepKey =
+          JSON.stringify({
+            actionId:
+              step.actionId,
+
+            transitionId:
+              step.transitionId ??
+              null,
+
+            evidenceReference:
+              step
+                .evidenceReference,
+          });
+
         const negativeAssertion =
           negativeAssertions.get(
-            JSON.stringify({
-              actionId:
-                step.actionId,
-
-              transitionId:
-                step.transitionId ??
-                null,
-
-              evidenceReference:
-                step
-                  .evidenceReference,
-            }),
+            assertionStepKey,
           );
 
         if (negativeAssertion) {
           return [
             negativeAssertion,
           ];
+        }
+
+        if (
+          !assertionEligibleSteps.has(
+            assertionStepKey,
+          )
+        ) {
+          return [];
         }
 
         return buildEvidenceBackedAssertions({
