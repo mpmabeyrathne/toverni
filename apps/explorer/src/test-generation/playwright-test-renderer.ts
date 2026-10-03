@@ -339,8 +339,14 @@ export function compilePlaywrightTest(
     const assertions =
       plan.assertions.filter(
         (assertion) =>
-          assertion.afterActionId ===
-          step.actionId,
+          assertion
+            .afterTransitionId
+            ? assertion
+                .afterTransitionId ===
+              step.transitionId
+            : assertion
+                .afterActionId ===
+              step.actionId,
       );
 
     for (
