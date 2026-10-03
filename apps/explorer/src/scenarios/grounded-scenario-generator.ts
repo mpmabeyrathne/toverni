@@ -676,6 +676,63 @@ import type {
     };
   }
 
+  const EXPLICIT_NEGATIVE_REQUIREMENT_PATTERN =
+    /\b(?:unsupported|invalid|reject(?:ed|s|ing)?|not allowed|forbidden|validation error)\b/i;
+
+  function createDeterministicNegativeRequirementScenarios(
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate[] {
+    return evidence
+      .filter(
+        (item) =>
+          (
+            item.type ===
+              'requirement' ||
+            item.type ===
+              'constraint'
+          ) &&
+          EXPLICIT_NEGATIVE_REQUIREMENT_PATTERN
+            .test(
+              item.description,
+            ),
+      )
+      .map(
+        (item) => {
+          const description =
+            item.description
+              .replace(
+                /^\s*[A-Z]+-\d+\s*:\s*/i,
+                '',
+              )
+              .trim();
+
+          return {
+            title:
+              `Negative requirement: ${description}`,
+
+            type:
+              'negative' as const,
+
+            preconditions:
+              [],
+
+            actions: [
+              `Exercise the invalid or unsupported case described by: ${description}`,
+            ],
+
+            expectedOutcomes: [
+              description,
+            ],
+
+            evidenceReferences: [
+              item.id,
+            ],
+          };
+        },
+      );
+  }
+
   function createBusinessBehaviorScenarios(
     behaviors:
       GroundedBusinessBehavior[],
@@ -1279,9 +1336,15 @@ import type {
             [],
           input.evidence,
         );
+
+      const deterministicNegativeRequirementScenarios =
+        createDeterministicNegativeRequirementScenarios(
+          input.evidence,
+        );
   
       const allCandidates = [
         ...groundedModelScenarios,
+        ...deterministicNegativeRequirementScenarios,
         ...deterministicBusinessScenarios,
         ...deterministicActionScenarios,
       ].sort(
