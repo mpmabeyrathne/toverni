@@ -1259,5 +1259,198 @@ import {
         },
       );
 
+
+      it(
+        'binds assertions to the exact replay transition when the same action repeats',
+        () => {
+          const observation = (
+            text:
+              string,
+          ) => ({
+            capturedAt:
+              '2026-10-04T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Example',
+
+            semanticText: [
+              text,
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions:
+              [],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          });
+
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-repeat-action',
+
+                title:
+                  'Repeat upload action',
+
+                evidenceReferences: [
+                  'FLOW-BUSINESS-1',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'FLOW-BUSINESS-1',
+
+                  type:
+                    'transition',
+
+                  source:
+                    'behavior-1',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-upload',
+
+                  label:
+                    'Upload',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Upload',
+
+                    exact:
+                      true,
+                  },
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-first',
+
+                  actionId:
+                    'action-upload',
+
+                  actionTarget:
+                    'Upload',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:00.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Ready',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'First result',
+                    ),
+                },
+
+                {
+                  id:
+                    'transition-second',
+
+                  actionId:
+                    'action-upload',
+
+                  actionTarget:
+                    'Upload',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:01.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'First result',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Second result',
+                    ),
+                },
+              ],
+
+              businessBehaviors: [
+                {
+                  id:
+                    'behavior-1',
+
+                  preconditionTransitionIds:
+                    [],
+
+                  transitionIds: [
+                    'transition-first',
+                    'transition-second',
+                  ],
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps.map(
+              (step) =>
+                step.transitionId,
+            ),
+          ).toEqual([
+            'transition-first',
+            'transition-second',
+          ]);
+
+          expect(
+            result.assertions.some(
+              (assertion) =>
+                assertion
+                  .afterTransitionId ===
+                  'transition-second' &&
+                assertion.description.includes(
+                  'Second result',
+                ),
+            ),
+          ).toBe(true);
+        },
+      );
+
     },
   );
