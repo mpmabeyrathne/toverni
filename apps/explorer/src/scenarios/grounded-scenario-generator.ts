@@ -297,7 +297,33 @@ import type {
   function createActionNavigationScenarios(
     evidence:
       ScenarioEvidence[],
+
+    behaviors:
+      GroundedBusinessBehavior[] =
+        [],
   ): GroundedScenarioCandidate[] {
+    const businessActionLabels =
+      new Set(
+        behaviors
+          .flatMap(
+            (behavior) =>
+              behavior.steps,
+          )
+          .map(
+            (step) =>
+              step.action.target
+                ?.trim(),
+          )
+          .filter(
+            (
+              value,
+            ): value is string =>
+              Boolean(value),
+          )
+          .map(
+            normalizeActionDescription,
+          ),
+      );
     const scenarios:
       GroundedScenarioCandidate[] =
         [];
@@ -361,6 +387,16 @@ import type {
         continue;
       }
   
+      if (
+        businessActionLabels.has(
+          normalizeActionDescription(
+            label,
+          ),
+        )
+      ) {
+        continue;
+      }
+
       const signature =
         normalizeActionDescription(
           `${actionType}:${label}`,
@@ -406,6 +442,240 @@ import type {
     return scenarios;
   }
   
+  const SCENARIO_MATCH_STOP_WORDS =
+    new Set([
+      'a',
+      'an',
+      'and',
+      'the',
+      'to',
+      'of',
+      'in',
+      'on',
+      'for',
+      'with',
+      'is',
+      'are',
+      'be',
+      'can',
+      'should',
+      'then',
+      'flow',
+      'button',
+      'click',
+      'use',
+      'observed',
+      'business',
+    ]);
+
+  function semanticTokens(
+    values:
+      string[],
+  ): Set<string> {
+    return new Set(
+      values
+        .join(' ')
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]+/g,
+          ' ',
+        )
+        .split(
+          /\s+/,
+        )
+        .map(
+          (value) =>
+            value.trim(),
+        )
+        .filter(
+          (value) =>
+            value.length >=
+              2 &&
+            !SCENARIO_MATCH_STOP_WORDS
+              .has(
+                value,
+              ),
+        ),
+    );
+  }
+
+  function enrichScenarioWithBusinessEvidence(
+    scenario:
+      GroundedScenarioCandidate,
+
+    behaviors:
+      GroundedBusinessBehavior[],
+
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate {
+    if (
+      scenario
+        .evidenceReferences
+        .some(
+          (reference) =>
+            reference.startsWith(
+              'FLOW-BUSINESS-',
+            ),
+        )
+    ) {
+      return scenario;
+    }
+
+    const scenarioEvidence =
+      new Set(
+        scenario
+          .evidenceReferences,
+      );
+
+    const scenarioTokens =
+      semanticTokens([
+        scenario.title,
+        ...scenario.actions,
+        ...scenario
+          .expectedOutcomes,
+      ]);
+
+    const flowEvidenceBySource =
+      new Map(
+        evidence
+          .filter(
+            (item) =>
+              item.type ===
+                'transition' &&
+              item.id.startsWith(
+                'FLOW-BUSINESS-',
+              ),
+          )
+          .map(
+            (item) => [
+              item.source,
+              item.id,
+            ],
+          ),
+      );
+
+    const candidates =
+      behaviors
+        .filter(
+          (behavior) =>
+            behavior
+              .requirementEvidenceIds
+              .some(
+                (reference) =>
+                  scenarioEvidence.has(
+                    reference,
+                  ),
+              ),
+        )
+        .map(
+          (behavior) => {
+            const behaviorTokens =
+              semanticTokens([
+                behavior.name,
+                ...behavior.steps.map(
+                  (step) =>
+                    step.action
+                      .target ??
+                    '',
+                ),
+                ...behavior
+                  .outcome
+                  .addedSemanticText,
+                ...behavior
+                  .outcome
+                  .removedSemanticText,
+              ]);
+
+            const overlap =
+              [
+                ...scenarioTokens,
+              ].filter(
+                (token) =>
+                  behaviorTokens.has(
+                    token,
+                  ),
+              ).length;
+
+            const nameTokens =
+              semanticTokens([
+                behavior.name,
+              ]);
+
+            const nameOverlap =
+              [
+                ...nameTokens,
+              ].filter(
+                (token) =>
+                  scenarioTokens.has(
+                    token,
+                  ),
+              ).length;
+
+            return {
+              behavior,
+              overlap,
+              nameOverlap,
+            };
+          },
+        )
+        .filter(
+          (candidate) =>
+            candidate.overlap >
+              0 &&
+            candidate.nameOverlap >
+              0,
+        )
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            right.nameOverlap -
+              left.nameOverlap ||
+            right.overlap -
+              left.overlap ||
+            left.behavior
+              .transitionIds
+              .length -
+              right.behavior
+                .transitionIds
+                .length ||
+            left.behavior.id
+              .localeCompare(
+                right.behavior.id,
+              ),
+        );
+
+    const best =
+      candidates[0];
+
+    if (!best) {
+      return scenario;
+    }
+
+    const flowEvidenceId =
+      flowEvidenceBySource.get(
+        best.behavior.id,
+      );
+
+    if (!flowEvidenceId) {
+      return scenario;
+    }
+
+    return {
+      ...scenario,
+
+      evidenceReferences: [
+        ...new Set([
+          ...scenario
+            .evidenceReferences,
+          flowEvidenceId,
+        ]),
+      ].sort(),
+    };
+  }
+
   function createBusinessBehaviorScenarios(
     behaviors:
       GroundedBusinessBehavior[],
@@ -970,6 +1240,15 @@ import type {
             ): scenario is GroundedScenarioCandidate =>
               scenario !== null,
           )
+          .map(
+            (scenario) =>
+              enrichScenarioWithBusinessEvidence(
+                scenario,
+                input.businessBehaviors ??
+                  [],
+                input.evidence,
+              ),
+          )
           .filter(
             (scenario) =>
               hasRequiredEvidenceForScenarioType(
@@ -990,6 +1269,8 @@ import type {
       const deterministicActionScenarios =
         createActionNavigationScenarios(
           input.evidence,
+          input.businessBehaviors ??
+            [],
         );
 
       const deterministicBusinessScenarios =
@@ -1088,6 +1369,40 @@ import type {
               0
             ) {
               return coverageDifference;
+            }
+
+            const leftRequirementGrounded =
+              left
+                .evidenceReferences
+                .some(
+                  (reference) =>
+                    reference.startsWith(
+                      'REQ-',
+                    ),
+                )
+                ? 1
+                : 0;
+
+            const rightRequirementGrounded =
+              right
+                .evidenceReferences
+                .some(
+                  (reference) =>
+                    reference.startsWith(
+                      'REQ-',
+                    ),
+                )
+                ? 1
+                : 0;
+
+            if (
+              rightRequirementGrounded !==
+              leftRequirementGrounded
+            ) {
+              return (
+                rightRequirementGrounded -
+                leftRequirementGrounded
+              );
             }
 
             if (
