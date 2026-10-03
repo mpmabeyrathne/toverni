@@ -1047,7 +1047,7 @@ import type {
 
     return gaps.reduce(
       (
-        total,
+        highestPriority,
         gap,
       ) => {
         const matches =
@@ -1061,7 +1061,7 @@ import type {
             );
 
         if (!matches) {
-          return total;
+          return highestPriority;
         }
 
         const statusWeight =
@@ -1085,10 +1085,10 @@ import type {
           gap.kind
         ];
 
-        return (
-          total +
+        return Math.max(
+          highestPriority,
           statusWeight +
-          kindWeight
+            kindWeight,
         );
       },
       0,
