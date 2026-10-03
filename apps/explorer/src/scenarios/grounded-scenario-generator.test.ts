@@ -1602,5 +1602,126 @@ describe(
             },
         );
 
+
+        it(
+            'seeds explicit unsupported requirements as deterministic negative scenarios',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-2',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Unsupported file types show a validation error.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(
+                    1,
+                );
+
+                expect(
+                    result[0],
+                ).toMatchObject({
+                    type:
+                        'negative',
+
+                    evidenceReferences: [
+                        'REQ-2',
+                    ],
+                });
+
+                expect(
+                    [
+                        result[0]?.title,
+                        ...(
+                            result[0]
+                                ?.actions ??
+                            []
+                        ),
+                        ...(
+                            result[0]
+                                ?.expectedOutcomes ??
+                            []
+                        ),
+                    ]
+                        .join(
+                            ' ',
+                        )
+                        .toLowerCase(),
+                ).toContain(
+                    'unsupported file types',
+                );
+            },
+        );
+
     },
 );
