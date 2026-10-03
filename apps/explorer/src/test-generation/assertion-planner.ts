@@ -48,6 +48,9 @@ export interface BuildAssertionsInput {
   actionLabel:
     string;
 
+  transitionId?:
+    string;
+
   scenarioEvidenceReferences?:
     string[];
 
@@ -239,7 +242,23 @@ function stableTransition(
 
   actionLabel:
     string,
+
+  transitionId?:
+    string,
 ): AssertionTransition | null {
+  if (transitionId) {
+    const exact =
+      transitions.find(
+        (transition) =>
+          transition.id ===
+          transitionId,
+      );
+
+    if (exact) {
+      return exact;
+    }
+  }
+
   const candidates =
     transitions
       .filter(
@@ -406,6 +425,7 @@ export function buildEvidenceBackedAssertions(
       input.transitions,
       input.actionId,
       input.actionLabel,
+      input.transitionId,
     );
 
   if (!transition) {
@@ -457,7 +477,14 @@ export function buildEvidenceBackedAssertions(
       );
 
       assertions.push(
-        assertion,
+        input.transitionId
+          ? {
+              ...assertion,
+
+              afterTransitionId:
+                transition.id,
+            }
+          : assertion,
       );
     };
 
