@@ -1131,6 +1131,125 @@ import {
         },
       );
 
+
+      it(
+        'recognizes sign-in actions as business boundaries with form setup',
+        () => {
+          const states = [
+            createState(
+              'login-empty',
+            ),
+            createState(
+              'login-email',
+            ),
+            createState(
+              'login-ready',
+            ),
+            createState(
+              'login-error',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'fill-email',
+              'login-empty',
+              'login-email',
+              {
+                type:
+                  'fill',
+
+                target:
+                  'Email',
+              },
+              1,
+            ),
+
+            createTransition(
+              'fill-password',
+              'login-email',
+              'login-ready',
+              {
+                type:
+                  'fill',
+
+                target:
+                  'Password',
+              },
+              2,
+            ),
+
+            createTransition(
+              'sign-in',
+              'login-ready',
+              'login-error',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Sign In',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+              initialStateId:
+                'login-empty',
+            });
+
+          const signIn =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Sign In',
+            );
+
+          expect(
+            signIn,
+          ).toBeDefined();
+
+          expect(
+            signIn
+              ?.transitionIds,
+          ).toContain(
+            'sign-in',
+          );
+
+          expect(
+            [
+              ...(
+                signIn
+                  ?.preconditionTransitionIds ??
+                []
+              ),
+              ...(
+                signIn
+                  ?.transitionIds ??
+                []
+              ),
+            ],
+          ).toEqual(
+            expect.arrayContaining([
+              'fill-email',
+              'fill-password',
+              'sign-in',
+            ]),
+          );
+        },
+      );
+
     },
   );
   
