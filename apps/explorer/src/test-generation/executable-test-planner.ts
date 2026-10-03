@@ -43,6 +43,9 @@ interface EvidenceItem {
   id: string;
   type: string;
   source: string;
+
+  description?:
+    string;
 }
 
 interface BusinessBehaviorReference {
@@ -64,6 +67,13 @@ interface ActionBinding {
 
   evidenceReference:
     string;
+
+  filePayloadMode?:
+    'valid' |
+    'invalid';
+
+  negativeAssertionTarget?:
+    BrowserTarget;
 }
 
 const EXPLORATION_ONLY_BLOCK_REASONS =
@@ -393,12 +403,323 @@ function deterministicFilePayload(
   };
 }
 
+const NEGATIVE_FILE_EVIDENCE_PATTERN =
+  /\b(?:unsupported|invalid|reject(?:ed|s|ing)?|not allowed|forbidden|validation error)\b/i;
+
+function isNegativeFileEvidence(
+  evidence:
+    EvidenceItem,
+): boolean {
+  const description =
+    evidence.description ??
+    '';
+
+  return (
+    (
+      evidence.type ===
+        'requirement' ||
+      evidence.type ===
+        'constraint'
+    ) &&
+    /\bfiles?\b/i.test(
+      description,
+    ) &&
+    NEGATIVE_FILE_EVIDENCE_PATTERN
+      .test(
+        description,
+      )
+  );
+}
+
+function invalidFilePayload(
+  action:
+    ActionElement,
+): {
+  name: string;
+  mimeType: string;
+  content: string;
+} | null {
+  const accepts =
+    (
+      action.formField
+        ?.accept ??
+      ''
+    )
+      .split(',')
+      .map(
+        (value) =>
+          value
+            .trim()
+            .toLowerCase(),
+      )
+      .filter(
+        Boolean,
+      );
+
+  if (
+    accepts.includes(
+      '*/*',
+    )
+  ) {
+    return null;
+  }
+
+  const candidates = [
+    {
+      extension:
+        'bin',
+
+      mimeType:
+        'application/octet-stream',
+    },
+    {
+      extension:
+        'txt',
+
+      mimeType:
+        'text/plain',
+    },
+    {
+      extension:
+        'png',
+
+      mimeType:
+        'image/png',
+    },
+    {
+      extension:
+        'pdf',
+
+      mimeType:
+        'application/pdf',
+    },
+  ];
+
+  const accepted =
+    (
+      candidate:
+        typeof candidates[number],
+    ): boolean =>
+      accepts.some(
+        (accept) => {
+          if (
+            accept.startsWith(
+              '.',
+            )
+          ) {
+            return (
+              accept ===
+              `.${candidate.extension}`
+            );
+          }
+
+          if (
+            accept.endsWith(
+              '/*',
+            )
+          ) {
+            return candidate
+              .mimeType
+              .startsWith(
+                accept.slice(
+                  0,
+                  -1,
+                ),
+              );
+          }
+
+          return (
+            accept ===
+            candidate.mimeType
+          );
+        },
+      );
+
+  const candidate =
+    candidates.find(
+      (value) =>
+        !accepted(
+          value,
+        ),
+    );
+
+  if (!candidate) {
+    return null;
+  }
+
+  return {
+    name:
+      `toverni-invalid.${candidate.extension}`,
+
+    mimeType:
+      candidate.mimeType,
+
+    content:
+      'Toverni deterministic invalid upload fixture',
+  };
+}
+
+function negativeFileBinding(
+  evidenceReference:
+    string,
+
+  evidence:
+    EvidenceItem,
+
+  transitions:
+    AssertionTransition[],
+): ActionBinding | null {
+  if (
+    !isNegativeFileEvidence(
+      evidence,
+    )
+  ) {
+    return null;
+  }
+
+  const candidates =
+    [...transitions]
+      .sort(
+        (
+          left,
+          right,
+        ) =>
+          new Date(
+            left.occurredAt,
+          ).getTime() -
+          new Date(
+            right.occurredAt,
+          ).getTime(),
+      );
+
+  for (
+    const transition of
+      candidates
+  ) {
+    const observedActions = [
+      ...transition
+        .beforeObservation
+        .actions,
+      ...transition
+        .afterObservation
+        .actions,
+    ];
+
+    const fileInput =
+      observedActions.find(
+        (action) =>
+          action
+            .formField
+            ?.inputType
+            ?.toLowerCase() ===
+            'file' &&
+          Boolean(
+            action.formField
+              ?.accept
+              ?.trim(),
+          ),
+      );
+
+    if (!fileInput) {
+      continue;
+    }
+
+    const invalidPayload =
+      invalidFilePayload(
+        fileInput,
+      );
+
+    if (!invalidPayload) {
+      continue;
+    }
+
+    const fileTarget =
+      createBrowserTarget(
+        fileInput,
+      );
+
+    if (!fileTarget) {
+      continue;
+    }
+
+    const disabledAction =
+      transition
+        .beforeObservation
+        .actions
+        .find(
+          (action) =>
+            action.visible &&
+            action.disabled &&
+            (
+              action.type ===
+                'button' ||
+              action.type ===
+                'link'
+            ),
+        );
+
+    if (!disabledAction) {
+      continue;
+    }
+
+    const assertionTarget =
+      createBrowserTarget(
+        disabledAction,
+      );
+
+    if (!assertionTarget) {
+      continue;
+    }
+
+    return {
+      action: {
+        id:
+          `negative-file:${transition.id}`,
+
+        label:
+          observedActionLabel(
+            fileInput,
+          ),
+
+        type:
+          fileInput.type,
+
+        target:
+          fileTarget,
+
+        blocked:
+          false,
+
+        blockReasons:
+          [],
+      },
+
+      transition,
+
+      evidenceReference,
+
+      filePayloadMode:
+        'invalid',
+
+      negativeAssertionTarget:
+        assertionTarget,
+    };
+  }
+
+  return null;
+}
+
 function actionOperation(
   action:
     StoredAction,
 
   transition:
     AssertionTransition | null,
+
+  filePayloadMode:
+    'valid' |
+    'invalid' =
+      'valid',
 ): ExecutableTestPlan['steps'][number]['operation'] | null {
   if (
     action.target === null
@@ -421,6 +742,20 @@ function actionOperation(
       return null;
     }
 
+    const file =
+      filePayloadMode ===
+        'invalid'
+        ? invalidFilePayload(
+            observed,
+          )
+        : deterministicFilePayload(
+            observed,
+          );
+
+    if (!file) {
+      return null;
+    }
+
     return {
       kind:
         'set-input-files',
@@ -428,10 +763,7 @@ function actionOperation(
       target:
         action.target,
 
-      file:
-        deterministicFilePayload(
-          observed,
-        ),
+      file,
     };
   }
 
@@ -637,6 +969,19 @@ function resolveActionBindings(
   businessBehaviors:
     BusinessBehaviorReference[],
 ): ActionBinding[] {
+  const negativeFile =
+    negativeFileBinding(
+      evidenceReference,
+      evidence,
+      transitions,
+    );
+
+  if (negativeFile) {
+    return [
+      negativeFile,
+    ];
+  }
+
   if (
     evidence.type ===
     'action'
@@ -873,6 +1218,14 @@ export function createExecutableTestPlan(
   const blockedActionReasons =
     new Set<string>();
 
+  const negativeAssertions =
+    new Map<
+      string,
+      ExecutableTestPlan[
+        'assertions'
+      ][number]
+    >();
+
   for (
     const evidenceReference of
       input.scenario
@@ -935,6 +1288,9 @@ export function createExecutableTestPlan(
               action,
               transitions,
             ),
+          binding
+            .filePayloadMode ??
+            'valid',
         );
 
       if (
@@ -988,6 +1344,62 @@ export function createExecutableTestPlan(
           binding
             .evidenceReference,
       });
+
+      if (
+        binding
+          .negativeAssertionTarget
+      ) {
+        negativeAssertions.set(
+          JSON.stringify({
+            actionId:
+              action.id,
+
+            transitionId:
+              transition
+                ?.id ??
+              null,
+
+            evidenceReference:
+              binding
+                .evidenceReference,
+          }),
+
+          {
+            afterActionId:
+              action.id,
+
+            ...(transition
+              ? {
+                  afterTransitionId:
+                    transition.id,
+                }
+              : {}),
+
+            kind:
+              'disabled',
+
+            description:
+              'Observed action remains disabled for an invalid file selection',
+
+            target: {
+              kind:
+                'locator',
+
+              target:
+                binding
+                  .negativeAssertionTarget,
+            },
+
+            matcher:
+              'disabled',
+
+            evidenceReferences: [
+              binding
+                .evidenceReference,
+            ],
+          },
+        );
+      }
     }
   }
 
@@ -1070,8 +1482,30 @@ export function createExecutableTestPlan(
 
   const assertions =
     executableSteps.flatMap(
-      (step) =>
-        buildEvidenceBackedAssertions({
+      (step) => {
+        const negativeAssertion =
+          negativeAssertions.get(
+            JSON.stringify({
+              actionId:
+                step.actionId,
+
+              transitionId:
+                step.transitionId ??
+                null,
+
+              evidenceReference:
+                step
+                  .evidenceReference,
+            }),
+          );
+
+        if (negativeAssertion) {
+          return [
+            negativeAssertion,
+          ];
+        }
+
+        return buildEvidenceBackedAssertions({
           actionId:
             step.actionId,
 
@@ -1096,7 +1530,8 @@ export function createExecutableTestPlan(
             input.evidence,
 
           transitions,
-        }),
+        });
+      },
     );
 
   if (
