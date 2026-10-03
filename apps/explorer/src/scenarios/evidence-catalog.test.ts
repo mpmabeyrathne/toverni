@@ -135,5 +135,66 @@ import {
           ).toBe(true);
         },
       );
+
+      it(
+        'does not expose blocked actions as autonomous scenario evidence',
+        () => {
+          const catalog =
+            buildEvidenceCatalog(
+              {},
+              {
+                states: [],
+                actions: [
+                  {
+                    id:
+                      'action-safe',
+
+                    label:
+                      'View Details',
+
+                    type:
+                      'button',
+
+                    blocked:
+                      false,
+                  },
+
+                  {
+                    id:
+                      'action-blocked',
+
+                    label:
+                      'Delete Todo',
+
+                    type:
+                      'button',
+
+                    blocked:
+                      true,
+                  },
+                ],
+
+                transitions: [],
+              },
+            );
+
+          expect(
+            catalog.some(
+              (item) =>
+                item.source ===
+                'action-safe',
+            ),
+          ).toBe(true);
+
+          expect(
+            catalog.some(
+              (item) =>
+                item.source ===
+                'action-blocked',
+            ),
+          ).toBe(false);
+        },
+      );
+
     },
   );
