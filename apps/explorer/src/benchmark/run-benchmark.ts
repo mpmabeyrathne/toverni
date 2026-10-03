@@ -353,12 +353,52 @@ async function main():
       // Shared support corpus
       // --------------------------------
 
+      const observedSupportCorpus =
+        [
+          ...explorerResult
+            .flow
+            .actions
+            .flatMap(
+              (action) => [
+                action.label ??
+                  '',
+                action.type,
+              ],
+            ),
+
+          ...explorerResult
+            .flow
+            .transitions
+            .flatMap(
+              (transition) => [
+                transition
+                  .actionTarget ??
+                  '',
+                ...transition
+                  .beforeObservation
+                  .semanticText,
+                ...transition
+                  .afterObservation
+                  .semanticText,
+              ],
+            ),
+        ]
+          .filter(
+            (value) =>
+              value.length >
+              0,
+          )
+          .join(
+            '\n',
+          );
+
       const supportCorpus =
         [
           fixture.requirements,
           fixture.openApi,
           explorerResult
             .initialPageContext,
+          observedSupportCorpus,
         ].join(
           '\n',
         );
