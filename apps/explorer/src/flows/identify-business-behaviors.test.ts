@@ -949,6 +949,126 @@ import {
         },
       );
 
+
+      it(
+        'prefers a duplicate behavior replay rooted at the persisted initial state',
+        () => {
+          const states = [
+            createState(
+              'initial',
+            ),
+
+            createState(
+              'ready',
+            ),
+
+            createState(
+              'failed',
+            ),
+
+            createState(
+              'uploaded',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'initial',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+
+            createTransition(
+              'retry-from-full-path',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              3,
+            ),
+
+            createTransition(
+              'retry-direct',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              4,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+
+              initialStateId:
+                'initial',
+            });
+
+          const retryBehavior =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Retry',
+            );
+
+          expect(
+            retryBehavior,
+          ).toBeDefined();
+
+          expect(
+            retryBehavior
+              ?.preconditionTransitionIds,
+          ).toEqual([
+            'select-file',
+            'upload',
+          ]);
+        },
+      );
+
     },
   );
   
