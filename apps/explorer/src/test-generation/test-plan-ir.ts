@@ -198,6 +198,11 @@ export const testPlanStepSchema =
       z.string()
         .min(1),
 
+    transitionId:
+      z.string()
+        .min(1)
+        .optional(),
+
     description:
       z.string()
         .min(1),
@@ -215,6 +220,11 @@ export const testPlanAssertionSchema =
     afterActionId:
       z.string()
         .min(1),
+
+    afterTransitionId:
+      z.string()
+        .min(1)
+        .optional(),
 
     kind:
       z.enum([
