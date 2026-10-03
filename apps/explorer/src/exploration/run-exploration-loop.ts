@@ -101,6 +101,9 @@ export interface RunExplorationLoopResult {
   initialObservation:
   Observation;
 
+  initialStateId:
+  string;
+
   finalObservation:
   Observation;
 
@@ -539,6 +542,9 @@ export async function runExplorationLoop(
         input.applicationId,
         currentState,
       );
+
+  const initialStateId =
+    currentPersistedState.id;
 
   // --------------------------------
   // Preserve raw observation evidence
@@ -990,6 +996,8 @@ const decision =
 
   return {
     initialObservation,
+
+    initialStateId,
 
     finalObservation:
       currentObservation,
