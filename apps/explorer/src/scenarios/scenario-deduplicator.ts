@@ -299,6 +299,24 @@ function canonicalizeArray(
     .join('|');
 }
 
+function semanticScenarioTitle(
+  scenario:
+    GroundedScenarioCandidate,
+): string {
+  if (
+    scenario.type ===
+    'negative'
+  ) {
+    return scenario.title
+      .replace(
+        /^\s*negative requirement\s*:\s*/i,
+        '',
+      );
+  }
+
+  return scenario.title;
+}
+
 function createSemanticScenarioKey(
   scenario:
     GroundedScenarioCandidate,
@@ -331,7 +349,9 @@ function createSemanticScenarioKey(
   return [
     scenario.type,
     canonicalizeSemanticPhrase(
-      scenario.title,
+      semanticScenarioTitle(
+        scenario,
+      ),
     ),
     canonicalizeArray(
       scenario.actions,
