@@ -1344,5 +1344,263 @@ describe(
             },
         );
 
+
+        it(
+            'binds requirement scenarios to matching observed business flow evidence',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Retry succeeds',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Click Retry',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Uploaded',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-4',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retrying succeeds and shows Uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Retry. Actions: click Retry.',
+
+                                source:
+                                    'behavior-retry',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+
+                            {
+                                id:
+                                    'ACTION-RETRY',
+
+                                type:
+                                    'action',
+
+                                description:
+                                    'button: Retry',
+
+                                source:
+                                    'action-retry',
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-retry',
+
+                                sourceFlowIds: [
+                                    'flow-1',
+                                ],
+
+                                name:
+                                    'Retry',
+
+                                startStateId:
+                                    'failed',
+
+                                endStateId:
+                                    'uploaded',
+
+                                stateIds: [
+                                    'failed',
+                                    'uploaded',
+                                ],
+
+                                transitionIds: [
+                                    'transition-retry',
+                                ],
+
+                                preconditionTransitionIds:
+                                    [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-retry',
+
+                                        fromStateId:
+                                            'failed',
+
+                                        toStateId:
+                                            'uploaded',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Retry',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-retry',
+
+                                        detail:
+                                            'Observed transactional action "Retry"',
+
+                                        networkEventIds:
+                                            [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'uploaded',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Uploaded',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Upload failed',
+                                    ],
+                                },
+
+                                requirementEvidenceIds: [
+                                    'REQ-4',
+                                ],
+
+                                apiOperationIds:
+                                    [],
+
+                                apiOperationLinks:
+                                    [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result.some(
+                        (scenario) =>
+                            scenario.title ===
+                                'Retry succeeds' &&
+                            scenario
+                                .evidenceReferences
+                                .includes(
+                                    'FLOW-BUSINESS-1',
+                                ),
+                    ),
+                ).toBe(true);
+
+                expect(
+                    result.some(
+                        (scenario) =>
+                            scenario.title ===
+                            'Navigation: Retry',
+                    ),
+                ).toBe(false);
+            },
+        );
+
     },
 );
