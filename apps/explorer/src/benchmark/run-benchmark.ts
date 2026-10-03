@@ -323,6 +323,10 @@ async function main():
       // --------------------------------
 
       const skipGenericBaseline =
+        Boolean(
+          process.env
+            .BENCHMARK_FIXTURE,
+        ) &&
         process.env
           .BENCHMARK_SKIP_GENERIC_BASELINE ===
         'true';
