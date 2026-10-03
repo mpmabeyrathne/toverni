@@ -1613,8 +1613,14 @@ import {
                         ...fileInput,
 
                         formField: {
-                          ...fileInput
-                            .formField,
+                          required:
+                            false,
+
+                          inputType:
+                            'file',
+
+                          accept:
+                            '.txt',
 
                           value:
                             'C:\\fakepath\\toverni-test.txt',
