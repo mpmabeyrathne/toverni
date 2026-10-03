@@ -4,6 +4,10 @@ import {
     it,
   } from 'vitest';
   
+  import type {
+    PageObservation,
+  } from '../contracts/page-observation.js';
+
   import {
     createExecutableTestPlan,
   } from './executable-test-planner.js';
@@ -705,7 +709,8 @@ import {
       it(
         'reconstructs a file upload replay step directly from transition evidence',
         () => {
-          const beforeObservation = {
+          const beforeObservation:
+            PageObservation = {
             capturedAt:
               '2026-10-02T00:00:00.000Z',
 
@@ -768,7 +773,18 @@ import {
               [],
           };
 
-          const afterObservation = {
+          const uploadAction =
+            beforeObservation
+              .actions[0];
+
+          if (!uploadAction) {
+            throw new Error(
+              'Expected upload action fixture',
+            );
+          }
+
+          const afterObservation:
+            PageObservation = {
             ...beforeObservation,
 
             semanticText: [
@@ -777,13 +793,23 @@ import {
 
             actions: [
               {
-                ...beforeObservation
-                  .actions[0],
+                ...uploadAction,
 
                 formField: {
-                  ...beforeObservation
-                    .actions[0]
-                    ?.formField,
+                  ...uploadAction
+                    .formField,
+
+                  required:
+                    uploadAction
+                      .formField
+                      ?.required ??
+                    false,
+
+                  inputType:
+                    'file',
+
+                  accept:
+                    '.txt',
 
                   value:
                     'C:\\fakepath\\toverni-test.txt',
