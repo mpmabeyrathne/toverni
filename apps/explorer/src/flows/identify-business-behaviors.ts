@@ -78,6 +78,49 @@ export interface IdentifyBusinessBehaviorsInput {
   string;
 }
 
+function stateIdsForTransitions(
+  transitionIds:
+    string[],
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string[] {
+  const transitions =
+    transitionIds
+      .map(
+        (transitionId) =>
+          transitionById.get(
+            transitionId,
+          ),
+      )
+      .filter(
+        (
+          transition,
+        ): transition is
+          ApplicationTransition =>
+          transition !==
+          undefined,
+      );
+
+  const first =
+    transitions[0];
+
+  if (!first) {
+    return [];
+  }
+
+  return [
+    first.fromStateId,
+    ...transitions.map(
+      (transition) =>
+        transition.toStateId,
+    ),
+  ];
+}
+
 export function identifyBusinessBehaviors(
   input:
     IdentifyBusinessBehaviorsInput,
@@ -158,9 +201,9 @@ export function identifyBusinessBehaviors(
         );
 
       const stateIds =
-        flow.stateIds.slice(
-          segmentStartIndex,
-          index + 2,
+        stateIdsForTransitions(
+          transitionIds,
+          transitionById,
         );
 
       const steps =
