@@ -1076,8 +1076,12 @@ export function createExecutableTestPlan(
           actionLabel:
             step.description,
 
-          transitionId:
-            step.transitionId,
+          ...(step.transitionId
+            ? {
+                transitionId:
+                  step.transitionId,
+              }
+            : {}),
 
           scenarioEvidenceReferences:
             input.scenario
