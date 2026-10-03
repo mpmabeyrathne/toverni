@@ -141,7 +141,13 @@ import {
         () => {
           const catalog =
             buildEvidenceCatalog(
-              {},
+              {
+                requirements:
+                  null,
+
+                openApi:
+                  null,
+              },
               {
                 states: [],
                 actions: [
