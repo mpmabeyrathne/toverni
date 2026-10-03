@@ -652,19 +652,106 @@ function resolveActionBindings(
       return [];
     }
 
-    return [
-      {
+    const actionTransition =
+      stableTransitionForAction(
         action,
+        transitions,
+      );
 
-        transition:
-          stableTransitionForAction(
-            action,
-            transitions,
-          ),
+    if (!actionTransition) {
+      return [
+        {
+          action,
 
-        evidenceReference,
-      },
+          transition:
+            null,
+
+          evidenceReference,
+        },
+      ];
+    }
+
+    const enclosingBehavior =
+      businessBehaviors.find(
+        (behavior) =>
+          behavior
+            .transitionIds
+            .includes(
+              actionTransition.id,
+            ),
+      );
+
+    if (!enclosingBehavior) {
+      return [
+        {
+          action,
+
+          transition:
+            actionTransition,
+
+          evidenceReference,
+        },
+      ];
+    }
+
+    const targetIndex =
+      enclosingBehavior
+        .transitionIds
+        .indexOf(
+          actionTransition.id,
+        );
+
+    const replayTransitionIds = [
+      ...enclosingBehavior
+        .preconditionTransitionIds,
+
+      ...enclosingBehavior
+        .transitionIds
+        .slice(
+          0,
+          targetIndex + 1,
+        ),
     ];
+
+    return replayTransitionIds
+      .map(
+        (transitionId) =>
+          transitions.find(
+            (transition) =>
+              transition.id ===
+              transitionId,
+          ),
+      )
+      .filter(
+        (
+          transition,
+        ): transition is
+          AssertionTransition =>
+          transition !==
+          undefined,
+      )
+      .flatMap(
+        (transition) => {
+          const replayAction =
+            actionForTransition(
+              transition,
+              actions,
+            );
+
+          return replayAction
+            ? [
+                {
+                  action:
+                    replayAction,
+
+                  transition,
+
+                  evidenceReference,
+                },
+              ]
+            : [];
+        },
+      );
   }
 
   if (
