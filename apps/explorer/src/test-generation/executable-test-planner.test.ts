@@ -1456,7 +1456,65 @@ import {
       it(
         'executes negative file requirements with a disallowed deterministic payload',
         () => {
-          const observation = {
+          const fileInput:
+            PageObservation[
+              'actions'
+            ][number] = {
+            type:
+              'input',
+
+            tagName:
+              'input',
+
+            name:
+              'Upload file',
+
+            inputType:
+              'file',
+
+            formField: {
+              required:
+                false,
+
+              inputType:
+                'file',
+
+              accept:
+                '.txt',
+
+              value:
+                '',
+            },
+
+            disabled:
+              false,
+
+            visible:
+              true,
+          };
+
+          const uploadButton:
+            PageObservation[
+              'actions'
+            ][number] = {
+            type:
+              'button',
+
+            tagName:
+              'button',
+
+            name:
+              'Upload',
+
+            disabled:
+              true,
+
+            visible:
+              true,
+          };
+
+          const observation:
+            PageObservation = {
             capturedAt:
               '2026-10-04T00:00:00.000Z',
 
@@ -1474,56 +1532,8 @@ import {
               '',
 
             actions: [
-              {
-                type:
-                  'input',
-
-                tagName:
-                  'input',
-
-                name:
-                  'Upload file',
-
-                inputType:
-                  'file',
-
-                formField: {
-                  required:
-                    false,
-
-                  inputType:
-                    'file',
-
-                  accept:
-                    '.txt',
-
-                  value:
-                    '',
-                },
-
-                disabled:
-                  false,
-
-                visible:
-                  true,
-              },
-
-              {
-                type:
-                  'button',
-
-                tagName:
-                  'button',
-
-                name:
-                  'Upload',
-
-                disabled:
-                  true,
-
-                visible:
-                  true,
-              },
+              fileInput,
+              uploadButton,
             ],
 
             consoleEvents:
@@ -1600,22 +1610,11 @@ import {
 
                     actions: [
                       {
-                        ...observation
-                          .actions[0],
+                        ...fileInput,
 
                         formField: {
-                          ...observation
-                            .actions[0]
-                            ?.formField,
-
-                          required:
-                            false,
-
-                          inputType:
-                            'file',
-
-                          accept:
-                            '.txt',
+                          ...fileInput
+                            .formField,
 
                           value:
                             'C:\\fakepath\\toverni-test.txt',
@@ -1623,8 +1622,7 @@ import {
                       },
 
                       {
-                        ...observation
-                          .actions[1],
+                        ...uploadButton,
 
                         disabled:
                           false,
