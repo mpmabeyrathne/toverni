@@ -38,8 +38,16 @@ const TRANSACTION_VERBS =
     'register',
     'remove',
     'reserve',
+    'retry',
+    'recover',
+    'reset',
+    'clear',
     'save',
     'send',
+    'sign',
+    'login',
+    'logout',
+    'authenticate',
     'submit',
     'update',
     'upload',
@@ -53,6 +61,13 @@ const MUTATING_HTTP_METHODS =
     'DELETE',
   ]);
 
+const REPLAY_SETUP_ACTION_TYPES =
+  new Set([
+    'fill',
+    'select',
+    'set-input-files',
+  ]);
+
 export interface IdentifyBusinessBehaviorsInput {
   states:
   ApplicationStateNode[];
@@ -62,6 +77,52 @@ export interface IdentifyBusinessBehaviorsInput {
 
   flows:
   ReconstructedBusinessFlow[];
+
+  initialStateId?:
+  string;
+}
+
+function stateIdsForTransitions(
+  transitionIds:
+    string[],
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string[] {
+  const transitions =
+    transitionIds
+      .map(
+        (transitionId) =>
+          transitionById.get(
+            transitionId,
+          ),
+      )
+      .filter(
+        (
+          transition,
+        ): transition is
+          ApplicationTransition =>
+          transition !==
+          undefined,
+      );
+
+  const first =
+    transitions[0];
+
+  if (!first) {
+    return [];
+  }
+
+  return [
+    first.fromStateId,
+    ...transitions.map(
+      (transition) =>
+        transition.toStateId,
+    ),
+  ];
 }
 
 export function identifyBusinessBehaviors(
@@ -144,9 +205,9 @@ export function identifyBusinessBehaviors(
         );
 
       const stateIds =
-        flow.stateIds.slice(
-          segmentStartIndex,
-          index + 2,
+        stateIdsForTransitions(
+          transitionIds,
+          transitionById,
         );
 
       const steps =
@@ -243,6 +304,8 @@ export function identifyBusinessBehaviors(
           compareBusinessBehaviorCandidates(
             behavior,
             existing,
+            transitionById,
+            input.initialStateId,
           ) < 0
             ? behavior
             : existing;
@@ -314,9 +377,14 @@ function getBoundaryEvidence(
 
   if (
     transition.action.type ===
-    'submit' ||
-    hasTransactionVerb(
-      transition.action.target,
+      'submit' ||
+    (
+      !REPLAY_SETUP_ACTION_TYPES.has(
+        transition.action.type,
+      ) &&
+      hasTransactionVerb(
+        transition.action.target,
+      )
     )
   ) {
     evidence.push({
@@ -590,14 +658,136 @@ function createBusinessBoundaryKey(
   );
 }
 
+function countReplaySetupTransitions(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): number {
+  const replayTransitionIds =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+      ...behavior
+        .transitionIds,
+    ];
+
+  return [
+    ...new Set(
+      replayTransitionIds,
+    ),
+  ]
+    .filter(
+      (transitionId) => {
+        const transition =
+          transitionById.get(
+            transitionId,
+          );
+
+        return (
+          transition !==
+            undefined &&
+          REPLAY_SETUP_ACTION_TYPES.has(
+            transition.action.type,
+          )
+        );
+      },
+    )
+    .length;
+}
+
+function replayStartStateId(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string {
+  const firstTransitionId =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+      ...behavior
+        .transitionIds,
+    ][0];
+
+  if (!firstTransitionId) {
+    return behavior
+      .startStateId;
+  }
+
+  return transitionById
+    .get(
+      firstTransitionId,
+    )
+    ?.fromStateId ??
+    behavior.startStateId;
+}
+
 function compareBusinessBehaviorCandidates(
   first:
     BusinessBehaviorFlow,
 
   second:
     BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+
+  initialStateId?:
+    string,
 ): number {
+  const firstStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      first,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
+  const secondStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      second,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
+  const firstSetupCount =
+    countReplaySetupTransitions(
+      first,
+      transitionById,
+    );
+
+  const secondSetupCount =
+    countReplaySetupTransitions(
+      second,
+      transitionById,
+    );
+
   return (
+    firstStartsAtInitial -
+      secondStartsAtInitial ||
+
+    secondSetupCount -
+      firstSetupCount ||
+
     first
       .preconditionTransitionIds
       .length -

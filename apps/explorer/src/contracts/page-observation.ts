@@ -53,6 +53,9 @@ export const formFieldMetadataSchema =
     pattern:
       z.string().optional(),
 
+    accept:
+      z.string().optional(),
+
     multiple:
       z.boolean().optional(),
 

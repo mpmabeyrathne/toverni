@@ -20,6 +20,7 @@ function observation(
       visible: boolean;
       formField?: {
         required: boolean;
+        inputType?: string;
         value?: string;
       };
     }>;
@@ -429,5 +430,405 @@ describe(
         ).toEqual([]);
       },
     );
+    it(
+      'uses equivalent-state transitions as assertion evidence',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-page',
+
+            actionEvidenceReference:
+              'ACTION-PAGE',
+
+            actionLabel:
+              'Next Page',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-PAGE',
+
+                type:
+                  'action',
+
+                source:
+                  'action-page',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-page',
+
+                actionId:
+                  'action-page',
+
+                actionTarget:
+                  'Next Page',
+
+                explorationBlocked:
+                  true,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Page 1',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Page 2',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (item) =>
+              item.description ===
+              'Observed text appeared: Page 2',
+          ),
+        ).toBe(
+          true,
+        );
+      },
+    );
+
+
+    it(
+      'does not emit a brittle value assertion for file inputs',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-upload',
+
+            actionEvidenceReference:
+              'ACTION-UPLOAD',
+
+            actionLabel:
+              'Upload',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-UPLOAD',
+
+                type:
+                  'action',
+
+                source:
+                  'action-upload',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-upload',
+
+                actionId:
+                  'action-upload',
+
+                actionTarget:
+                  'Upload',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-02T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'No file selected',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          value:
+                            '',
+                        },
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'toverni-test.txt ready',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          inputType:
+                            'file',
+
+                          value:
+                            'C:\\fakepath\\toverni-test.txt',
+                        },
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'value',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'text' &&
+              assertion.description.includes(
+                'toverni-test.txt ready',
+              ),
+          ),
+        ).toBe(true);
+      },
+    );
+
+
+    it(
+      'ignores semantic text composed only of visible action labels',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-retry',
+
+            actionEvidenceReference:
+              'ACTION-RETRY',
+
+            actionLabel:
+              'Retry',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-RETRY',
+
+                type:
+                  'action',
+
+                source:
+                  'action-retry',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-retry',
+
+                actionId:
+                  'action-retry',
+
+                actionTarget:
+                  'Retry',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-03T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Upload failed',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'UploadClear',
+                      'Uploaded',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: UploadClear',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: Uploaded',
+          ),
+        ).toBe(true);
+      },
+    );
+
   },
 );

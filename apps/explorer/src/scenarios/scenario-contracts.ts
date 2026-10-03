@@ -35,6 +35,12 @@ import {
   
       source:
         z.string(),
+
+      linkedEvidenceReferences:
+        z.array(
+          z.string(),
+        )
+          .optional(),
     });
   
   export const groundedScenarioSchema =

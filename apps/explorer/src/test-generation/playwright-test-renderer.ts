@@ -163,6 +163,46 @@ function compileOperation(
           operation.target,
         ),
       )}.click();`;
+
+    case 'fill':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.fill(${quote(
+        operation.value,
+      )});`;
+
+    case 'select':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.selectOption(${quote(
+        operation.value,
+      )});`;
+
+    case 'set-checked':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setChecked(${String(
+        operation.checked,
+      )});`;
+
+    case 'set-input-files':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setInputFiles({ name: ${quote(
+        operation.file.name,
+      )}, mimeType: ${quote(
+        operation.file.mimeType,
+      )}, buffer: Buffer.from(${quote(
+        operation.file.content,
+      )}, "utf8") });`;
   }
 }
 
@@ -299,8 +339,14 @@ export function compilePlaywrightTest(
     const assertions =
       plan.assertions.filter(
         (assertion) =>
-          assertion.afterActionId ===
-          step.actionId,
+          assertion
+            .afterTransitionId
+            ? assertion
+                .afterTransitionId ===
+              step.transitionId
+            : assertion
+                .afterActionId ===
+              step.actionId,
       );
 
     for (

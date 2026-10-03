@@ -984,5 +984,1031 @@ describe(
                 );
             },
         );
+
+
+        it(
+            'propagates linked requirement provenance from grounded business-flow evidence',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Upload valid file',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Upload valid file',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Upload is accepted',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'FLOW-BUSINESS-1',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'A valid text file can be uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: upload valid file.',
+
+                                source:
+                                    'behavior-1',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-1',
+                                ],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+
+                expect(
+                    result[0]
+                        ?.evidenceReferences,
+                ).toEqual([
+                    'FLOW-BUSINESS-1',
+                    'REQ-1',
+                ]);
+            },
+        );
+
+        it(
+            'seeds a deterministic scenario from a grounded business behavior',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retrying succeeds and shows Uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Retry.',
+
+                                source:
+                                    'behavior-retry',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-retry',
+
+                                sourceFlowIds: [
+                                    'flow-1',
+                                ],
+
+                                name:
+                                    'Retry',
+
+                                startStateId:
+                                    'failed',
+
+                                endStateId:
+                                    'uploaded',
+
+                                stateIds: [
+                                    'failed',
+                                    'uploaded',
+                                ],
+
+                                transitionIds: [
+                                    'transition-retry',
+                                ],
+
+                                preconditionTransitionIds: [
+                                    'transition-upload',
+                                ],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-retry',
+
+                                        fromStateId:
+                                            'failed',
+
+                                        toStateId:
+                                            'uploaded',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Retry',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-retry',
+
+                                        detail:
+                                            'Observed recovery action Retry',
+
+                                        networkEventIds: [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'uploaded',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Uploaded',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Upload failed',
+                                    ],
+                                },
+
+                                requirementEvidenceIds: [
+                                    'REQ-4',
+                                ],
+
+                                apiOperationIds: [],
+
+                                apiOperationLinks: [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(1);
+
+                expect(
+                    result[0],
+                ).toMatchObject({
+                    title:
+                        'Observed flow: Retry',
+
+                    type:
+                        'recovery',
+
+                    actions: [
+                        'Retry',
+                    ],
+
+                    expectedOutcomes: [
+                        'Uploaded',
+                    ],
+
+                    evidenceReferences: [
+                        'FLOW-BUSINESS-1',
+                        'REQ-4',
+                    ],
+                });
+            },
+        );
+
+
+        it(
+            'binds requirement scenarios to matching observed business flow evidence',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Retry succeeds',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Click Retry',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Uploaded',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-4',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retrying succeeds and shows Uploaded.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Retry. Actions: click Retry.',
+
+                                source:
+                                    'behavior-retry',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+
+                            {
+                                id:
+                                    'ACTION-RETRY',
+
+                                type:
+                                    'action',
+
+                                description:
+                                    'button: Retry',
+
+                                source:
+                                    'action-retry',
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-retry',
+
+                                sourceFlowIds: [
+                                    'flow-1',
+                                ],
+
+                                name:
+                                    'Retry',
+
+                                startStateId:
+                                    'failed',
+
+                                endStateId:
+                                    'uploaded',
+
+                                stateIds: [
+                                    'failed',
+                                    'uploaded',
+                                ],
+
+                                transitionIds: [
+                                    'transition-retry',
+                                ],
+
+                                preconditionTransitionIds:
+                                    [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-retry',
+
+                                        fromStateId:
+                                            'failed',
+
+                                        toStateId:
+                                            'uploaded',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Retry',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-retry',
+
+                                        detail:
+                                            'Observed transactional action "Retry"',
+
+                                        networkEventIds:
+                                            [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'uploaded',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Uploaded',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Upload failed',
+                                    ],
+                                },
+
+                                requirementEvidenceIds: [
+                                    'REQ-4',
+                                ],
+
+                                apiOperationIds:
+                                    [],
+
+                                apiOperationLinks:
+                                    [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result.some(
+                        (scenario) =>
+                            scenario.title ===
+                                'Retry succeeds' &&
+                            scenario
+                                .evidenceReferences
+                                .includes(
+                                    'FLOW-BUSINESS-1',
+                                ),
+                    ),
+                ).toBe(true);
+
+                expect(
+                    result.some(
+                        (scenario) =>
+                            scenario.title ===
+                            'Navigation: Retry',
+                    ),
+                ).toBe(false);
+            },
+        );
+
+
+        it(
+            'seeds explicit unsupported requirements as deterministic negative scenarios',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-2',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Unsupported file types show a validation error.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+                    });
+
+                expect(
+                    result,
+                ).toHaveLength(
+                    1,
+                );
+
+                expect(
+                    result[0],
+                ).toMatchObject({
+                    type:
+                        'negative',
+
+                    evidenceReferences: [
+                        'REQ-2',
+                    ],
+                });
+
+                expect(
+                    [
+                        result[0]?.title,
+                        ...(
+                            result[0]
+                                ?.actions ??
+                            []
+                        ),
+                        ...(
+                            result[0]
+                                ?.expectedOutcomes ??
+                            []
+                        ),
+                    ]
+                        .join(
+                            ' ',
+                        )
+                        .toLowerCase(),
+                ).toContain(
+                    'unsupported file types',
+                );
+            },
+        );
+
+
+        it(
+            'does not let stacked coverage references crowd out a distinct uncovered flow',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Combined recovery requirements',
+
+                                        type:
+                                            'recovery',
+
+                                        preconditions: [],
+
+                                        actions: [
+                                            'Retry',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Uploaded',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-3',
+                                            'REQ-4',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-3',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'First upload attempt fails.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Retry succeeds.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-CLEAR',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Clear.',
+
+                                source:
+                                    'behavior-clear',
+                            },
+                        ],
+
+                        coverageGaps: [
+                            {
+                                targetId:
+                                    'REQ-3',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-3',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'REQ-4',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-4',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'FLOW-BUSINESS-CLEAR',
+
+                                kind:
+                                    'flow',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'FLOW-BUSINESS-CLEAR',
+                                ],
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-clear',
+
+                                sourceFlowIds: [
+                                    'flow-clear',
+                                ],
+
+                                name:
+                                    'Clear',
+
+                                startStateId:
+                                    'uploaded',
+
+                                endStateId:
+                                    'cleared',
+
+                                stateIds: [
+                                    'uploaded',
+                                    'cleared',
+                                ],
+
+                                transitionIds: [
+                                    'transition-clear',
+                                ],
+
+                                preconditionTransitionIds:
+                                    [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-clear',
+
+                                        fromStateId:
+                                            'uploaded',
+
+                                        toStateId:
+                                            'cleared',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Clear',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-clear',
+
+                                        detail:
+                                            'Observed recovery action Clear',
+
+                                        networkEventIds:
+                                            [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'cleared',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'No file selected',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Uploaded',
+                                    ],
+                                },
+
+                                requirementEvidenceIds:
+                                    [],
+
+                                apiOperationIds:
+                                    [],
+
+                                apiOperationLinks:
+                                    [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result[0]
+                        ?.evidenceReferences,
+                ).toContain(
+                    'FLOW-BUSINESS-CLEAR',
+                );
+            },
+        );
+
     },
 );

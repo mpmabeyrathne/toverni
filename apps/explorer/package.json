@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "model:smoke": "tsx src/models/ollama-provider.smoke.ts",
-    "benchmark": "tsx src/benchmark/run-benchmark.ts"
+    "benchmark": "tsx src/benchmark/run-benchmark.ts",
+    "benchmark:competitive": "tsx src/benchmark/run-competitive-benchmark.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

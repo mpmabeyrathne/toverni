@@ -24,6 +24,9 @@ import type {
           string | null;
         type:
           string;
+
+        blocked?:
+          boolean;
       }>;
   
     transitions:
@@ -205,6 +208,12 @@ export function buildEvidenceCatalog(
         action,
         index,
       ) => {
+        if (
+          action.blocked
+        ) {
+          return;
+        }
+
         pushUnique(
           catalog,
           {
@@ -364,6 +373,10 @@ businessBehaviors.forEach(
 
         source:
           behavior.id,
+
+        linkedEvidenceReferences:
+          behavior
+            .requirementEvidenceIds,
       },
     );
   },

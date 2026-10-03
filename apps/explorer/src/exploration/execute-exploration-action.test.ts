@@ -19,6 +19,7 @@ function createSession(): BrowserSession {
     click: vi.fn(),
     fill: vi.fn(),
     select: vi.fn(),
+    setInputFiles: vi.fn(),
     submit: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
@@ -787,5 +788,72 @@ describe(
         );
       },
     );
+
+    it(
+      'uploads a grounded deterministic file payload',
+      async () => {
+        const session =
+          createSession();
+
+        const target = {
+          by:
+            'label',
+
+          label:
+            'Upload file',
+
+          exact:
+            true,
+        } as const;
+
+        const file = {
+          name:
+            'toverni-test.txt',
+
+          mimeType:
+            'text/plain',
+
+          content:
+            'Toverni deterministic upload fixture',
+        };
+
+        const result =
+          await executeExplorationAction(
+            session,
+            {
+              type:
+                'input',
+
+              label:
+                'Upload file',
+
+              target,
+
+              formExecution: {
+                kind:
+                  'upload-file',
+
+                file,
+
+                evidence: [],
+              },
+            },
+          );
+
+        expect(
+          session.setInputFiles,
+        ).toHaveBeenCalledWith(
+          target,
+          file,
+        );
+
+        expect(
+          result.status,
+        ).toBe(
+          'executed',
+        );
+      },
+    );
+
   },
 );

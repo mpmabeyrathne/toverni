@@ -160,5 +160,69 @@ describe(
         );
       },
     );
+
+    it(
+      'matches unsupported file type wording to invalid file reference flow',
+      () => {
+        const report =
+          buildBenchmarkFlowCoverageReport(
+            [
+              {
+                id:
+                  'UP-1',
+
+                title:
+                  'Validate upload file type',
+
+                important:
+                  true,
+
+                keywords: [
+                  'file',
+                  'type',
+                  'invalid',
+                ],
+              },
+            ],
+            [
+              {
+                title:
+                  'Unsupported file type',
+
+                actions: [
+                  'Choose unsupported file type',
+                ],
+
+                expectedOutcomes: [
+                  'Validation error is shown',
+                ],
+
+                executable:
+                  true,
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+          );
+
+        expect(
+          report.entries[0]
+            ?.status,
+        ).toBe(
+          'covered',
+        );
+      },
+    );
+
   },
 );

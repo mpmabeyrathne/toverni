@@ -316,5 +316,72 @@ describe(
         ).toBe(1);
       },
     );
+
+    it(
+      'counts equivalent unsupported and invalid file-type wording as important-flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Unsupported file type',
+
+                actions: [
+                  'Choose unsupported file type',
+                ],
+
+                expectedOutcomes: [
+                  'Validation error',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+            [
+              {
+                id:
+                  'UP-1',
+
+                title:
+                  'Validate upload file type',
+
+                important:
+                  true,
+
+                keywords: [
+                  'file',
+                  'type',
+                  'invalid',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
+
   },
 );

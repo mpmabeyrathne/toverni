@@ -389,6 +389,94 @@ import {
           });
         },
       );
+
+      it(
+        'preserves replay-safe file setup before a later upload action',
+        () => {
+          const states = [
+            createState(
+              'upload-ready',
+            ),
+
+            createState(
+              'upload-failed',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'upload-ready',
+              'upload-ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload',
+              'upload-ready',
+              'upload-failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+          ];
+
+          const result =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          expect(
+            result,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            result[0]
+              ?.transitionIds,
+          ).toEqual([
+            'select-file',
+            'upload',
+          ]);
+
+          expect(
+            result[0]
+              ?.steps
+              .map(
+                (step) =>
+                  step.action.type,
+              ),
+          ).toEqual([
+            'set-input-files',
+            'click',
+          ]);
+
+          expect(
+            result[0]
+              ?.termination,
+          ).toBe(
+            'terminal-state',
+          );
+        },
+      );
+
     },
   );
   

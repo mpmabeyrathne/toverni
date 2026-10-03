@@ -253,6 +253,41 @@ import {
       }
     }
   
+    async setInputFiles(
+      target: BrowserTarget,
+      file: {
+        name: string;
+        mimeType: string;
+        content: string;
+      },
+    ): Promise<void> {
+      this.ensureOpen();
+
+      try {
+        await this
+          .resolveTarget(target)
+          .setInputFiles({
+            name:
+              file.name,
+
+            mimeType:
+              file.mimeType,
+
+            buffer:
+              Buffer.from(
+                file.content,
+                'utf8',
+              ),
+          });
+      } catch (error: unknown) {
+        throw this.createActionError(
+          'setInputFiles',
+          target,
+          error,
+        );
+      }
+    }
+
     async submit(
       target: BrowserTarget,
     ): Promise<void> {
@@ -501,6 +536,7 @@ import {
         | 'click'
         | 'fill'
         | 'select'
+        | 'setInputFiles'
         | 'submit',
   
       target: BrowserTarget,

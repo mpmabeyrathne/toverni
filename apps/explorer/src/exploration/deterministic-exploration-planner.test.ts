@@ -1141,7 +1141,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1149,7 +1154,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1168,7 +1178,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1176,7 +1191,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1407,7 +1427,12 @@ function setupWithObservation(
           const generatedValue =
             seatsCandidate
               ?.formExecution
-              ?.value;
+              ?.kind ===
+            'fill'
+              ? seatsCandidate
+                  .formExecution
+                  .value
+              : undefined;
       
           expect(
             typeof generatedValue,
@@ -1441,5 +1466,94 @@ function setupWithObservation(
           ).toBe(true);
         },
       );
+
+      it(
+        'creates deterministic file upload execution from observed accept constraints',
+        () => {
+          const observation =
+            createObservation();
+
+          observation.actions.push({
+            type:
+              'input',
+
+            tagName:
+              'input',
+
+            name:
+              'Upload file',
+
+            inputType:
+              'file',
+
+            disabled:
+              false,
+
+            visible:
+              true,
+
+            formField: {
+              inputType:
+                'file',
+
+              required:
+                true,
+
+              accept:
+                '.txt',
+            },
+          });
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          const uploadCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Upload file',
+              );
+
+          expect(
+            uploadCandidate
+              ?.blocked,
+          ).toBe(false);
+
+          expect(
+            uploadCandidate
+              ?.formExecution,
+          ).toEqual(
+            expect.objectContaining({
+              kind:
+                'upload-file',
+
+              file: {
+                name:
+                  'toverni-test.txt',
+
+                mimeType:
+                  'text/plain',
+
+                content:
+                  'Toverni deterministic upload fixture',
+              },
+            }),
+          );
+        },
+      );
+
     },
   );

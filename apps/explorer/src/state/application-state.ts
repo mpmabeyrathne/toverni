@@ -13,6 +13,7 @@ export const transitionActionSchema =
       'click',
       'fill',
       'select',
+      'set-input-files',
       'submit',
       'back',
       'forward',

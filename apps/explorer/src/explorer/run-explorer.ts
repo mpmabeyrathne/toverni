@@ -717,6 +717,7 @@ export async function runExplorer(
             await activeRepository
                 .getApplicationFlow(
                     application.id,
+                    run.id,
                 );
 
         if (!currentFlow) {
@@ -755,6 +756,10 @@ export async function runExplorer(
 
                 flows:
                     reconstructedFlows,
+
+                initialStateId:
+                    explorationResult
+                        .initialStateId,
             });
 
         const groundedBusinessBehaviors =
@@ -901,6 +906,9 @@ export async function runExplorer(
           evidence,
           coverageGaps:
             scenarioCoverageGaps,
+
+          businessBehaviors:
+            groundedBusinessBehaviors,
         });
   
     const scenarios =
@@ -1003,6 +1011,10 @@ export async function runExplorer(
                 .evidenceReferences,
           },
   
+          initialStateId:
+            explorationResult
+              .initialStateId,
+
           evidence:
             evidence.map(
               (item) => ({
@@ -1014,6 +1026,9 @@ export async function runExplorer(
   
                 source:
                   item.source,
+
+                description:
+                  item.description,
               }),
             ),
   
@@ -1048,12 +1063,24 @@ export async function runExplorer(
                   id:
                     transition.id,
 
+                  fromStateId:
+                    transition
+                      .fromStateId,
+
+                  toStateId:
+                    transition
+                      .toStateId,
+
                   actionId:
                     transition.actionId,
 
                   actionTarget:
                     transition
                       .actionTarget,
+
+                  actionType:
+                    transition
+                      .actionType,
 
                   explorationBlocked:
                     transition
@@ -1070,6 +1097,23 @@ export async function runExplorer(
                   afterObservation:
                     transition
                       .afterObservation,
+                }),
+              ),
+
+          businessBehaviors:
+            groundedBusinessBehaviors
+              .map(
+                (behavior) => ({
+                  id:
+                    behavior.id,
+
+                  preconditionTransitionIds:
+                    behavior
+                      .preconditionTransitionIds,
+
+                  transitionIds:
+                    behavior
+                      .transitionIds,
                 }),
               ),
         });
@@ -1196,28 +1240,59 @@ export async function runExplorer(
               executionResult,
             );
   
-          logger.info(
-            {
-              scenarioId:
-                storedScenario.id,
-  
-              generatedTestId:
-                storedTest.id,
-  
-              filePath:
-                writtenTest.filePath,
-  
-              status:
-                executionResult.status,
-  
-              exitCode:
-                executionResult.exitCode,
-  
-              durationMs:
-                executionResult.durationMs,
-            },
-            'Generated Playwright test executed',
-          );
+          const executionLog = {
+            scenarioId:
+              storedScenario.id,
+
+            title:
+              storedScenario.title,
+
+            generatedTestId:
+              storedTest.id,
+
+            filePath:
+              writtenTest.filePath,
+
+            status:
+              executionResult.status,
+
+            exitCode:
+              executionResult.exitCode,
+
+            durationMs:
+              executionResult.durationMs,
+
+            ...(
+              executionResult.status ===
+                'failed'
+                ? {
+                  error:
+                    executionResult.error,
+
+                  stderr:
+                    executionResult.stderr,
+
+                  stdout:
+                    executionResult.stdout,
+                }
+                : {}
+            ),
+          };
+
+          if (
+            executionResult.status ===
+            'failed'
+          ) {
+            logger.error(
+              executionLog,
+              'Generated Playwright test failed',
+            );
+          } else {
+            logger.info(
+              executionLog,
+              'Generated Playwright test executed',
+            );
+          }
         } catch (
           executionError:
             unknown
@@ -1315,6 +1390,7 @@ export async function runExplorer(
             await activeRepository
                 .getApplicationFlow(
                     application.id,
+                    run.id,
                 );
 
         if (

@@ -16,6 +16,26 @@ import {
   
   const DEFAULT_MAX_DEPTH =
     25;
+
+  const REPLAY_SETUP_ACTION_TYPES =
+    new Set([
+      'fill',
+      'select',
+      'set-input-files',
+    ]);
+
+  function isReplaySetupSelfTransition(
+    transition:
+      ApplicationTransition,
+  ): boolean {
+    return (
+      transition.fromStateId ===
+        transition.toStateId &&
+      REPLAY_SETUP_ACTION_TYPES.has(
+        transition.action.type,
+      )
+    );
+  }
   
   export interface ReconstructBusinessFlowsInput {
     states:
@@ -233,11 +253,38 @@ import {
   
       steps:
         BusinessFlowStep[],
+
+      usedTransitionIds:
+        Set<string>,
     ): void => {
+      const availableTransitions =
+        (
+          outgoing.get(
+            currentStateId,
+          ) ?? []
+        ).filter(
+          (transition) =>
+            !usedTransitionIds.has(
+              transition.id,
+            ),
+        );
+
+      const nextSetupTransition =
+        availableTransitions.find(
+          isReplaySetupSelfTransition,
+        );
+
+      // Replay-safe form setup transitions
+      // are observed preparation on the same
+      // canonical state. Preserve them before
+      // later actions instead of terminating
+      // the path as a cycle.
       const nextTransitions =
-        outgoing.get(
-          currentStateId,
-        ) ?? [];
+        nextSetupTransition
+          ? [
+              nextSetupTransition,
+            ]
+          : availableTransitions;
   
       if (
         nextTransitions.length ===
@@ -271,15 +318,34 @@ import {
         const transition of
         nextTransitions
       ) {
-        const nextStateIds = [
-          ...stateIds,
-          transition.toStateId,
-        ];
+        const replaySetup =
+          isReplaySetupSelfTransition(
+            transition,
+          );
+
+        const nextStateIds =
+          replaySetup
+            ? [
+                ...stateIds,
+              ]
+            : [
+                ...stateIds,
+                transition.toStateId,
+              ];
   
         const nextTransitionsPath = [
           ...pathTransitions,
           transition,
         ];
+
+        const nextUsedTransitionIds =
+          new Set(
+            usedTransitionIds,
+          );
+
+        nextUsedTransitionIds.add(
+          transition.id,
+        );
   
         const nextSteps = [
           ...steps,
@@ -298,6 +364,18 @@ import {
           },
         ];
   
+        if (replaySetup) {
+          walk(
+            currentStateId,
+            nextStateIds,
+            nextTransitionsPath,
+            nextSteps,
+            nextUsedTransitionIds,
+          );
+
+          continue;
+        }
+
         if (
           !stateById.has(
             transition.toStateId,
@@ -333,6 +411,7 @@ import {
           nextStateIds,
           nextTransitionsPath,
           nextSteps,
+          nextUsedTransitionIds,
         );
       }
     };
@@ -372,6 +451,7 @@ import {
         ],
         [],
         [],
+        new Set(),
       );
     }
   
@@ -411,6 +491,7 @@ import {
         ],
         [],
         [],
+        new Set(),
       );
     }
   

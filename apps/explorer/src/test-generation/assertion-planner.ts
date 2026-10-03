@@ -16,11 +16,20 @@ interface EvidenceItem {
 export interface AssertionTransition {
   id: string;
 
+  fromStateId?:
+    string;
+
+  toStateId?:
+    string;
+
   actionId:
     string | null;
 
   actionTarget:
     string | null;
+
+  actionType?:
+    string;
 
   explorationBlocked:
     boolean;
@@ -43,6 +52,9 @@ export interface BuildAssertionsInput {
     string;
 
   actionLabel:
+    string;
+
+  transitionId?:
     string;
 
   scenarioEvidenceReferences?:
@@ -103,6 +115,30 @@ function observedTarget(
 
   if (!name) {
     return null;
+  }
+
+  if (
+    action
+      .formField
+      ?.inputType
+      ?.toLowerCase() ===
+    'file'
+  ) {
+    return {
+      kind:
+        'locator',
+
+      target: {
+        by:
+          'label',
+
+        label:
+          name,
+
+        exact:
+          true,
+      },
+    };
   }
 
   const role =
@@ -212,19 +248,31 @@ function stableTransition(
 
   actionLabel:
     string,
+
+  transitionId?:
+    string,
 ): AssertionTransition | null {
+  if (transitionId) {
+    const exact =
+      transitions.find(
+        (transition) =>
+          transition.id ===
+          transitionId,
+      );
+
+    if (exact) {
+      return exact;
+    }
+  }
+
   const candidates =
     transitions
       .filter(
         (transition) =>
-          !transition
-            .explorationBlocked &&
-          (
-            transition.actionId ===
-              actionId ||
-            transition.actionTarget ===
-              actionLabel
-          ),
+          transition.actionId ===
+            actionId ||
+          transition.actionTarget ===
+            actionLabel,
       )
       .sort(
         (
@@ -304,6 +352,76 @@ function uniqueSemanticText(
   ];
 }
 
+function normalizeSemanticToken(
+  value:
+    string,
+): string {
+  return value
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      '',
+    );
+}
+
+function isActionChromeAggregate(
+  value:
+    string,
+
+  actions:
+    ActionElement[],
+): boolean {
+  let remaining =
+    normalizeSemanticToken(
+      value,
+    );
+
+  if (!remaining) {
+    return false;
+  }
+
+  const labels =
+    actions
+      .filter(
+        (action) =>
+          action.visible,
+      )
+      .map(
+        (action) =>
+          action.name ??
+          action.text ??
+          '',
+      )
+      .map(
+        normalizeSemanticToken,
+      )
+      .filter(
+        (label) =>
+          label.length >
+          0,
+      )
+      .sort(
+        (
+          first,
+          second,
+        ) =>
+          second.length -
+          first.length,
+      );
+
+  for (
+    const label of
+      labels
+  ) {
+    remaining =
+      remaining.split(
+        label,
+      ).join('');
+  }
+
+  return remaining.length === 0;
+}
+
 export function buildEvidenceBackedAssertions(
   input:
     BuildAssertionsInput,
@@ -313,6 +431,7 @@ export function buildEvidenceBackedAssertions(
       input.transitions,
       input.actionId,
       input.actionLabel,
+      input.transitionId,
     );
 
   if (!transition) {
@@ -364,7 +483,14 @@ export function buildEvidenceBackedAssertions(
       );
 
       assertions.push(
-        assertion,
+        input.transitionId
+          ? {
+              ...assertion,
+
+              afterTransitionId:
+                transition.id,
+            }
+          : assertion,
       );
     };
 
@@ -645,7 +771,20 @@ export function buildEvidenceBackedAssertions(
           .formField
           ?.value;
 
+      const fileInput =
+        beforeItem
+          .formField
+          ?.inputType
+          ?.toLowerCase() ===
+          'file' ||
+        afterItem
+          .formField
+          ?.inputType
+          ?.toLowerCase() ===
+          'file';
+
       if (
+        !fileInput &&
         afterValue !==
           undefined &&
         beforeValue !==
@@ -714,7 +853,13 @@ export function buildEvidenceBackedAssertions(
       .sort();
 
   const added =
-    addedText[0];
+    addedText.find(
+      (value) =>
+        !isActionChromeAggregate(
+          value,
+          after.actions,
+        ),
+    );
 
   if (added) {
     pushAssertion({
@@ -751,7 +896,13 @@ export function buildEvidenceBackedAssertions(
   }
 
   const removed =
-    removedText[0];
+    removedText.find(
+      (value) =>
+        !isActionChromeAggregate(
+          value,
+          before.actions,
+        ),
+    );
 
   if (removed) {
     pushAssertion({
