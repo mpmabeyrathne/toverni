@@ -948,6 +948,11 @@ export function createExecutableTestPlan(
           actionId:
             action.id,
 
+          transitionId:
+            transition
+              ?.id ??
+            null,
+
           operation,
         });
 
