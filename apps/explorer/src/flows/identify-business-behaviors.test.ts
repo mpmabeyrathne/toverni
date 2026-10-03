@@ -1069,6 +1069,68 @@ import {
         },
       );
 
+
+      it(
+        'derives a valid two-state behavior path for transactional self-transitions',
+        () => {
+          const states = [
+            createState(
+              'ready',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'submit-self',
+              'ready',
+              'ready',
+              {
+                type:
+                  'submit',
+
+                target:
+                  'Save',
+              },
+              1,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            behaviors[0]
+              ?.stateIds,
+          ).toEqual([
+            'ready',
+            'ready',
+          ]);
+
+          expect(
+            behaviors[0]
+              ?.transitionIds,
+          ).toEqual([
+            'submit-self',
+          ]);
+        },
+      );
+
     },
   );
   
