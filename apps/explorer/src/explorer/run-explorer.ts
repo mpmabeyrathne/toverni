@@ -756,6 +756,10 @@ export async function runExplorer(
 
                 flows:
                     reconstructedFlows,
+
+                initialStateId:
+                    explorationResult
+                        .initialStateId,
             });
 
         const groundedBusinessBehaviors =
