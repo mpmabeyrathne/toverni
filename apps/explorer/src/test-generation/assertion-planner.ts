@@ -327,6 +327,76 @@ function uniqueSemanticText(
   ];
 }
 
+function normalizeSemanticToken(
+  value:
+    string,
+): string {
+  return value
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      '',
+    );
+}
+
+function isActionChromeAggregate(
+  value:
+    string,
+
+  actions:
+    ActionElement[],
+): boolean {
+  let remaining =
+    normalizeSemanticToken(
+      value,
+    );
+
+  if (!remaining) {
+    return false;
+  }
+
+  const labels =
+    actions
+      .filter(
+        (action) =>
+          action.visible,
+      )
+      .map(
+        (action) =>
+          action.name ??
+          action.text ??
+          '',
+      )
+      .map(
+        normalizeSemanticToken,
+      )
+      .filter(
+        (label) =>
+          label.length >
+          0,
+      )
+      .sort(
+        (
+          first,
+          second,
+        ) =>
+          second.length -
+          first.length,
+      );
+
+  for (
+    const label of
+      labels
+  ) {
+    remaining =
+      remaining.split(
+        label,
+      ).join('');
+  }
+
+  return remaining.length === 0;
+}
+
 export function buildEvidenceBackedAssertions(
   input:
     BuildAssertionsInput,
@@ -750,7 +820,13 @@ export function buildEvidenceBackedAssertions(
       .sort();
 
   const added =
-    addedText[0];
+    addedText.find(
+      (value) =>
+        !isActionChromeAggregate(
+          value,
+          after.actions,
+        ),
+    );
 
   if (added) {
     pushAssertion({
@@ -787,7 +863,13 @@ export function buildEvidenceBackedAssertions(
   }
 
   const removed =
-    removedText[0];
+    removedText.find(
+      (value) =>
+        !isActionChromeAggregate(
+          value,
+          before.actions,
+        ),
+    );
 
   if (removed) {
     pushAssertion({
