@@ -2261,6 +2261,130 @@ function setupWithObservation(
 
 
       it(
+        'prioritizes requirement-grounded data controls before generic empty text setup',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/data-grid/requirements.md',
+
+              acceptanceCriteria: [
+                'Sorting by amount toggles ascending and descending order.',
+                'Pagination changes the visible result set.',
+                'Refresh updates the table status using a local API-like update.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Sort dynamic table.',
+                'Paginate results.',
+                'Refresh API-driven status.',
+              ],
+
+              constraints: [],
+
+              domainTerms: [
+                'sort',
+                'page',
+                'refresh',
+              ],
+
+              rawText:
+                'Sort, paginate, and refresh the data grid.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Search customers',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sort Amount',
+
+                text:
+                  'Sort Amount',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Sort Amount',
+          );
+        },
+      );
+
+
+      it(
         'prioritizes unfilled grounded form setup before a submit button',
         () => {
           const observation:
