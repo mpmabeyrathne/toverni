@@ -451,5 +451,73 @@ describe(
         );
       },
     );
+
+
+    it(
+      'normalizes row and results wording for search flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Search customer rows',
+
+                actions: [
+                  'Fill Search customers',
+                ],
+
+                expectedOutcomes: [
+                  'Only matching customer rows remain',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-1',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+
+            [
+              {
+                id:
+                  'GRID-1',
+
+                title:
+                  'Search table rows',
+
+                important:
+                  true,
+
+                keywords: [
+                  'search',
+                  'customer',
+                  'results',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
   },
 );
