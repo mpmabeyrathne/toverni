@@ -648,37 +648,33 @@ function createBusinessBoundaryKey(
       transition,
     );
 
+  const negativeOutcome =
+    outcome
+      .addedSemanticText
+      .some(
+        (value) =>
+          /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized)\b/i
+            .test(
+              value,
+            ),
+      );
+
   const outcomeSignature =
     [
       outcome.urlChanged
-        ? transition
-            .afterObservation
-            .url
-        : '',
+        ? 'url-changed'
+        : 'url-stable',
 
-      ...outcome
-        .addedSemanticText
-        .map(
-          normalize,
-        )
-        .sort(),
+      outcome.titleChanged
+        ? 'title-changed'
+        : 'title-stable',
 
-      ...outcome
-        .removedSemanticText
-        .map(
-          (value) =>
-            `-${normalize(
-              value,
-            )}`,
-        )
-        .sort(),
-    ]
-      .filter(
-        Boolean,
-      )
-      .join(
-        '|',
-      );
+      negativeOutcome
+        ? 'negative-outcome'
+        : 'non-negative-outcome',
+    ].join(
+      '|',
+    );
 
   return [
     transition.action.type,
