@@ -2010,5 +2010,457 @@ describe(
             },
         );
 
+
+        it(
+            'propagates requirement and observed action provenance into navigation scenarios',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Navigation: Navigate between dashboard and profile',
+
+                                        type:
+                                            'navigation',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Click dashboard',
+                                            'Click profile',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Signed in session remains active while navigating inside the app',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'CAP-2',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'A valid user can sign in and a signed-in session remains active while navigating inside the app.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'CAP-2',
+
+                                type:
+                                    'capability',
+
+                                description:
+                                    'Navigate between dashboard and profile without losing session state.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'ACTION-1',
+
+                                type:
+                                    'action',
+
+                                description:
+                                    'button: Dashboard',
+
+                                source:
+                                    'dashboard-action',
+                            },
+
+                            {
+                                id:
+                                    'ACTION-2',
+
+                                type:
+                                    'action',
+
+                                description:
+                                    'button: Profile',
+
+                                source:
+                                    'profile-action',
+                            },
+                        ],
+                    });
+
+                const navigation =
+                    result.find(
+                        (scenario) =>
+                            scenario.title ===
+                            'Navigation: Navigate between dashboard and profile',
+                    );
+
+                expect(
+                    navigation,
+                ).toBeDefined();
+
+                expect(
+                    navigation
+                        ?.evidenceReferences,
+                ).toEqual(
+                    expect.arrayContaining([
+                        'CAP-2',
+                        'REQ-1',
+                        'ACTION-2',
+                    ]),
+                );
+            },
+        );
+
+
+        it(
+            'maps invalid authentication constraint provenance to the matching negative requirement',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-2',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'An invalid password shows an authentication error and does not create a session.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'CON-1',
+
+                                type:
+                                    'constraint',
+
+                                description:
+                                    'Invalid credentials must not authenticate.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+                    });
+
+                const negative =
+                    result.find(
+                        (scenario) =>
+                            scenario.title.includes(
+                                'Invalid credentials must not authenticate',
+                            ),
+                    );
+
+                expect(
+                    negative
+                        ?.evidenceReferences,
+                ).toEqual(
+                    expect.arrayContaining([
+                        'CON-1',
+                        'REQ-2',
+                    ]),
+                );
+            },
+        );
+
+
+        it(
+            'keeps positive admin navigation away from negative forbidden requirements',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'Navigation: Admin Panel',
+
+                                        type:
+                                            'navigation',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Open admin panel',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Admin panel is displayed',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'CAP-3',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-3',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Admin users can open the admin panel.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'REQ-4',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Standard users are prevented from opening the admin panel.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'CAP-3',
+
+                                type:
+                                    'capability',
+
+                                description:
+                                    'Role-based admin access.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'ACTION-1',
+
+                                type:
+                                    'action',
+
+                                description:
+                                    'button: Admin Panel',
+
+                                source:
+                                    'admin-action',
+                            },
+                        ],
+                    });
+
+                const admin =
+                    result.find(
+                        (scenario) =>
+                            scenario.title ===
+                            'Navigation: Admin Panel',
+                    );
+
+                expect(
+                    admin
+                        ?.evidenceReferences,
+                ).toContain(
+                    'REQ-3',
+                );
+
+                expect(
+                    admin
+                        ?.evidenceReferences,
+                ).not.toContain(
+                    'REQ-4',
+                );
+            },
+        );
+
     },
 );
