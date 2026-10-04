@@ -2735,5 +2735,250 @@ describe(
             },
         );
 
+
+
+        it(
+            'grounds negative requirement scenarios from a strongly matching observed business outcome',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-3',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Invalid card input shows a validation error.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'CON-2',
+
+                                type:
+                                    'constraint',
+
+                                description:
+                                    'Card values other than 4242424242424242 are rejected.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Review Order.',
+
+                                source:
+                                    'behavior-invalid-card',
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-invalid-card',
+
+                                sourceFlowIds: [
+                                    'flow-invalid-card',
+                                ],
+
+                                name:
+                                    'Review Order',
+
+                                startStateId:
+                                    'card-ready',
+
+                                endStateId:
+                                    'card-invalid',
+
+                                stateIds: [
+                                    'card-ready',
+                                    'card-invalid',
+                                ],
+
+                                transitionIds: [
+                                    'transition-invalid-card',
+                                ],
+
+                                preconditionTransitionIds: [
+                                    'transition-fill-invalid-card',
+                                ],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-invalid-card',
+
+                                        fromStateId:
+                                            'card-ready',
+
+                                        toStateId:
+                                            'card-invalid',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Review Order',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-invalid-card',
+
+                                        detail:
+                                            'Observed invalid-card validation outcome',
+
+                                        networkEventIds: [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'card-invalid',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Invalid card',
+                                    ],
+
+                                    removedSemanticText: [],
+                                },
+
+                                requirementEvidenceIds: [],
+
+                                apiOperationIds: [],
+
+                                apiOperationLinks: [],
+                            },
+                        ],
+                    });
+
+                const requirementScenario =
+                    result.find(
+                        (scenario) =>
+                            scenario.title.includes(
+                                'Invalid card input shows a validation error',
+                            ),
+                    );
+
+                const constraintScenario =
+                    result.find(
+                        (scenario) =>
+                            scenario.title.includes(
+                                'Card values other than 4242424242424242 are rejected',
+                            ),
+                    );
+
+                for (
+                    const scenario of [
+                        requirementScenario,
+                        constraintScenario,
+                    ]
+                ) {
+                    expect(
+                        scenario,
+                    ).toBeDefined();
+
+                    expect(
+                        scenario
+                            ?.evidenceReferences,
+                    ).toContain(
+                        'FLOW-BUSINESS-1',
+                    );
+
+                    expect(
+                        scenario?.actions,
+                    ).toEqual([
+                        'Review Order',
+                    ]);
+                }
+            },
+        );
     },
 );
