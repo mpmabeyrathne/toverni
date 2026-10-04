@@ -1900,7 +1900,7 @@ function setupWithObservation(
 
 
       it(
-        'executes a sensitive field when product requirements provide the sole allowed test value',
+        'recovers a sensitive field to the sole allowed test value when a prior value is present',
         () => {
           const observation:
             PageObservation = {
@@ -1934,7 +1934,7 @@ function setupWithObservation(
                     false,
 
                   value:
-                    '',
+                    '4242424242424240',
                 },
               },
             ],
