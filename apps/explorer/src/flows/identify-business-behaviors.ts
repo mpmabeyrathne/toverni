@@ -422,7 +422,7 @@ function getBoundaryEvidence(
     hasReadBehaviorTerm(
       transition.action.target,
     ) &&
-    hasObservableOutcome(
+    hasObservableReadOutcome(
       transition,
     )
   ) {
@@ -510,7 +510,7 @@ function hasReadBehaviorTerm(
     );
 }
 
-function hasObservableOutcome(
+function hasObservableReadOutcome(
   transition:
     ApplicationTransition,
 ): boolean {
@@ -519,9 +519,20 @@ function hasObservableOutcome(
       transition,
     );
 
-  return (
+  /*
+   * Read/query controls such as filter, sort,
+   * pagination and refresh should represent
+   * in-place data-state changes rather than
+   * ordinary page navigation.
+   */
+  if (
     outcome.urlChanged ||
-    outcome.titleChanged ||
+    outcome.titleChanged
+  ) {
+    return false;
+  }
+
+  return (
     outcome.addedSemanticText
       .length >
       0 ||
