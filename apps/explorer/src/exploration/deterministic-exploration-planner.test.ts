@@ -1720,6 +1720,186 @@ function setupWithObservation(
 
 
       it(
+        'explores a requirement-grounded invalid sensitive value before recovering to the allowed value',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'Invalid card input shows a validation error.',
+                'A valid local test card opens an order confirmation dialog.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Local payment-like validation.',
+              ],
+
+              constraints: [
+                'Card values other than 4242424242424242 are rejected.',
+              ],
+
+              domainTerms: [
+                'card',
+              ],
+
+              rawText:
+                'Card values other than 4242424242424242 are rejected.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const emptyObservation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Card number',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              emptyObservation,
+            );
+
+          const negativeDecision =
+            planner.plan({
+              state,
+
+              observation:
+                emptyObservation,
+
+              knowledge,
+            });
+
+          expect(
+            negativeDecision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+          });
+
+          const negativeValue =
+            negativeDecision.selected
+              ?.formExecution
+              ?.kind ===
+              'fill'
+                ? negativeDecision.selected
+                    .formExecution.value
+                : undefined;
+
+          expect(
+            negativeValue,
+          ).toBeDefined();
+
+          expect(
+            negativeValue,
+          ).not.toBe(
+            '4242424242424242',
+          );
+
+          const invalidObservation:
+            PageObservation = {
+            ...emptyObservation,
+
+            actions:
+              emptyObservation.actions.map(
+                (action) => ({
+                  ...action,
+
+                  formField:
+                    action.formField
+                      ? {
+                          ...action.formField,
+
+                          value:
+                            negativeValue ??
+                            '',
+                        }
+                      : undefined,
+                }),
+              ),
+          };
+
+          const invalidState =
+            setupWithObservation(
+              invalidObservation,
+            ).state;
+
+          const recoveryDecision =
+            planner.plan({
+              state:
+                invalidState,
+
+              observation:
+                invalidObservation,
+
+              knowledge,
+            });
+
+          const card =
+            recoveryDecision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Card number',
+              );
+
+          expect(
+            card?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              '4242424242424242',
+          });
+        },
+      );
+
+
+      it(
         'executes a sensitive field when product requirements provide the sole allowed test value',
         () => {
           const observation:
