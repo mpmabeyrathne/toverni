@@ -1615,6 +1615,192 @@ import type {
     ].join(' ');
   }
 
+  function prioritizeCoverageBreadth(
+    scenarios:
+      GroundedScenario[],
+
+    gaps:
+      ScenarioCoverageGap[],
+  ): GroundedScenario[] {
+    if (
+      scenarios.length <= 1 ||
+      gaps.length === 0
+    ) {
+      return scenarios;
+    }
+
+    const priorityByEvidence =
+      new Map<
+        string,
+        number
+      >();
+
+    for (const gap of gaps) {
+      const statusWeight =
+        gap.status ===
+          'uncovered'
+          ? 100
+          : 50;
+
+      const kindWeight = {
+        flow:
+          25,
+        requirement:
+          20,
+        api_operation:
+          15,
+        capability:
+          10,
+        constraint:
+          10,
+      }[
+        gap.kind
+      ];
+
+      for (
+        const reference of
+        gap.evidenceReferences
+      ) {
+        priorityByEvidence.set(
+          reference,
+          Math.max(
+            priorityByEvidence.get(
+              reference,
+            ) ?? 0,
+            statusWeight +
+              kindWeight,
+          ),
+        );
+      }
+    }
+
+    const remaining = [
+      ...scenarios,
+    ];
+
+    const selected:
+      GroundedScenario[] = [];
+
+    const coveredEvidence =
+      new Set<string>();
+
+    while (
+      remaining.length > 0
+    ) {
+      let bestIndex = 0;
+
+      let bestNewCoverage = -1;
+
+      let bestCoverageWeight = -1;
+
+      for (
+        let index = 0;
+        index <
+          remaining.length;
+        index += 1
+      ) {
+        const scenario =
+          remaining[
+            index
+          ];
+
+        if (!scenario) {
+          continue;
+        }
+
+        const newlyCovered =
+          scenario
+            .evidenceReferences
+            .filter(
+              (reference) =>
+                priorityByEvidence
+                  .has(
+                    reference,
+                  ) &&
+                !coveredEvidence
+                  .has(
+                    reference,
+                  ),
+            );
+
+        const newCoverage =
+          newlyCovered.length;
+
+        const coverageWeight =
+          newlyCovered.reduce(
+            (
+              total,
+              reference,
+            ) =>
+              total +
+              (
+                priorityByEvidence
+                  .get(
+                    reference,
+                  ) ??
+                0
+              ),
+            0,
+          );
+
+        if (
+          newCoverage >
+            bestNewCoverage ||
+          (
+            newCoverage ===
+              bestNewCoverage &&
+            coverageWeight >
+              bestCoverageWeight
+          )
+        ) {
+          bestIndex =
+            index;
+
+          bestNewCoverage =
+            newCoverage;
+
+          bestCoverageWeight =
+            coverageWeight;
+        }
+      }
+
+      const [
+        selectedScenario,
+      ] =
+        remaining.splice(
+          bestIndex,
+          1,
+        );
+
+      if (!selectedScenario) {
+        break;
+      }
+
+      selected.push(
+        selectedScenario,
+      );
+
+      for (
+        const reference of
+        selectedScenario
+          .evidenceReferences
+      ) {
+        if (
+          priorityByEvidence
+            .has(
+              reference,
+            )
+        ) {
+          coveredEvidence.add(
+            reference,
+          );
+        }
+      }
+    }
+
+    return selected;
+  }
+
   export class GroundedScenarioGenerator {
     constructor(
       private readonly provider:
@@ -1954,8 +2140,9 @@ import type {
             ),
         );
 
-      return deduplicated
-        .map(
+      const ranked =
+        deduplicated
+          .map(
           ({
             scenario,
             deduplicationReasons,
@@ -2065,5 +2252,10 @@ import type {
             );
           },
         );
+
+      return prioritizeCoverageBreadth(
+        ranked,
+        coverageGaps,
+      );
     }
   }
