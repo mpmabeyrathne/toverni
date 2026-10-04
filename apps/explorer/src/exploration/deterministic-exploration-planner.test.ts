@@ -1720,6 +1720,120 @@ function setupWithObservation(
 
 
       it(
+        'executes a sensitive field when product requirements provide the sole allowed test value',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Card number',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'A valid local test card opens an order confirmation dialog.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Local payment-like validation.',
+              ],
+
+              constraints: [
+                'Card values other than 4242424242424242 are rejected.',
+              ],
+
+              domainTerms: [
+                'card',
+              ],
+
+              rawText:
+                'Card values other than 4242424242424242 are rejected.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+              knowledge,
+            });
+
+          const card =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Card number',
+              );
+
+          expect(
+            card?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              '4242424242424242',
+          });
+
+          expect(
+            card?.blocked,
+          ).toBe(false);
+        },
+      );
+
+
+      it(
         'keeps a sensitive field blocked without explicit value evidence',
         () => {
           const observation:
@@ -1791,7 +1905,7 @@ function setupWithObservation(
               .some(
                 (reason) =>
                   reason.includes(
-                    'explicit OpenAPI example/default',
+                    'explicit trusted test value',
                   ),
               ),
           ).toBe(true);
