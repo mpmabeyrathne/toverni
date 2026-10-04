@@ -435,6 +435,21 @@ function isActionChromeAggregate(
           first.length,
       );
 
+  const containedLabels =
+    labels.filter(
+      (label) =>
+        remaining.includes(
+          label,
+        ),
+    );
+
+  if (
+    containedLabels.length >=
+      2
+  ) {
+    return true;
+  }
+
   for (
     const label of
       labels
