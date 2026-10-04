@@ -2094,6 +2094,173 @@ function setupWithObservation(
 
 
       it(
+        'probes a requirement-grounded required field before autofill and then recovers',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'Checkout requires a customer name before continuing.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Multi-step checkout.',
+              ],
+
+              constraints: [
+                'Empty required fields cannot advance.',
+              ],
+
+              domainTerms: [
+                'checkout',
+                'customer',
+                'name',
+              ],
+
+              rawText:
+                'Checkout requires a customer name before continuing.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Customer name',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Continue',
+
+                text:
+                  'Continue',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const validationDecision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+            });
+
+          expect(
+            validationDecision.selected
+              ?.label,
+          ).toBe(
+            'Continue',
+          );
+
+          planner.recordActionExecution(
+            validationDecision.selected!,
+          );
+
+          const validationObservation:
+            PageObservation = {
+            ...observation,
+
+            semanticText: [
+              'Checkout',
+              'Name is required',
+            ],
+          };
+
+          const validationState =
+            setupWithObservation(
+              validationObservation,
+            ).state;
+
+          const recoveryDecision =
+            planner.plan({
+              state:
+                validationState,
+
+              observation:
+                validationObservation,
+
+              knowledge,
+            });
+
+          expect(
+            recoveryDecision.selected
+              ?.label,
+          ).toBe(
+            'Customer name',
+          );
+
+          expect(
+            recoveryDecision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+          });
+        },
+      );
+
+
+      it(
         'prioritizes unfilled grounded form setup before a submit button',
         () => {
           const observation:
