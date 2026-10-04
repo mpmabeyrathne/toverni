@@ -1056,6 +1056,100 @@ describe(
 
 
     it(
+      'targets tab-separated table rows by ARIA row role',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-refresh',
+
+            actionEvidenceReference:
+              'ACTION-REFRESH',
+
+            actionLabel:
+              'Refresh',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-REFRESH',
+
+                type:
+                  'action',
+
+                source:
+                  'action-refresh',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-refresh',
+
+                actionId:
+                  'action-refresh',
+
+                actionTarget:
+                  'Refresh',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Alice\tPaid\t30',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Alice\tUpdated\t30',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind:
+                'text',
+
+              target: {
+                kind:
+                  'locator',
+
+                target: {
+                  by:
+                    'role',
+
+                  role:
+                    'row',
+
+                  name:
+                    'Alice Updated 30',
+
+                  exact:
+                    true,
+                },
+              },
+            }),
+          ]),
+        );
+      },
+    );
+
+
+    it(
       'ignores semantic text composed only of visible action labels',
       () => {
         const result =
