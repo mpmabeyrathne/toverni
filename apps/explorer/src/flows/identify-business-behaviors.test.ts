@@ -711,6 +711,12 @@ import {
           transition.beforeObservation = {
             ...transition.beforeObservation,
 
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
             semanticText: [
               'Page 1',
             ],
@@ -718,6 +724,12 @@ import {
 
           transition.afterObservation = {
             ...transition.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
 
             semanticText: [
               'Page 2',
