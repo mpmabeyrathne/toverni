@@ -2261,6 +2261,215 @@ function setupWithObservation(
 
 
       it(
+        'derives search and filter values from observed table data',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/data-grid/requirements.md',
+
+              acceptanceCriteria: [
+                'Search filters rows by customer name.',
+                'Status filtering shows only matching rows.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Search and filter.',
+              ],
+
+              constraints: [],
+
+              domainTerms: [
+                'search',
+                'status',
+                'customer',
+              ],
+
+              rawText:
+                'Search filters rows by customer name. Status filtering shows only matching rows.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            semanticText: [
+              'Orders',
+              'Customer\tStatus\tAmount',
+              'Bob\tPending\t10',
+              'Dan\tPending\t20',
+            ],
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Search customers',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'select',
+
+                tagName:
+                  'select',
+
+                name:
+                  'Status filter',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  required:
+                    false,
+
+                  multiple:
+                    false,
+
+                  value:
+                    'All',
+
+                  options: [
+                    {
+                      value:
+                        'All',
+
+                      label:
+                        'All',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        true,
+                    },
+
+                    {
+                      value:
+                        'Paid',
+
+                      label:
+                        'Paid',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        false,
+                    },
+
+                    {
+                      value:
+                        'Pending',
+
+                      label:
+                        'Pending',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        false,
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+              knowledge,
+            });
+
+          const search =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Search customers',
+              );
+
+          const filter =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Status filter',
+              );
+
+          expect(
+            search?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              'Bob',
+          });
+
+          expect(
+            filter?.formExecution,
+          ).toMatchObject({
+            kind:
+              'select',
+
+            value:
+              'Pending',
+          });
+        },
+      );
+
+
+      it(
         'prioritizes requirement-grounded data controls before generic empty text setup',
         () => {
           const knowledge:
