@@ -1,5 +1,6 @@
 import type {
   ActionElement,
+  PageObservation,
 } from '../contracts/page-observation.js';
 
 import {
@@ -209,6 +210,7 @@ export class DeterministicExplorationPlanner {
               input.productContext,
               input.knowledge,
               input.apiOperationIds,
+              input.observation,
               validationProbeLabels,
             ),
         )
@@ -424,6 +426,9 @@ this.globalActionCounts.set(
       | string[]
       | undefined,
 
+    observation:
+      PageObservation,
+
     validationProbeLabels:
       Set<string>,
   ): ExplorationCandidate {
@@ -453,6 +458,13 @@ this.globalActionCounts.set(
         action,
         knowledge,
         apiOperationIds,
+        observation,
+      );
+
+    const requirementGroundedReadControl =
+      this.isRequirementGroundedReadControl(
+        label,
+        knowledge,
       );
 
     const sensitiveFormGrounded =
@@ -626,7 +638,8 @@ this.globalActionCounts.set(
       formExecution &&
       this.isUnfilledFormSetup(
         action,
-      )
+      ) &&
+      !requirementGroundedReadControl
     ) {
       score += 50;
 
@@ -636,10 +649,7 @@ this.globalActionCounts.set(
     }
 
     if (
-      this.isRequirementGroundedReadControl(
-        label,
-        knowledge,
-      )
+      requirementGroundedReadControl
     ) {
       score += 60;
 
@@ -1265,6 +1275,9 @@ this.globalActionCounts.set(
     apiOperationIds:
       | string[]
       | undefined,
+
+    observation:
+      PageObservation,
   ):
     | ExplorationFormExecution
     | null {
@@ -1332,7 +1345,7 @@ this.globalActionCounts.set(
       action.formField
         ?.value;
 
-    const selectedValue =
+    let selectedValue =
       requirementGroundedInvalidValue &&
       typeof currentValue ===
         'string' &&
@@ -1341,6 +1354,64 @@ this.globalActionCounts.set(
         0
         ? requirementGroundedInvalidValue
         : validValue;
+
+    const observedSearchValue =
+      this.observedSearchValue(
+        action,
+        observation,
+        knowledge,
+      );
+
+    if (
+      observedSearchValue
+    ) {
+      selectedValue = {
+        kind:
+          'valid',
+
+        value:
+          observedSearchValue,
+
+        evidence: [
+          {
+            source:
+              'ui',
+
+            detail:
+              'Derived deterministic search value from an observed data row',
+          },
+        ],
+      };
+    }
+
+    const observedFilterValue =
+      this.observedFilterValue(
+        action,
+        observation,
+        knowledge,
+      );
+
+    if (
+      observedFilterValue
+    ) {
+      selectedValue = {
+        kind:
+          'valid',
+
+        value:
+          observedFilterValue,
+
+        evidence: [
+          {
+            source:
+              'ui',
+
+            detail:
+              'Derived deterministic filter value from observed data and enabled options',
+          },
+        ],
+      };
+    }
 
     switch (action.type) {
       case 'input':
@@ -1480,6 +1551,215 @@ this.globalActionCounts.set(
       default:
         return null;
     }
+  }
+
+  private observedDataRows(
+    observation:
+      PageObservation,
+  ): string[][] {
+    return observation
+      .semanticText
+      .filter(
+        (value) =>
+          value.includes(
+            '\t',
+          ),
+      )
+      .map(
+        (value) =>
+          value
+            .split(
+              '\t',
+            )
+            .map(
+              (part) =>
+                part.trim(),
+            )
+            .filter(
+              Boolean,
+            ),
+      )
+      .filter(
+        (parts) =>
+          parts.length >=
+          2,
+      );
+  }
+
+  private observedSearchValue(
+    action:
+      ActionElement,
+
+    observation:
+      PageObservation,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): string | null {
+    const label =
+      getActionLabel(
+        action,
+      );
+
+    if (
+      !/\bsearch\b/i.test(
+        label,
+      ) ||
+      !knowledge
+        ?.requirements ||
+      !/\bsearch\b/i.test(
+        knowledge.requirements
+          .rawText,
+      )
+    ) {
+      return null;
+    }
+
+    const currentValue =
+      action.formField
+        ?.value;
+
+    if (
+      typeof currentValue ===
+        'string' &&
+      currentValue.trim()
+        .length >
+        0
+    ) {
+      return null;
+    }
+
+    const actionChrome =
+      this.normalize(
+        observation.actions
+          .map(
+            (candidate) =>
+              getActionLabel(
+                candidate,
+              ),
+          )
+          .join(
+            ' ',
+          ),
+      );
+
+    for (
+      const row of
+        this.observedDataRows(
+          observation,
+        )
+    ) {
+      const candidate =
+        row[0]?.trim();
+
+      if (
+        !candidate ||
+        candidate.length >
+          80
+      ) {
+        continue;
+      }
+
+      const normalized =
+        this.normalize(
+          candidate,
+        );
+
+      if (
+        normalized.length <
+          2 ||
+        actionChrome.includes(
+          normalized,
+        )
+      ) {
+        continue;
+      }
+
+      return candidate;
+    }
+
+    return null;
+  }
+
+  private observedFilterValue(
+    action:
+      ActionElement,
+
+    observation:
+      PageObservation,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): string | null {
+    const label =
+      getActionLabel(
+        action,
+      );
+
+    if (
+      !/\bfilter\b/i.test(
+        label,
+      ) ||
+      !knowledge
+        ?.requirements ||
+      !/\bfilter(?:ing|s|ed)?\b/i.test(
+        knowledge.requirements
+          .rawText,
+      )
+    ) {
+      return null;
+    }
+
+    const options =
+      action.formField
+        ?.options
+        ?.filter(
+          (option) =>
+            !option.disabled &&
+            !option.selected &&
+            option.value !==
+              '',
+        ) ??
+      [];
+
+    if (
+      options.length ===
+      0
+    ) {
+      return null;
+    }
+
+    const dataText =
+      this.normalize(
+        this.observedDataRows(
+          observation,
+        )
+          .flat()
+          .join(
+            ' ',
+          ),
+      );
+
+    const matching =
+      options.find(
+        (option) =>
+          dataText.includes(
+            this.normalize(
+              option.label,
+            ),
+          ) ||
+          dataText.includes(
+            this.normalize(
+              option.value,
+            ),
+          ),
+      );
+
+    return matching
+      ?.value ??
+      null;
   }
 
   private hasExplicitSensitiveValueEvidence(
