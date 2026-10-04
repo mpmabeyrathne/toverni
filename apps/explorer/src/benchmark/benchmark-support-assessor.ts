@@ -137,13 +137,16 @@ import type {
          * here.
          */
         const unsupportedSteps =
-          scenario.actions.filter(
-            (action) =>
-              !isSupported(
-                action,
-                corpusTokens,
-              ),
-          );
+          scenario.runtimeStatus ===
+            'passed'
+            ? []
+            : scenario.actions.filter(
+                (action) =>
+                  !isSupported(
+                    action,
+                    corpusTokens,
+                  ),
+              );
   
         return {
           ...scenario,
