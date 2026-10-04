@@ -23,6 +23,48 @@ import type {
 
       rejecting:
         'invalid',
+
+      require:
+        'required',
+
+      requires:
+        'required',
+
+      requiring:
+        'required',
+
+      continues:
+        'continue',
+
+      continuing:
+        'continue',
+
+      continued:
+        'continue',
+
+      advance:
+        'continue',
+
+      advances:
+        'continue',
+
+      advancing:
+        'continue',
+
+      advanced:
+        'continue',
+
+      proceed:
+        'continue',
+
+      proceeds:
+        'continue',
+
+      proceeding:
+        'continue',
+
+      proceeded:
+        'continue',
     };
 
     return value
