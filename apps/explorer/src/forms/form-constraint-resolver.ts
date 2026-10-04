@@ -1633,6 +1633,23 @@ import type {
         matched = true;
       }
   
+      const exclusiveAllowedLiteral =
+        constraint.match(
+          /\b(?:values?|inputs?)\s+other\s+than\s+["']?([^"'\s.,;]+)["']?\s+(?:are|is)\s+(?:rejected|invalid|not\s+allowed|forbidden)\b/i,
+        );
+
+      if (
+        exclusiveAllowedLiteral?.[1]
+      ) {
+        result.example =
+          exclusiveAllowedLiteral[1];
+
+        result.details.example =
+          `Requirement constraint: ${constraint}`;
+
+        matched = true;
+      }
+
       const inputType =
         action.formField
           ?.inputType;
