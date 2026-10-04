@@ -2447,5 +2447,234 @@ import {
         },
       );
 
+
+      it(
+        'replays from the initial state for action evidence outside a business behavior',
+        () => {
+          const observation = (
+            text:
+              string,
+          ): PageObservation => ({
+            capturedAt:
+              '2026-10-04T00:00:00.000Z',
+
+            url:
+              'https://example.com',
+
+            title:
+              'Auth',
+
+            semanticText: [
+              text,
+            ],
+
+            ariaSnapshot:
+              '',
+
+            actions:
+              [],
+
+            consoleEvents:
+              [],
+
+            networkEvents:
+              [],
+
+            supportingArtifacts:
+              [],
+          });
+
+          const result =
+            createExecutableTestPlan({
+              initialStateId:
+                'state-login',
+
+              scenario: {
+                id:
+                  'scenario-admin',
+
+                title:
+                  'Navigation: Admin Panel',
+
+                evidenceReferences: [
+                  'ACTION-ADMIN',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'ACTION-ADMIN',
+
+                  type:
+                    'action',
+
+                  source:
+                    'action-admin',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-sign-in',
+
+                  label:
+                    'Sign In',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Sign In',
+
+                    exact:
+                      true,
+                  },
+                },
+
+                {
+                  id:
+                    'action-admin',
+
+                  label:
+                    'Admin Panel',
+
+                  type:
+                    'button',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'button',
+
+                    name:
+                      'Admin Panel',
+
+                    exact:
+                      true,
+                  },
+                },
+              ],
+
+              transitions: [
+                {
+                  id:
+                    'transition-sign-in',
+
+                  fromStateId:
+                    'state-login',
+
+                  toStateId:
+                    'state-dashboard',
+
+                  actionId:
+                    'action-sign-in',
+
+                  actionTarget:
+                    'Sign In',
+
+                  actionType:
+                    'click',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:00.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Sign In',
+                    ),
+
+                  afterObservation:
+                    observation(
+                      'Dashboard',
+                    ),
+                },
+
+                {
+                  id:
+                    'transition-admin',
+
+                  fromStateId:
+                    'state-dashboard',
+
+                  toStateId:
+                    'state-admin',
+
+                  actionId:
+                    'action-admin',
+
+                  actionTarget:
+                    'Admin Panel',
+
+                  actionType:
+                    'click',
+
+                  explorationBlocked:
+                    false,
+
+                  occurredAt:
+                    '2026-10-04T00:00:01.000Z',
+
+                  beforeObservation:
+                    observation(
+                      'Dashboard',
+                    ),
+
+                  afterObservation:
+                    {
+                      ...observation(
+                        'Admin Panel',
+                      ),
+
+                      url:
+                        'https://example.com/#admin',
+                    },
+                },
+              ],
+
+              businessBehaviors:
+                [],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.steps.map(
+              (step) =>
+                step.transitionId,
+            ),
+          ).toEqual([
+            'transition-sign-in',
+            'transition-admin',
+          ]);
+
+          expect(
+            result.assertions.some(
+              (assertion) =>
+                assertion
+                  .afterTransitionId ===
+                'transition-admin',
+            ),
+          ).toBe(true);
+        },
+      );
+
     },
   );
