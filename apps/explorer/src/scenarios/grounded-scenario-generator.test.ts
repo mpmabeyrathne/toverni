@@ -2980,5 +2980,234 @@ describe(
                 }
             },
         );
+
+
+        it(
+            'grounds required-field constraint scenarios from an observed validation outcome',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Checkout requires a customer name before continuing.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'CON-1',
+
+                                type:
+                                    'constraint',
+
+                                description:
+                                    'Empty required fields cannot advance.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-VALIDATE',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Continue.',
+
+                                source:
+                                    'behavior-required-name',
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-required-name',
+
+                                sourceFlowIds: [
+                                    'flow-required-name',
+                                ],
+
+                                name:
+                                    'Continue',
+
+                                startStateId:
+                                    'checkout-empty-name',
+
+                                endStateId:
+                                    'checkout-name-error',
+
+                                stateIds: [
+                                    'checkout-empty-name',
+                                    'checkout-name-error',
+                                ],
+
+                                transitionIds: [
+                                    'transition-required-name',
+                                ],
+
+                                preconditionTransitionIds: [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-required-name',
+
+                                        fromStateId:
+                                            'checkout-empty-name',
+
+                                        toStateId:
+                                            'checkout-name-error',
+
+                                        action: {
+                                            type:
+                                                'click',
+
+                                            target:
+                                                'Continue',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    true,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-required-name',
+
+                                        detail:
+                                            'Observed validation action Continue',
+
+                                        networkEventIds: [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'checkout-name-error',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Name is required',
+                                    ],
+
+                                    removedSemanticText: [],
+                                },
+
+                                requirementEvidenceIds: [],
+
+                                apiOperationIds: [],
+
+                                apiOperationLinks: [],
+                            },
+                        ],
+                    });
+
+                const constraintScenario =
+                    result.find(
+                        (scenario) =>
+                            scenario.title.includes(
+                                'Empty required fields cannot advance',
+                            ),
+                    );
+
+                expect(
+                    constraintScenario,
+                ).toBeDefined();
+
+                expect(
+                    constraintScenario
+                        ?.evidenceReferences,
+                ).toContain(
+                    'FLOW-BUSINESS-VALIDATE',
+                );
+
+                expect(
+                    constraintScenario
+                        ?.actions,
+                ).toEqual([
+                    'Continue',
+                ]);
+            },
+        );
     },
 );
