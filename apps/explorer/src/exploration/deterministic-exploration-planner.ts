@@ -156,6 +156,9 @@ export class DeterministicExplorationPlanner {
 
     budget:
       Partial<ExplorationBudget> = {},
+
+    private readonly allowDestructiveActions:
+      boolean = false,
   ) {
     this.budget = {
       ...DEFAULT_BUDGET,
@@ -536,9 +539,17 @@ this.globalActionCounts.set(
         label,
       )
     ) {
-      blockReasons.push(
-        'Action appears destructive or unsafe for autonomous exploration',
-      );
+      if (
+        this.allowDestructiveActions
+      ) {
+        reasons.push(
+          'Destructive action is explicitly allowed for this isolated exploration run',
+        );
+      } else {
+        blockReasons.push(
+          'Action appears destructive or unsafe for autonomous exploration',
+        );
+      }
     }
 
     if (previouslyVisited) {
