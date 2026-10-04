@@ -391,6 +391,132 @@ import {
       );
 
       it(
+        'preserves observable same-page sort setup before pagination',
+        () => {
+          const states = [
+            createState(
+              'grid',
+            ),
+            createState(
+              'page-2',
+            ),
+          ];
+
+          const sort =
+            createTransition(
+              'sort',
+              'grid',
+              'grid',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Sort Amount',
+              },
+              1,
+            );
+
+          sort.beforeObservation = {
+            ...sort.beforeObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          sort.afterObservation = {
+            ...sort.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const next =
+            createTransition(
+              'next',
+              'grid',
+              'page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              2,
+            );
+
+          next.beforeObservation = {
+            ...next.beforeObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          next.afterObservation = {
+            ...next.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Page 2',
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const result =
+            reconstructBusinessFlows({
+              states,
+              transitions: [
+                sort,
+                next,
+              ],
+            });
+
+          expect(
+            result.some(
+              (flow) =>
+                flow.transitionIds
+                  .join(
+                    ',',
+                  ) ===
+                'sort,next',
+            ),
+          ).toBe(true);
+        },
+      );
+
+
+      it(
         'preserves replay-safe file setup before a later upload action',
         () => {
           const states = [
