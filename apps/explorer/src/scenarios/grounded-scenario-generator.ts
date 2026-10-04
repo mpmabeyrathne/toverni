@@ -1352,9 +1352,6 @@ import type {
     };
   }
 
-  const EXPLICIT_NEGATIVE_REQUIREMENT_PATTERN =
-    /\b(?:unsupported|invalid|reject(?:ed|s|ing)?|not allowed|forbidden|validation error)\b/i;
-
   function createDeterministicNegativeRequirementScenarios(
     evidence:
       ScenarioEvidence[],
@@ -1368,7 +1365,7 @@ import type {
             item.type ===
               'constraint'
           ) &&
-          EXPLICIT_NEGATIVE_REQUIREMENT_PATTERN
+          NEGATIVE_REQUIREMENT_LANGUAGE
             .test(
               item.description,
             ),
