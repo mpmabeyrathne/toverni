@@ -856,6 +856,77 @@ import {
       );
   
       it(
+        'uses the sole allowed literal from a requirement rejection constraint',
+        () => {
+          const action:
+            ActionElement = {
+            type:
+              'input',
+
+            tagName:
+              'input',
+
+            name:
+              'Card number',
+
+            inputType:
+              'text',
+
+            disabled:
+              false,
+
+            visible:
+              true,
+
+            formField: {
+              htmlName:
+                'card',
+
+              inputType:
+                'text',
+
+              required:
+                false,
+            },
+          };
+
+          const knowledge =
+            createKnowledge(
+              {},
+              [
+                'Card values other than 4242424242424242 are rejected.',
+              ],
+            );
+
+          const result =
+            resolveFormConstraints(
+              action,
+              knowledge,
+            );
+
+          expect(
+            result?.example,
+          ).toBe(
+            '4242424242424242',
+          );
+
+          expect(
+            result?.evidence,
+          ).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                source:
+                  'requirements',
+
+                field:
+                  'example',
+              }),
+            ]),
+          );
+        },
+      );
+
+      it(
         'produces deterministic resolution for the same evidence',
         () => {
           const action:
