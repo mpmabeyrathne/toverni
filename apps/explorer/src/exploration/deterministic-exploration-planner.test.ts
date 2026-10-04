@@ -1555,5 +1555,395 @@ function setupWithObservation(
         },
       );
 
+
+      it(
+        'executes a sensitive field only when an explicit OpenAPI example grounds the value',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Password',
+
+                inputType:
+                  'password',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'password',
+
+                  inputType:
+                    'password',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const knowledge:
+            KnowledgeContext = {
+            requirements:
+              null,
+
+            openApi: {
+              sourcePath:
+                '/fixtures/auth.yaml',
+
+              title:
+                'Auth API',
+
+              version:
+                '1.0.0',
+
+              servers: [],
+
+              operations: [
+                {
+                  operationId:
+                    'createSession',
+
+                  method:
+                    'POST',
+
+                  path:
+                    '/api/session',
+
+                  parameters: [],
+
+                  requestBody: {
+                    content: {
+                      'application/json': {
+                        schema: {
+                          $ref:
+                            '#/components/schemas/SessionRequest',
+                        },
+                      },
+                    },
+                  },
+
+                  responses: [],
+
+                  security: [],
+
+                  tags: [],
+                },
+              ],
+
+              schemas: {
+                SessionRequest: {
+                  type:
+                    'object',
+
+                  required: [
+                    'password',
+                  ],
+
+                  properties: {
+                    password: {
+                      type:
+                        'string',
+
+                      example:
+                        'pass',
+                    },
+                  },
+                },
+              },
+            },
+          };
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+
+              apiOperationIds: [
+                'createSession',
+              ],
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Password',
+          );
+
+          expect(
+            decision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              'pass',
+          });
+
+          expect(
+            decision.selected
+              ?.blocked,
+          ).toBe(false);
+        },
+      );
+
+
+      it(
+        'keeps a sensitive field blocked without explicit value evidence',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Password',
+
+                inputType:
+                  'password',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'password',
+
+                  inputType:
+                    'password',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          const password =
+            decision
+              .rankedCandidates[0];
+
+          expect(
+            password?.blocked,
+          ).toBe(true);
+
+          expect(
+            password
+              ?.blockReasons
+              .some(
+                (reason) =>
+                  reason.includes(
+                    'explicit OpenAPI example/default',
+                  ),
+              ),
+          ).toBe(true);
+        },
+      );
+
+
+      it(
+        'prioritizes unfilled grounded form setup before a submit button',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Email',
+
+                inputType:
+                  'email',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'email',
+
+                  inputType:
+                    'email',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sign In',
+
+                text:
+                  'Sign In',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Email',
+          );
+        },
+      );
+
+
+      it(
+        'treats sign out as reversible session navigation rather than destructive data mutation',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sign Out',
+
+                text:
+                  'Sign Out',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Sign Out',
+          );
+
+          expect(
+            decision.selected
+              ?.blocked,
+          ).toBe(false);
+        },
+      );
+
     },
   );
