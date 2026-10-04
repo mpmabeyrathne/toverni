@@ -1142,7 +1142,7 @@ this.globalActionCounts.set(
       case 'checkbox':
       case 'radio': {
         if (
-          typeof validValue
+          typeof selectedValue
             .value !==
           'boolean' ||
           action.formField
