@@ -986,6 +986,120 @@ function generateDateValues(
         isDateLike,
     );
 }
+const EXCLUSIVE_ALLOWED_VALUE_REQUIREMENT =
+    /\b(?:values?|inputs?)\s+other\s+than\s+["']?([^"'\s.,;]+)["']?\s+(?:are|is)\s+(?:rejected|invalid|not\s+allowed|forbidden)\b/i;
+
+function findExclusiveAllowedInvalidTextValue(
+    constraints:
+        ResolvedFormConstraints,
+):
+    | GeneratedTestValue
+    | null {
+    if (
+        typeof constraints.example !==
+        'string'
+    ) {
+        return null;
+    }
+
+    const requirementEvidence =
+        constraints.evidence
+            .filter(
+                (item) =>
+                    item.source ===
+                        'requirements' &&
+                    item.field ===
+                        'example' &&
+                    EXCLUSIVE_ALLOWED_VALUE_REQUIREMENT
+                        .test(
+                            item.detail,
+                        ),
+            )
+            .map(
+                (item) => ({
+                    source:
+                        'requirements' as const,
+
+                    detail:
+                        item.detail,
+                }),
+            );
+
+    if (
+        requirementEvidence.length ===
+        0
+    ) {
+        return null;
+    }
+
+    const allowedValue =
+        constraints.example;
+
+    const lastCharacter =
+        allowedValue.slice(
+            -1,
+        );
+
+    const mutatedValue =
+        allowedValue.length >
+            0
+            ? `${allowedValue.slice(
+                0,
+                -1,
+            )}${lastCharacter ===
+                '0'
+                ? '1'
+                : '0'}`
+            : '';
+
+    const candidates = [
+        mutatedValue,
+        fitLength(
+            'invalid',
+            constraints.minLength,
+            constraints.maxLength,
+        ),
+        fitLength(
+            'test-value',
+            constraints.minLength,
+            constraints.maxLength,
+        ),
+        fitLength(
+            '1234',
+            constraints.minLength,
+            constraints.maxLength,
+        ),
+    ];
+
+    const invalidValue =
+        candidates.find(
+            (candidate) =>
+                candidate.length >
+                    0 &&
+                candidate !==
+                    allowedValue &&
+                isValidTextCandidate(
+                    candidate,
+                    constraints,
+                ),
+        );
+
+    if (!invalidValue) {
+        return null;
+    }
+
+    return {
+        kind:
+            'invalid',
+
+        value:
+            invalidValue,
+
+        evidence:
+            requirementEvidence,
+    };
+}
+
 function generateTextValues(
     constraints:
         ResolvedFormConstraints,
@@ -1041,6 +1155,17 @@ function generateTextValues(
                         },
                     ],
         });
+    }
+
+    const exclusiveAllowedInvalid =
+        findExclusiveAllowedInvalidTextValue(
+            constraints,
+        );
+
+    if (exclusiveAllowedInvalid) {
+        values.push(
+            exclusiveAllowedInvalid,
+        );
     }
 
     if (
