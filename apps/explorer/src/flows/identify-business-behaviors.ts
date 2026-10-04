@@ -731,6 +731,36 @@ function replayStartStateId(
     behavior.startStateId;
 }
 
+function businessOutcomeSignalCount(
+  behavior:
+    BusinessBehaviorFlow,
+): number {
+  return (
+    behavior
+      .outcome
+      .addedSemanticText
+      .length +
+    behavior
+      .outcome
+      .removedSemanticText
+      .length +
+    (
+      behavior
+        .outcome
+        .urlChanged
+        ? 1
+        : 0
+    ) +
+    (
+      behavior
+        .outcome
+        .titleChanged
+        ? 1
+        : 0
+    )
+  );
+}
+
 function compareBusinessBehaviorCandidates(
   first:
     BusinessBehaviorFlow,
@@ -769,6 +799,16 @@ function compareBusinessBehaviorCandidates(
       ? 0
       : 1;
 
+  const firstOutcomeSignals =
+    businessOutcomeSignalCount(
+      first,
+    );
+
+  const secondOutcomeSignals =
+    businessOutcomeSignalCount(
+      second,
+    );
+
   const firstSetupCount =
     countReplaySetupTransitions(
       first,
@@ -784,6 +824,9 @@ function compareBusinessBehaviorCandidates(
   return (
     firstStartsAtInitial -
       secondStartsAtInitial ||
+
+    secondOutcomeSignals -
+      firstOutcomeSignals ||
 
     secondSetupCount -
       firstSetupCount ||
