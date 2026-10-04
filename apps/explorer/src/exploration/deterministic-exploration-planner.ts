@@ -1093,10 +1093,10 @@ this.globalActionCounts.set(
               'choose-option',
 
             value:
-              validValue.value,
+              selectedValue.value,
 
             evidence:
-              validValue.evidence,
+              selectedValue.evidence,
           };
         }
 
@@ -1109,10 +1109,10 @@ this.globalActionCounts.set(
               'fill',
 
             value:
-              validValue.value,
+              selectedValue.value,
 
             evidence:
-              validValue.evidence,
+              selectedValue.evidence,
           };
         }
 
