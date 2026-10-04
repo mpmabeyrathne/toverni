@@ -33,6 +33,10 @@ import type {
       'check',
       'execute',
       'executed',
+      'exercise',
+      'case',
+      'described',
+      'requirement',
   
       // Generic browser/UI language
       'discovered',
