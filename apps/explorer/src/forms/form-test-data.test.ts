@@ -209,6 +209,84 @@ describe(
         );
 
         it(
+            'chooses a different enabled select option when no explicit example exists',
+            () => {
+                const action:
+                    ActionElement = {
+                    type:
+                        'select',
+
+                    tagName:
+                        'select',
+
+                    name:
+                        'Status filter',
+
+                    disabled:
+                        false,
+
+                    visible:
+                        true,
+
+                    formField: {
+                        required:
+                            false,
+
+                        multiple:
+                            false,
+
+                        value:
+                            'All',
+
+                        options: [
+                            {
+                                value:
+                                    'All',
+
+                                label:
+                                    'All',
+
+                                disabled:
+                                    false,
+
+                                selected:
+                                    true,
+                            },
+
+                            {
+                                value:
+                                    'Paid',
+
+                                label:
+                                    'Paid',
+
+                                disabled:
+                                    false,
+
+                                selected:
+                                    false,
+                            },
+                        ],
+                    },
+                };
+
+                expect(
+                    generateFormTestData(
+                        action,
+                    ).values,
+                ).toContainEqual(
+                    expect.objectContaining({
+                        kind:
+                            'valid',
+
+                        value:
+                            'Paid',
+                    }),
+                );
+            },
+        );
+
+        it(
             'only creates an invalid empty value when required evidence exists',
             () => {
                 const requiredAction:
