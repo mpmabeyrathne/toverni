@@ -186,12 +186,37 @@ import type {
 
       successful:
         'success',
+
+      sign:
+        'auth',
+
+      signed:
+        'auth',
+
+      signing:
+        'auth',
+
+      login:
+        'auth',
+
+      logged:
+        'auth',
+
+      authenticate:
+        'auth',
+
+      authenticated:
+        'auth',
+
+      authentication:
+        'auth',
     };
   
   const TRANSACTION_TOKENS =
     new Set([
       'approve',
       'assign',
+      'auth',
       'book',
       'cancel',
       'checkout',
