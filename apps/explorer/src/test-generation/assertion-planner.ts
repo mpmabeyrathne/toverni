@@ -84,7 +84,10 @@ function observedActionKey(
 
   return [
     action.type,
-    label,
+    label.replace(
+      /\s+/g,
+      '',
+    ),
   ].join('|');
 }
 
@@ -105,6 +108,60 @@ function observedTarget(
 
         value:
           action.testId,
+      },
+    };
+  }
+
+  const role =
+    action.type ===
+      'input' ||
+    action.type ===
+      'textarea' ||
+    action.type ===
+      'contenteditable'
+      ? 'textbox'
+      : action.type ===
+          'select'
+        ? 'combobox'
+        : action.type;
+
+  if (
+    ![
+      'button',
+      'link',
+      'textbox',
+      'combobox',
+      'listbox',
+      'checkbox',
+      'radio',
+      'dialog',
+      'menu',
+    ].includes(
+      role,
+    )
+  ) {
+    return null;
+  }
+
+  if (
+    role ===
+      'dialog' &&
+    (
+      action.name ===
+        undefined ||
+      action.name ===
+        action.text
+    )
+  ) {
+    return {
+      kind:
+        'locator',
+
+      target: {
+        by:
+          'role',
+
+        role,
       },
     };
   }
@@ -139,37 +196,6 @@ function observedTarget(
           true,
       },
     };
-  }
-
-  const role =
-    action.type ===
-      'input' ||
-    action.type ===
-      'textarea' ||
-    action.type ===
-      'contenteditable'
-      ? 'textbox'
-      : action.type ===
-          'select'
-        ? 'combobox'
-        : action.type;
-
-  if (
-    ![
-      'button',
-      'link',
-      'textbox',
-      'combobox',
-      'listbox',
-      'checkbox',
-      'radio',
-      'dialog',
-      'menu',
-    ].includes(
-      role,
-    )
-  ) {
-    return null;
   }
 
   return {
