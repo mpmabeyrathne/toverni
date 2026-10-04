@@ -682,6 +682,86 @@ import {
       );
 
       it(
+        'recognizes observable read-only data interactions as business boundaries',
+        () => {
+          const states = [
+            createState(
+              'grid-start',
+            ),
+            createState(
+              'grid-page-2',
+            ),
+          ];
+
+          const transition =
+            createTransition(
+              'next-page',
+              'grid-start',
+              'grid-page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              1,
+            );
+
+          transition.beforeObservation = {
+            ...transition.beforeObservation,
+
+            semanticText: [
+              'Page 1',
+            ],
+          };
+
+          transition.afterObservation = {
+            ...transition.afterObservation,
+
+            semanticText: [
+              'Page 2',
+            ],
+          };
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions: [
+                transition,
+              ],
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions: [
+                transition,
+              ],
+              flows,
+            });
+
+          expect(
+            behaviors,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            behaviors[0],
+          ).toMatchObject({
+            name:
+              'Next Page',
+
+            transitionIds: [
+              'next-page',
+            ],
+          });
+        },
+      );
+
+
+      it(
         'treats retry and clear actions as recovery business boundaries',
         () => {
           const states = [
