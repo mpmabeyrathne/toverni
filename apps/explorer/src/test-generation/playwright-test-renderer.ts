@@ -319,6 +319,22 @@ export function compilePlaywrightTest(
     ];
 
   for (
+    const assertion of
+      plan.assertions.filter(
+        (item) =>
+          item.afterActionId ===
+          '__initial__',
+      )
+  ) {
+    lines.push(
+      `  // Assertion evidence: ${assertion.evidenceReferences.join(', ')}`,
+      `  // ${assertion.description}`,
+      `  await ${compileAssertion(assertion)}`,
+      '',
+    );
+  }
+
+  for (
     const step of
       plan.steps
   ) {
