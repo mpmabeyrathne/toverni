@@ -916,8 +916,39 @@ export async function runExplorer(
             groundedBusinessBehaviors,
         });
   
+    const hasAcceptanceCriteria =
+      (
+        knowledge.requirements
+          ?.acceptanceCriteria
+          .length ??
+        0
+      ) >
+      0;
+
+    const browserSuiteCandidates =
+      hasAcceptanceCriteria
+        ? generatedScenarios.filter(
+            (scenario) =>
+              scenario
+                .evidenceReferences
+                .some(
+                  (reference) =>
+                    reference
+                      .toUpperCase()
+                      .startsWith(
+                        'REQ-',
+                      ),
+                ),
+          )
+        : generatedScenarios;
+
     const scenarios =
-      generatedScenarios.slice(
+      (
+        browserSuiteCandidates.length >
+          0
+          ? browserSuiteCandidates
+          : generatedScenarios
+      ).slice(
         0,
         8,
       );
