@@ -61,6 +61,19 @@ const MUTATING_HTTP_METHODS =
     'DELETE',
   ]);
 
+const READ_BEHAVIOR_TERMS =
+  new Set([
+    'search',
+    'filter',
+    'sort',
+    'refresh',
+    'page',
+    'next',
+    'previous',
+    'paginate',
+    'pagination',
+  ]);
+
 const REPLAY_SETUP_ACTION_TYPES =
   new Set([
     'fill',
@@ -403,6 +416,32 @@ function getBoundaryEvidence(
     });
   }
 
+  if (
+    evidence.length ===
+      0 &&
+    hasReadBehaviorTerm(
+      transition.action.target,
+    ) &&
+    hasObservableOutcome(
+      transition,
+    )
+  ) {
+    evidence.push({
+      source:
+        'action',
+
+      transitionId:
+        transition.id,
+
+      detail:
+        transition.action.target
+          ? `Observed read/query interaction "${transition.action.target}" with a visible outcome`
+          : `Observed read/query interaction type "${transition.action.type}" with a visible outcome`,
+
+      networkEventIds: [],
+    });
+  }
+
   const freshNetworkEvents =
     getFreshNetworkEvents(
       transition,
@@ -444,6 +483,52 @@ function getBoundaryEvidence(
   }
 
   return evidence;
+}
+
+function hasReadBehaviorTerm(
+  value:
+    string | undefined,
+): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return normalize(
+    value,
+  )
+    .split(
+      ' ',
+    )
+    .filter(
+      Boolean,
+    )
+    .some(
+      (token) =>
+        READ_BEHAVIOR_TERMS.has(
+          token,
+        ),
+    );
+}
+
+function hasObservableOutcome(
+  transition:
+    ApplicationTransition,
+): boolean {
+  const outcome =
+    buildOutcome(
+      transition,
+    );
+
+  return (
+    outcome.urlChanged ||
+    outcome.titleChanged ||
+    outcome.addedSemanticText
+      .length >
+      0 ||
+    outcome.removedSemanticText
+      .length >
+      0
+  );
 }
 
 function getFreshNetworkEvents(
