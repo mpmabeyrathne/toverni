@@ -1277,19 +1277,39 @@ function resolveActionBindings(
       );
 
     if (!enclosingBehavior) {
-      return [
-        {
-          action,
+      return ensureReplayStartsAtInitial(
+        [
+          actionTransition,
+        ],
+        initialStateId,
+        transitions,
+      )
+        .flatMap(
+          (transition) => {
+            const replayAction =
+              actionForTransition(
+                transition,
+                actions,
+              );
 
-          transition:
-            actionTransition,
+            return replayAction
+              ? [
+                  {
+                    action:
+                      replayAction,
 
-          evidenceReference,
+                    transition,
 
-          assertOutcome:
-            true,
-        },
-      ];
+                    evidenceReference,
+
+                    assertOutcome:
+                      transition.id ===
+                      actionTransition.id,
+                  },
+                ]
+              : [];
+          },
+        );
     }
 
     const targetIndex =
