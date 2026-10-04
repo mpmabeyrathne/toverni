@@ -213,6 +213,60 @@ import type {
 
       authentication:
         'login',
+
+      search:
+        'search',
+
+      searched:
+        'search',
+
+      searching:
+        'search',
+
+      filter:
+        'filter',
+
+      filtered:
+        'filter',
+
+      filtering:
+        'filter',
+
+      sort:
+        'sort',
+
+      sorted:
+        'sort',
+
+      sorting:
+        'sort',
+
+      refresh:
+        'refresh',
+
+      refreshed:
+        'refresh',
+
+      refreshing:
+        'refresh',
+
+      page:
+        'page',
+
+      pages:
+        'page',
+
+      pagination:
+        'page',
+
+      paginate:
+        'page',
+
+      paginated:
+        'page',
+
+      paginating:
+        'page',
     };
   
   const TRANSACTION_TOKENS =
@@ -242,6 +296,15 @@ import type {
       'retry',
       'clear',
       'reset',
+    ]);
+
+  const READ_QUERY_TOKENS =
+    new Set([
+      'search',
+      'filter',
+      'sort',
+      'refresh',
+      'page',
     ]);
   
   const STOP_WORDS =
@@ -477,6 +540,36 @@ import type {
     );
   }
 
+  function getBehaviorReadQueryTokens(
+    behavior:
+      BusinessBehaviorFlow,
+  ): Set<string> {
+    const text = [
+      behavior.name,
+
+      ...behavior.steps.map(
+        (step) =>
+          step.action.target ??
+          '',
+      ),
+    ].join(
+      ' ',
+    );
+
+    return new Set(
+      [
+        ...tokenize(
+          text,
+        ),
+      ].filter(
+        (token) =>
+          READ_QUERY_TOKENS.has(
+            token,
+          ),
+      ),
+    );
+  }
+
   function hasNegativeOutcome(
     behavior:
       BusinessBehaviorFlow,
@@ -537,6 +630,23 @@ import type {
         ),
       );
 
+    const behaviorReadQueryTokens =
+      getBehaviorReadQueryTokens(
+        behavior,
+      );
+
+    const requirementReadQueryTokens =
+      new Set(
+        [
+          ...requirementTokens,
+        ].filter(
+          (token) =>
+            READ_QUERY_TOKENS.has(
+              token,
+            ),
+        ),
+      );
+
     const sharedTransaction =
       [
         ...behaviorTransactionTokens,
@@ -548,7 +658,21 @@ import type {
             ),
       );
 
-    if (!sharedTransaction) {
+    const sharedReadQuery =
+      [
+        ...behaviorReadQueryTokens,
+      ].some(
+        (token) =>
+          requirementReadQueryTokens
+            .has(
+              token,
+            ),
+      );
+
+    if (
+      !sharedTransaction &&
+      !sharedReadQuery
+    ) {
       return false;
     }
 
@@ -604,7 +728,12 @@ import type {
     return (
       directionalAuthMatch ||
       commonTokens.length >=
-        2
+        2 ||
+      (
+        sharedReadQuery &&
+        commonTokens.length >=
+          1
+      )
     );
   }
   
