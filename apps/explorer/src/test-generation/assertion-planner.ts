@@ -378,6 +378,66 @@ function uniqueSemanticText(
   ];
 }
 
+function semanticTextTarget(
+  value:
+    string,
+): ExecutableAssertion['target'] {
+  const rowParts =
+    value
+      .split(
+        '\t',
+      )
+      .map(
+        (part) =>
+          part.trim(),
+      )
+      .filter(
+        Boolean,
+      );
+
+  if (
+    rowParts.length >=
+      2
+  ) {
+    return {
+      kind:
+        'locator',
+
+      target: {
+        by:
+          'role',
+
+        role:
+          'row',
+
+        name:
+          rowParts.join(
+            ' ',
+          ),
+
+        exact:
+          true,
+      },
+    };
+  }
+
+  return {
+    kind:
+      'locator',
+
+    target: {
+      by:
+        'text',
+
+      text:
+        value,
+
+      exact:
+        true,
+    },
+  };
+}
+
 function normalizeSemanticToken(
   value:
     string,
@@ -916,21 +976,10 @@ export function buildEvidenceBackedAssertions(
       description:
         `Observed text appeared: ${added}`,
 
-      target: {
-        kind:
-          'locator',
-
-        target: {
-          by:
-            'text',
-
-          text:
-            added,
-
-          exact:
-            true,
-        },
-      },
+      target:
+        semanticTextTarget(
+          added,
+        ),
 
       matcher:
         'visible',
@@ -959,21 +1008,10 @@ export function buildEvidenceBackedAssertions(
       description:
         `Observed text disappeared: ${removed}`,
 
-      target: {
-        kind:
-          'locator',
-
-        target: {
-          by:
-            'text',
-
-          text:
-            removed,
-
-          exact:
-            true,
-        },
-      },
+      target:
+        semanticTextTarget(
+          removed,
+        ),
 
       matcher:
         'hidden',
