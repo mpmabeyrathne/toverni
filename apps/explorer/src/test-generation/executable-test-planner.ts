@@ -138,6 +138,189 @@ export interface CreateExecutablePlanInput {
     BusinessBehaviorReference[];
 }
 
+function semanticWords(
+  value:
+    string,
+): Set<string> {
+  return new Set(
+    value
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]+/g,
+        ' ',
+      )
+      .split(
+        /\s+/,
+      )
+      .filter(
+        (word) =>
+          word.length >=
+            3 &&
+          ![
+            'the',
+            'and',
+            'for',
+            'with',
+            'cannot',
+            'must',
+            'not',
+            'should',
+            'requirement',
+          ].includes(
+            word,
+          ),
+      ),
+  );
+}
+
+function initialDisabledConstraintAssertions(
+  input:
+    CreateExecutablePlanInput,
+): ExecutableTestPlan['assertions'] {
+  const referencedEvidence =
+    input.evidence.filter(
+      (item) =>
+        input.scenario
+          .evidenceReferences
+          .includes(
+            item.id,
+          ) &&
+        (
+          item.type ===
+            'requirement' ||
+          item.type ===
+            'constraint'
+        ) &&
+        /\b(?:disabled|unavailable|cannot|can't|must not|not allowed|prevent(?:ed|s|ing)?|reject(?:ed|s|ing)?)\b/i
+          .test(
+            item.description ??
+              '',
+          ),
+    );
+
+  if (
+    referencedEvidence.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const scenarioWords =
+    semanticWords(
+      [
+        input.scenario.title,
+        ...referencedEvidence.map(
+          (item) =>
+            item.description ??
+            '',
+        ),
+      ].join(
+        ' ',
+      ),
+    );
+
+  const candidates =
+    input.actions
+      .filter(
+        (action) =>
+          action.blocked ===
+            true &&
+          action.target !==
+            null &&
+          (
+            action.blockReasons ??
+            []
+          ).some(
+            (reason) =>
+              /\bdisabled\b/i
+                .test(
+                  reason,
+                ),
+          ),
+      )
+      .map(
+        (action) => {
+          const labelWords =
+            semanticWords(
+              action.label,
+            );
+
+          const overlap =
+            [
+              ...labelWords,
+            ].filter(
+              (word) =>
+                scenarioWords
+                  .has(
+                    word,
+                  ),
+            ).length;
+
+          return {
+            action,
+            overlap,
+          };
+        },
+      )
+      .filter(
+        (candidate) =>
+          candidate.overlap >
+          0,
+      )
+      .sort(
+        (
+          left,
+          right,
+        ) =>
+          right.overlap -
+            left.overlap ||
+          left.action.label
+            .localeCompare(
+              right.action.label,
+            ),
+      );
+
+  const best =
+    candidates[0];
+
+  if (
+    !best ||
+    !best.action.target
+  ) {
+    return [];
+  }
+
+  return [
+    {
+      afterActionId:
+        '__initial__',
+
+      kind:
+        'disabled',
+
+      description:
+        `Observed action "${best.action.label}" is disabled for the grounded constraint`,
+
+      target: {
+        kind:
+          'locator',
+
+        target:
+          best.action.target,
+      },
+
+      matcher:
+        'disabled',
+
+      evidenceReferences:
+        referencedEvidence.map(
+          (item) =>
+            item.id,
+        ),
+    },
+  ];
+}
+
 function observedActionLabel(
   action:
     ActionElement,
@@ -1773,6 +1956,48 @@ export function createExecutableTestPlan(
     executableSteps.length ===
     0
   ) {
+    const initialAssertions =
+      initialDisabledConstraintAssertions(
+        input,
+      );
+
+    if (
+      initialAssertions.length >
+      0
+    ) {
+      return {
+        scenarioId:
+          input.scenario.id,
+
+        title:
+          input.scenario.title,
+
+        status:
+          'ready',
+
+        reason:
+          null,
+
+        steps:
+          [],
+
+        assertions:
+          initialAssertions,
+
+        evidenceReferences:
+          input.scenario
+            .evidenceReferences,
+
+        metadata: {
+          irVersion:
+            '1',
+
+          generator:
+            'toverni',
+        },
+      };
+    }
+
     return {
       scenarioId:
         input.scenario.id,
