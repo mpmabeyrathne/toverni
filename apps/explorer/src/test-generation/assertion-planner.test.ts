@@ -13,7 +13,7 @@ function observation(
     url?: string;
     semanticText?: string[];
     actions?: Array<{
-      type: 'button' | 'input';
+      type: 'button' | 'input' | 'dialog';
       tagName: string;
       name?: string;
       disabled: boolean;
@@ -638,6 +638,120 @@ describe(
               assertion.description.includes(
                 'toverni-test.txt ready',
               ),
+          ),
+        ).toBe(true);
+      },
+    );
+
+
+    it(
+      'does not emit count assertions for hidden after-elements',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-confirm',
+
+            actionEvidenceReference:
+              'ACTION-CONFIRM',
+
+            actionLabel:
+              'Confirm Order',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-CONFIRM',
+
+                type:
+                  'action',
+
+                source:
+                  'action-confirm',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-confirm',
+
+                actionId:
+                  'action-confirm',
+
+                actionTarget:
+                  'Confirm Order',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-04T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Order complete',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'count',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: Order complete',
           ),
         ).toBe(true);
       },
