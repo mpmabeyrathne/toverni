@@ -1334,6 +1334,7 @@ describe(
 
                     expectedOutcomes: [
                         'Uploaded',
+                        'Retrying succeeds and shows Uploaded.',
                     ],
 
                     evidenceReferences: [
