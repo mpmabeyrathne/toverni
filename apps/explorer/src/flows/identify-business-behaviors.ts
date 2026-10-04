@@ -803,8 +803,13 @@ function countReplaySetupTransitions(
     [
       ...behavior
         .preconditionTransitionIds,
+
       ...behavior
-        .transitionIds,
+        .transitionIds
+        .slice(
+          0,
+          -1,
+        ),
     ];
 
   return [
@@ -822,8 +827,13 @@ function countReplaySetupTransitions(
         return (
           transition !==
             undefined &&
-          REPLAY_SETUP_ACTION_TYPES.has(
-            transition.action.type,
+          (
+            REPLAY_SETUP_ACTION_TYPES.has(
+              transition.action.type,
+            ) ||
+            hasReadBehaviorTerm(
+              transition.action.target,
+            )
           )
         );
       },
