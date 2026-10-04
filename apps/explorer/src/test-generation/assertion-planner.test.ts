@@ -65,6 +65,166 @@ describe(
   'buildEvidenceBackedAssertions',
   () => {
     it(
+      'ignores semantic text composed from multiple visible control labels',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-next',
+
+            actionEvidenceReference:
+              'ACTION-NEXT',
+
+            actionLabel:
+              'Next Page',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-NEXT',
+
+                type:
+                  'action',
+
+                source:
+                  'action-next',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-next',
+
+                actionId:
+                  'action-next',
+
+                actionTarget:
+                  'Next Page',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Previous PagePage 1Next Page',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Previous Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Next Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Previous PagePage 2Next Page',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Previous Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Next Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'text' &&
+              assertion.description
+                .includes(
+                  'Previous PagePage',
+                ),
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'visibility' &&
+              assertion.description
+                .includes(
+                  'Previous PagePage',
+                ),
+          ),
+        ).toBe(false);
+      },
+    );
+
+
+    it(
       'derives meaningful assertions from an observed transition delta',
       () => {
         const result =
