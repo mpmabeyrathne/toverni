@@ -65,6 +65,12 @@ import type {
 
       proceeded:
         'continue',
+
+      row:
+        'results',
+
+      rows:
+        'results',
     };
 
     return value
