@@ -264,8 +264,8 @@ function initialDisabledConstraintAssertions(
       )
       .filter(
         (candidate) =>
-          candidate.overlap >
-          0,
+          candidate.overlap >=
+          2,
       )
       .sort(
         (
