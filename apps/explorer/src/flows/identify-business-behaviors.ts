@@ -643,6 +643,43 @@ function createBusinessBoundaryKey(
       )
       .sort();
 
+  const outcome =
+    buildOutcome(
+      transition,
+    );
+
+  const outcomeSignature =
+    [
+      outcome.urlChanged
+        ? transition
+            .afterObservation
+            .url
+        : '',
+
+      ...outcome
+        .addedSemanticText
+        .map(
+          normalize,
+        )
+        .sort(),
+
+      ...outcome
+        .removedSemanticText
+        .map(
+          (value) =>
+            `-${normalize(
+              value,
+            )}`,
+        )
+        .sort(),
+    ]
+      .filter(
+        Boolean,
+      )
+      .join(
+        '|',
+      );
+
   return [
     transition.action.type,
 
@@ -653,6 +690,8 @@ function createBusinessBoundaryKey(
     mutationSignatures.join(
       '|',
     ),
+
+    outcomeSignature,
   ].join(
     '::',
   );
