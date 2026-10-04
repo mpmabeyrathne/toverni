@@ -370,11 +370,6 @@ import type {
       return [];
     }
   
-    const behaviorTokens =
-      getBehaviorTokens(
-        behavior,
-      );
-  
     const matches:
       string[] = [];
   
@@ -387,7 +382,7 @@ import type {
         ) => {
           if (
             requirementMatches(
-              behaviorTokens,
+              behavior,
               criterion,
             )
           ) {
@@ -407,7 +402,7 @@ import type {
         ) => {
           if (
             requirementMatches(
-              behaviorTokens,
+              behavior,
               capability,
             )
           ) {
@@ -429,41 +424,151 @@ import type {
   ): Set<string> {
     const text = [
       behavior.name,
-  
+
       ...behavior.steps.map(
         (step) =>
           step.action.target ??
           '',
       ),
-  
+
       ...behavior
         .outcome
         .addedSemanticText,
-  
+
       ...behavior
         .outcome
         .removedSemanticText,
     ].join(
       ' ',
     );
-  
+
     return tokenize(
       text,
     );
   }
-  
-  function requirementMatches(
-    behaviorTokens:
-      Set<string>,
-  
+
+  function getBehaviorTransactionTokens(
+    behavior:
+      BusinessBehaviorFlow,
+  ): Set<string> {
+    const text = [
+      behavior.name,
+
+      ...behavior.steps.map(
+        (step) =>
+          step.action.target ??
+          '',
+      ),
+    ].join(
+      ' ',
+    );
+
+    return new Set(
+      [
+        ...tokenize(
+          text,
+        ),
+      ].filter(
+        (token) =>
+          TRANSACTION_TOKENS.has(
+            token,
+          ),
+      ),
+    );
+  }
+
+  function hasNegativeOutcome(
+    behavior:
+      BusinessBehaviorFlow,
+  ): boolean {
+    return behavior
+      .outcome
+      .addedSemanticText
+      .some(
+        (value) =>
+          /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized)\b/i
+            .test(
+              value,
+            ),
+      );
+  }
+
+  function isNegativeRequirement(
     requirement:
       string,
   ): boolean {
+    return /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized|must not|cannot|can't|prevented)\b/i
+      .test(
+        requirement,
+      );
+  }
+
+  function requirementMatches(
+    behavior:
+      BusinessBehaviorFlow,
+
+    requirement:
+      string,
+  ): boolean {
+    const behaviorTokens =
+      getBehaviorTokens(
+        behavior,
+      );
+
+    const behaviorTransactionTokens =
+      getBehaviorTransactionTokens(
+        behavior,
+      );
+
     const requirementTokens =
       tokenize(
         requirement,
       );
-  
+
+    const requirementTransactionTokens =
+      new Set(
+        [
+          ...requirementTokens,
+        ].filter(
+          (token) =>
+            TRANSACTION_TOKENS.has(
+              token,
+            ),
+        ),
+      );
+
+    const sharedTransaction =
+      [
+        ...behaviorTransactionTokens,
+      ].some(
+        (token) =>
+          requirementTransactionTokens
+            .has(
+              token,
+            ),
+      );
+
+    if (!sharedTransaction) {
+      return false;
+    }
+
+    const requirementIsNegative =
+      isNegativeRequirement(
+        requirement,
+      );
+
+    const behaviorIsNegative =
+      hasNegativeOutcome(
+        behavior,
+      );
+
+    if (
+      requirementIsNegative !==
+      behaviorIsNegative
+    ) {
+      return false;
+    }
+
     const commonTokens =
       [
         ...behaviorTokens,
@@ -473,19 +578,10 @@ import type {
             token,
           ),
       );
-  
-    if (
-      commonTokens.length <
+
+    return (
+      commonTokens.length >=
       2
-    ) {
-      return false;
-    }
-  
-    return commonTokens.some(
-      (token) =>
-        TRANSACTION_TOKENS.has(
-          token,
-        ),
     );
   }
   
