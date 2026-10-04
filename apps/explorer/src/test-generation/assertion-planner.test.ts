@@ -15,7 +15,9 @@ function observation(
     actions?: Array<{
       type: 'button' | 'input' | 'dialog';
       tagName: string;
+      role?: string;
       name?: string;
+      text?: string;
       disabled: boolean;
       visible: boolean;
       formField?: {
@@ -640,6 +642,141 @@ describe(
               ),
           ),
         ).toBe(true);
+      },
+    );
+
+
+    it(
+      'treats dialog text fallback as an unlabeled role target',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-review',
+
+            actionEvidenceReference:
+              'ACTION-REVIEW',
+
+            actionLabel:
+              'Review Order',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-REVIEW',
+
+                type:
+                  'action',
+
+                source:
+                  'action-review',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-review',
+
+                actionId:
+                  'action-review',
+
+                actionTarget:
+                  'Review Order',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-04T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        text:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        text:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toHaveLength(1);
+
+        expect(
+          result[0],
+        ).toMatchObject({
+          kind:
+            'visibility',
+
+          matcher:
+            'visible',
+
+          target: {
+            kind:
+              'locator',
+
+            target: {
+              by:
+                'role',
+
+              role:
+                'dialog',
+            },
+          },
+        });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'count',
+          ),
+        ).toBe(false);
       },
     );
 
