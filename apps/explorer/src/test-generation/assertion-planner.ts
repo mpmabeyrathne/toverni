@@ -648,7 +648,10 @@ export function buildEvidenceBackedAssertions(
     if (
       beforeItems.length !==
       afterItems.length &&
-      afterItems.length > 0
+      afterItems.some(
+        (item) =>
+          item.visible,
+      )
     ) {
       pushAssertion({
         afterActionId:
