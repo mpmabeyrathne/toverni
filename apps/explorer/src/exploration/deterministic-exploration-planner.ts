@@ -636,6 +636,19 @@ this.globalActionCounts.set(
     }
 
     if (
+      this.isRequirementGroundedReadControl(
+        label,
+        knowledge,
+      )
+    ) {
+      score += 60;
+
+      reasons.push(
+        'Requirement-grounded read/query control is prioritized before generic form setup',
+      );
+    }
+
+    if (
       validationProbeLabels.has(
         this.normalize(
           label,
@@ -692,6 +705,82 @@ this.globalActionCounts.set(
 
       graphVisitCount,
     };
+  }
+
+  private isRequirementGroundedReadControl(
+    label:
+      string,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): boolean {
+    const requirements =
+      knowledge?.requirements;
+
+    if (!requirements) {
+      return false;
+    }
+
+    const requirementText = [
+      ...requirements
+        .acceptanceCriteria,
+      ...requirements
+        .capabilities,
+      ...requirements
+        .constraints,
+      requirements.rawText,
+    ].join(
+      ' ',
+    );
+
+    const checks = [
+      {
+        label:
+          /\bsearch\b/i,
+
+        requirement:
+          /\bsearch\b/i,
+      },
+      {
+        label:
+          /\bfilter\b/i,
+
+        requirement:
+          /\bfilter(?:ing|s|ed)?\b/i,
+      },
+      {
+        label:
+          /\bsort\b/i,
+
+        requirement:
+          /\bsort(?:ing|s|ed)?\b/i,
+      },
+      {
+        label:
+          /\brefresh\b/i,
+
+        requirement:
+          /\brefresh(?:es|ed|ing)?\b/i,
+      },
+      {
+        label:
+          /\b(?:next|previous)\s+page\b|\bpage\b/i,
+
+        requirement:
+          /\b(?:page|pagination|paginate|paginates|paginated|paginating)\b/i,
+      },
+    ];
+
+    return checks.some(
+      (check) =>
+        check.label.test(
+          label,
+        ) &&
+        check.requirement.test(
+          requirementText,
+        ),
+    );
   }
 
   private requirementValidationProbeLabels(
