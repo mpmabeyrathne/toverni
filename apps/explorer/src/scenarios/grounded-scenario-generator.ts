@@ -1435,7 +1435,18 @@ import type {
     return behaviors
       .filter(
         (behavior) =>
-          behavior.complete,
+          behavior.complete ||
+          behavior
+            .boundaryEvidence
+            .some(
+              (item) =>
+                item.source ===
+                  'action' &&
+                item.detail
+                  .startsWith(
+                    'Observed read/query interaction',
+                  ),
+            ),
       )
       .flatMap(
         (behavior) => {
