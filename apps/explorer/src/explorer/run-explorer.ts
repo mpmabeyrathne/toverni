@@ -97,6 +97,9 @@ export interface RunExplorerInput {
     explorationBudget?:
         Partial<ExplorationBudget>;
 
+    allowDestructiveActions?:
+        boolean;
+
     timeouts?: {
         navigationMs?: number;
         actionMs?: number;
@@ -179,6 +182,8 @@ export async function runExplorer(
         new DeterministicExplorationPlanner(
             stateModel,
             explorationBudget,
+            input.allowDestructiveActions ??
+                false,
         );
 
     let databaseConnection:
