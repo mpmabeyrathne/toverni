@@ -76,8 +76,41 @@
               'li',
             );
 
-          item.textContent =
+          const label =
+            document.createElement(
+              'span',
+            );
+
+          label.textContent =
             title;
+
+          const complete =
+            document.createElement(
+              'button',
+            );
+
+          complete.type =
+            'button';
+
+          complete.textContent =
+            'Complete Todo';
+
+          const remove =
+            document.createElement(
+              'button',
+            );
+
+          remove.type =
+            'button';
+
+          remove.textContent =
+            'Delete Todo';
+
+          item.append(
+            label,
+            complete,
+            remove,
+          );
 
           list.appendChild(
             item,
@@ -86,6 +119,74 @@
           input.value = '';
         },
       );
+
+    list.addEventListener(
+      'click',
+      (
+        event,
+      ) => {
+        const target =
+          event.target;
+
+        if (
+          !(
+            target instanceof
+            HTMLButtonElement
+          )
+        ) {
+          return;
+        }
+
+        const item =
+          target.closest(
+            'li',
+          );
+
+        if (!item) {
+          return;
+        }
+
+        if (
+          target.textContent
+            ?.trim() ===
+          'Complete Todo'
+        ) {
+          const label =
+            item.querySelector(
+              'span',
+            );
+
+          if (!label) {
+            return;
+          }
+
+          const title =
+            label.textContent
+              ?.replace(
+                /\s*\(completed\)$/,
+                '',
+              )
+              .trim() ??
+            '';
+
+          label.textContent =
+            `${title} (completed)`;
+
+          target.disabled =
+            true;
+
+          return;
+        }
+
+        if (
+          target.textContent
+            ?.trim() ===
+          'Delete Todo'
+        ) {
+          item.remove();
+        }
+      },
+    );
   </script>
 </body>
 </html>
