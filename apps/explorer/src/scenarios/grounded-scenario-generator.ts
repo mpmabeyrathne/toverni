@@ -1689,6 +1689,8 @@ import type {
     ) {
       let bestIndex = 0;
 
+      let bestHighestPriority = -1;
+
       let bestNewCoverage = -1;
 
       let bestCoverageWeight = -1;
@@ -1723,30 +1725,50 @@ import type {
                   ),
             );
 
+        const priorities =
+          newlyCovered.map(
+            (reference) =>
+              priorityByEvidence
+                .get(
+                  reference,
+                ) ??
+              0,
+          );
+
+        const highestPriority =
+          priorities.length >
+            0
+            ? Math.max(
+                ...priorities,
+              )
+            : 0;
+
         const newCoverage =
           newlyCovered.length;
 
         const coverageWeight =
-          newlyCovered.reduce(
+          priorities.reduce(
             (
               total,
-              reference,
+              priority,
             ) =>
               total +
-              (
-                priorityByEvidence
-                  .get(
-                    reference,
-                  ) ??
-                0
-              ),
+              priority,
             0,
           );
 
         if (
-          newCoverage >
-            bestNewCoverage ||
+          highestPriority >
+            bestHighestPriority ||
           (
+            highestPriority ===
+              bestHighestPriority &&
+            newCoverage >
+              bestNewCoverage
+          ) ||
+          (
+            highestPriority ===
+              bestHighestPriority &&
             newCoverage ===
               bestNewCoverage &&
             coverageWeight >
@@ -1755,6 +1777,9 @@ import type {
         ) {
           bestIndex =
             index;
+
+          bestHighestPriority =
+            highestPriority;
 
           bestNewCoverage =
             newCoverage;
