@@ -115,6 +115,36 @@ export function deriveRoutePattern(
     );
   }
 
+  const bareHashRoute =
+    url.hash
+      .slice(1)
+      .trim();
+
+  if (
+    bareHashRoute &&
+    /^[a-z0-9][a-z0-9/_-]*(?:\?.*)?$/i
+      .test(
+        bareHashRoute,
+      )
+  ) {
+    const normalizedHashRoute =
+      bareHashRoute
+        .startsWith('/')
+        ? bareHashRoute
+        : `/${bareHashRoute}`;
+
+    const hashRoute =
+      new URL(
+        normalizedHashRoute,
+        url.origin,
+      );
+
+    return normalizeRoute(
+      hashRoute.pathname,
+      hashRoute.searchParams,
+    );
+  }
+
   return normalizeRoute(
     url.pathname,
     url.searchParams,
