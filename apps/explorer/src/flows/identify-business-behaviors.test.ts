@@ -925,6 +925,12 @@ import {
           nextWithSort.beforeObservation = {
             ...nextWithSort.beforeObservation,
 
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
             semanticText: [
               'Dan Pending 20',
               'Bob Pending 10',
@@ -933,6 +939,12 @@ import {
 
           nextWithSort.afterObservation = {
             ...nextWithSort.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
 
             semanticText: [
               'Page 2',
@@ -959,6 +971,12 @@ import {
           nextDirect.beforeObservation = {
             ...nextDirect.beforeObservation,
 
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
             semanticText: [
               'Bob Pending 10',
               'Dan Pending 20',
@@ -967,6 +985,12 @@ import {
 
           nextDirect.afterObservation = {
             ...nextDirect.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
 
             semanticText: [
               'Page 2',
