@@ -1003,12 +1003,42 @@ this.globalActionCounts.set(
       return null;
     }
 
+    const requirementGroundedInvalidValue =
+      generated.values.find(
+        (value) =>
+          value.kind ===
+            'invalid' &&
+          value.evidence.some(
+            (item) =>
+              item.source ===
+                'requirements' &&
+              /\bother\s+than\b.*\b(?:rejected|invalid|not\s+allowed|forbidden)\b/i
+                .test(
+                  item.detail,
+                ),
+          ),
+      );
+
+    const currentValue =
+      action.formField
+        ?.value;
+
+    const selectedValue =
+      requirementGroundedInvalidValue &&
+      typeof currentValue ===
+        'string' &&
+      currentValue.trim()
+        .length ===
+        0
+        ? requirementGroundedInvalidValue
+        : validValue;
+
     switch (action.type) {
       case 'input':
       case 'textarea':
       case 'contenteditable': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -1019,16 +1049,16 @@ this.globalActionCounts.set(
             'fill',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       case 'select': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -1039,16 +1069,16 @@ this.globalActionCounts.set(
             'select',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       case 'combobox': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -1091,7 +1121,7 @@ this.globalActionCounts.set(
 
       case 'listbox': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -1102,10 +1132,10 @@ this.globalActionCounts.set(
             'choose-option',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
@@ -1127,14 +1157,14 @@ this.globalActionCounts.set(
             'set-checked',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           currentValue:
             action.formField
               .checked,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
