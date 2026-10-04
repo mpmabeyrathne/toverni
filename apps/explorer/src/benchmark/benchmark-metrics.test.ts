@@ -383,5 +383,73 @@ describe(
       },
     );
 
+
+
+    it(
+      'counts equivalent required and progression wording for important-flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Checkout requires a customer name before continuing',
+
+                actions: [
+                  'Continue without customer name',
+                ],
+
+                expectedOutcomes: [
+                  'Name is required',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-1',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+
+            [
+              {
+                id:
+                  'CHECK-1',
+
+                title:
+                  'Validate required customer details',
+
+                important:
+                  true,
+
+                keywords: [
+                  'name',
+                  'required',
+                  'continue',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
   },
 );
