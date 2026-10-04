@@ -9,6 +9,17 @@ import type {
       value,
     );
   }
+
+  function normalizeAccessibleName(
+    value: string,
+  ): string {
+    return value
+      .replace(
+        /\s+/g,
+        ' ',
+      )
+      .trim();
+  }
   
   export function renderPlaywrightLocator(
     target:
@@ -27,7 +38,9 @@ import type {
         ) {
           options.push(
             `name: ${quote(
-              target.name,
+              normalizeAccessibleName(
+                target.name,
+              ),
             )}`,
           );
         }
