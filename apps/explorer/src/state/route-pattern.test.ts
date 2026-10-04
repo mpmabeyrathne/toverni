@@ -57,5 +57,35 @@ import {
           );
         },
       );
+
+      it(
+        'derives a route from bare hash SPA navigation',
+        () => {
+          expect(
+            deriveRoutePattern(
+              'https://example.com/#dashboard',
+            ),
+          ).toBe(
+            '/dashboard',
+          );
+
+          expect(
+            deriveRoutePattern(
+              'https://example.com/#admin',
+            ),
+          ).toBe(
+            '/admin',
+          );
+
+          expect(
+            deriveRoutePattern(
+              'https://example.com/#profile',
+            ),
+          ).toBe(
+            '/profile',
+          );
+        },
+      );
+
     },
   );
