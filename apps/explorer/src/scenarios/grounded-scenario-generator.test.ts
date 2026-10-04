@@ -2462,5 +2462,277 @@ describe(
             },
         );
 
+
+        it(
+            'prioritizes distinct uncovered evidence before stacking variants of the same target',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [
+                                    {
+                                        title:
+                                            'REQ-1 variant A',
+
+                                        type:
+                                            'negative',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Do first invalid case',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'First error',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+
+                                    {
+                                        title:
+                                            'REQ-1 variant B',
+
+                                        type:
+                                            'negative',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Do second invalid case',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Second error',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-1',
+                                        ],
+                                    },
+
+                                    {
+                                        title:
+                                            'REQ-2 scenario',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Use second capability',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Second outcome',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-2',
+                                        ],
+                                    },
+
+                                    {
+                                        title:
+                                            'REQ-3 scenario',
+
+                                        type:
+                                            'positive',
+
+                                        preconditions:
+                                            [],
+
+                                        actions: [
+                                            'Use third capability',
+                                        ],
+
+                                        expectedOutcomes: [
+                                            'Third outcome',
+                                        ],
+
+                                        evidenceReferences: [
+                                            'REQ-3',
+                                        ],
+                                    },
+                                ],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Invalid first case shows an error.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'REQ-2',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Second capability succeeds.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'REQ-3',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Third capability succeeds.',
+
+                                source:
+                                    'requirements.md',
+                            },
+                        ],
+
+                        coverageGaps: [
+                            {
+                                targetId:
+                                    'REQ-1',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-1',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'REQ-2',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-2',
+                                ],
+                            },
+
+                            {
+                                targetId:
+                                    'REQ-3',
+
+                                kind:
+                                    'requirement',
+
+                                status:
+                                    'uncovered',
+
+                                evidenceReferences: [
+                                    'REQ-3',
+                                ],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result
+                        .slice(
+                            0,
+                            3,
+                        )
+                        .map(
+                            (scenario) =>
+                                scenario
+                                    .evidenceReferences
+                                    .find(
+                                        (reference) =>
+                                            reference.startsWith(
+                                                'REQ-',
+                                            ),
+                                    ),
+                        ),
+                ).toEqual([
+                    'REQ-1',
+                    'REQ-2',
+                    'REQ-3',
+                ]);
+            },
+        );
+
     },
 );
