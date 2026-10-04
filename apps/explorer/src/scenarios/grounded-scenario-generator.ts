@@ -1171,8 +1171,41 @@ import type {
       return scenario;
     }
 
+    const deterministicNegativePlaceholder =
+      scenario.actions.length ===
+        1 &&
+      /^Exercise the invalid or unsupported case described by:/i
+        .test(
+          scenario.actions[0] ??
+            '',
+        );
+
+    const groundedActions =
+      deterministicNegativePlaceholder
+        ? best.behavior
+            .steps
+            .map(
+              (step) =>
+                step.action
+                  .target
+                  ?.trim() ||
+                step.action.type,
+            )
+            .filter(
+              (value) =>
+                value.length >
+                0,
+            )
+        : scenario.actions;
+
     return {
       ...scenario,
+
+      actions:
+        groundedActions.length >
+          0
+          ? groundedActions
+          : scenario.actions,
 
       evidenceReferences: [
         ...new Set([
@@ -1322,13 +1355,61 @@ import type {
                   0,
               );
 
+          const linkedEvidenceDescriptions =
+            (
+              flowEvidence
+                .linkedEvidenceReferences ??
+              []
+            )
+              .flatMap(
+                (reference) => {
+                  const linked =
+                    evidence.find(
+                      (item) =>
+                        item.id ===
+                        reference,
+                    );
+
+                  return linked
+                    ? [
+                        linked.description,
+                      ]
+                    : [];
+                },
+              )
+              .map(
+                (value) =>
+                  value.trim(),
+              )
+              .filter(
+                (value) =>
+                  value.length >
+                  0,
+              );
+
           const expectedOutcomes =
-            observedOutcomes.length >
-              0
-              ? observedOutcomes
-              : [
-                  `Observed business flow "${behavior.name}" reaches its recorded outcome state.`,
-                ];
+            [
+              ...(
+                observedOutcomes.length >
+                  0
+                  ? observedOutcomes
+                  : [
+                      `Observed business flow "${behavior.name}" reaches its recorded outcome state.`,
+                    ]
+              ),
+
+              ...linkedEvidenceDescriptions,
+            ]
+              .filter(
+                (
+                  value,
+                  index,
+                  values,
+                ) =>
+                  values.indexOf(
+                    value,
+                  ) === index,
+              );
 
           const normalizedName =
             behavior.name
