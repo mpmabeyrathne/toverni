@@ -286,6 +286,9 @@ async function main():
           headless:
             true,
 
+          allowDestructiveActions:
+            true,
+
           artifactsDirectory:
             join(
               process.cwd(),
