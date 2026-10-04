@@ -651,10 +651,21 @@ this.globalActionCounts.set(
     if (
       requirementGroundedReadControl
     ) {
-      score += 60;
+      const refreshLike =
+        /\b(?:refresh|reload|sync)\b/i
+          .test(
+            label,
+          );
+
+      score +=
+        refreshLike
+          ? 10
+          : 60;
 
       reasons.push(
-        'Requirement-grounded read/query control is prioritized before generic form setup',
+        refreshLike
+          ? 'Refresh-like data mutation is deferred until other grounded query controls are explored'
+          : 'Requirement-grounded read/query control is prioritized before generic form setup',
       );
     }
 
