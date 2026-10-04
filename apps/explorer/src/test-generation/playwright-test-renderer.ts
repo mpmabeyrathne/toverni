@@ -48,6 +48,18 @@ function quote(
   );
 }
 
+function commentText(
+  value:
+    string,
+): string {
+  return value
+    .replace(
+      /\s+/g,
+      ' ',
+    )
+    .trim();
+}
+
 function toBrowserTarget(
   target:
     TestPlanTarget,
@@ -328,7 +340,7 @@ export function compilePlaywrightTest(
   ) {
     lines.push(
       `  // Assertion evidence: ${assertion.evidenceReferences.join(', ')}`,
-      `  // ${assertion.description}`,
+      `  // ${commentText(assertion.description)}`,
       `  await ${compileAssertion(assertion)}`,
       '',
     );
@@ -343,7 +355,7 @@ export function compilePlaywrightTest(
     );
 
     lines.push(
-      `  // ${step.description}`,
+      `  // ${commentText(step.description)}`,
     );
 
     lines.push(
@@ -374,7 +386,7 @@ export function compilePlaywrightTest(
       );
 
       lines.push(
-        `  // ${assertion.description}`,
+        `  // ${commentText(assertion.description)}`,
       );
 
       lines.push(
