@@ -2983,6 +2983,211 @@ describe(
 
 
         it(
+            'keeps replayable observed read-query behaviors when canonical completeness is false',
+            async () => {
+                const provider:
+                    ModelProvider = {
+                    name:
+                        'fake',
+
+                    async analyzeState() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async rankActions() {
+                        throw new Error(
+                            'Not used',
+                        );
+                    },
+
+                    async generateScenarios() {
+                        return {
+                            data: {
+                                scenarios: [],
+                            },
+
+                            usage: {
+                                provider:
+                                    'fake',
+
+                                model:
+                                    'fake-model',
+
+                                promptTokens:
+                                    1,
+
+                                completionTokens:
+                                    1,
+
+                                totalTokens:
+                                    2,
+
+                                estimatedCostUsd:
+                                    0,
+
+                                durationMs:
+                                    1,
+
+                                reasoningTier:
+                                    'complex',
+                            },
+                        };
+                    },
+                };
+
+                const generator =
+                    new GroundedScenarioGenerator(
+                        provider,
+                    );
+
+                const result =
+                    await generator.generate({
+                        evidence: [
+                            {
+                                id:
+                                    'REQ-1',
+
+                                type:
+                                    'requirement',
+
+                                description:
+                                    'Search filters rows by customer name.',
+
+                                source:
+                                    'requirements.md',
+                            },
+
+                            {
+                                id:
+                                    'FLOW-BUSINESS-1',
+
+                                type:
+                                    'transition',
+
+                                description:
+                                    'Business flow: Search customers.',
+
+                                source:
+                                    'behavior-search',
+
+                                linkedEvidenceReferences: [
+                                    'REQ-1',
+                                ],
+                            },
+                        ],
+
+                        businessBehaviors: [
+                            {
+                                id:
+                                    'behavior-search',
+
+                                sourceFlowIds: [
+                                    'flow-search',
+                                ],
+
+                                name:
+                                    'Search customers',
+
+                                startStateId:
+                                    'grid-all',
+
+                                endStateId:
+                                    'grid-filtered',
+
+                                stateIds: [
+                                    'grid-all',
+                                    'grid-filtered',
+                                ],
+
+                                transitionIds: [
+                                    'transition-search',
+                                ],
+
+                                preconditionTransitionIds: [],
+
+                                steps: [
+                                    {
+                                        transitionId:
+                                            'transition-search',
+
+                                        fromStateId:
+                                            'grid-all',
+
+                                        toStateId:
+                                            'grid-filtered',
+
+                                        action: {
+                                            type:
+                                                'fill',
+
+                                            target:
+                                                'Search customers',
+                                        },
+                                    },
+                                ],
+
+                                complete:
+                                    false,
+
+                                boundaryEvidence: [
+                                    {
+                                        source:
+                                            'action',
+
+                                        transitionId:
+                                            'transition-search',
+
+                                        detail:
+                                            'Observed read/query interaction "Search customers" with a visible outcome',
+
+                                        networkEventIds: [],
+                                    },
+                                ],
+
+                                outcome: {
+                                    stateId:
+                                        'grid-filtered',
+
+                                    urlChanged:
+                                        false,
+
+                                    titleChanged:
+                                        false,
+
+                                    addedSemanticText: [
+                                        'Dan Pending 20',
+                                    ],
+
+                                    removedSemanticText: [
+                                        'Bob Pending 10',
+                                    ],
+                                },
+
+                                requirementEvidenceIds: [
+                                    'REQ-1',
+                                ],
+
+                                apiOperationIds: [],
+
+                                apiOperationLinks: [],
+                            },
+                        ],
+                    });
+
+                expect(
+                    result.some(
+                        (scenario) =>
+                            scenario.title ===
+                            'Observed flow: Search customers',
+                    ),
+                ).toBe(true);
+            },
+        );
+
+
+        it(
             'grounds required-field constraint scenarios from an observed validation outcome',
             async () => {
                 const provider:
