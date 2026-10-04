@@ -197,19 +197,22 @@ import type {
         'auth',
 
       login:
-        'auth',
+        'login',
 
       logged:
-        'auth',
+        'login',
+
+      logout:
+        'logout',
 
       authenticate:
-        'auth',
+        'login',
 
       authenticated:
-        'auth',
+        'login',
 
       authentication:
-        'auth',
+        'login',
     };
   
   const TRANSACTION_TOKENS =
@@ -217,6 +220,8 @@ import type {
       'approve',
       'assign',
       'auth',
+      'login',
+      'logout',
       'book',
       'cancel',
       'checkout',
@@ -488,9 +493,20 @@ import type {
     value:
       string,
   ): Set<string> {
-    const tokens =
+    const directionalValue =
       value
         .toLowerCase()
+        .replace(
+          /\b(?:sign|signed|signing)\s+out\b/g,
+          'logout',
+        )
+        .replace(
+          /\b(?:sign|signed|signing)\s+in\b/g,
+          'login',
+        );
+
+    const tokens =
+      directionalValue
         .replace(
           /[^a-z0-9]+/g,
           ' ',
