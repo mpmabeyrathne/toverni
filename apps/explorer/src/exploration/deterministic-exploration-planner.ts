@@ -77,9 +77,6 @@ const DESTRUCTIVE_TERMS = [
   'delete',
   'remove',
   'destroy',
-  'logout',
-  'log out',
-  'sign out',
   'purchase',
   'pay now',
   'place order',
@@ -440,13 +437,17 @@ this.globalActionCounts.set(
       );
 
     const formExecution =
-      sensitiveFormAction
-        ? null
-        : this.createFormExecution(
-          action,
-          knowledge,
-          apiOperationIds,
-        );
+      this.createFormExecution(
+        action,
+        knowledge,
+        apiOperationIds,
+      );
+
+    const sensitiveFormGrounded =
+      !sensitiveFormAction ||
+      this.hasExplicitSensitiveValueEvidence(
+        formExecution,
+      );
 
     const previouslyVisited =
       this.hasVisitedAction(
@@ -499,10 +500,18 @@ this.globalActionCounts.set(
     }
 
     if (
-      sensitiveFormAction
+      sensitiveFormAction &&
+      !sensitiveFormGrounded
     ) {
       blockReasons.push(
-        'Sensitive form field is not eligible for autonomous test-data execution',
+        'Sensitive form field requires an explicit OpenAPI example/default before autonomous execution',
+      );
+    } else if (
+      sensitiveFormAction &&
+      sensitiveFormGrounded
+    ) {
+      reasons.push(
+        'Sensitive form value is explicitly grounded by OpenAPI example/default evidence',
       );
     }
 
@@ -590,6 +599,19 @@ this.globalActionCounts.set(
     if (typeScore > 0) {
       reasons.push(
         `Action type ${action.type} has exploration value`,
+      );
+    }
+
+    if (
+      formExecution &&
+      this.isUnfilledFormSetup(
+        action,
+      )
+    ) {
+      score += 50;
+
+      reasons.push(
+        'Unfilled grounded form setup is prioritized before submit or transaction actions',
       );
     }
 
@@ -1108,6 +1130,63 @@ this.globalActionCounts.set(
       default:
         return null;
     }
+  }
+
+  private hasExplicitSensitiveValueEvidence(
+    execution:
+      ExplorationFormExecution | null,
+  ): boolean {
+    return (
+      execution
+        ?.evidence
+        .some(
+          (item) =>
+            item.source ===
+              'openapi' &&
+            /\b(?:example|default)\b/i
+              .test(
+                item.detail,
+              ),
+        ) ??
+      false
+    );
+  }
+
+  private isUnfilledFormSetup(
+    action:
+      ActionElement,
+  ): boolean {
+    if (
+      !this.requiresFormExecution(
+        action,
+      )
+    ) {
+      return false;
+    }
+
+    const value =
+      action.formField
+        ?.value;
+
+    if (
+      typeof value ===
+      'string'
+    ) {
+      return (
+        value.trim()
+          .length ===
+        0
+      );
+    }
+
+    return (
+      action.type ===
+        'checkbox' ||
+      action.type ===
+        'radio'
+    )
+      ? false
+      : true;
   }
 
   private isSensitiveFormAction(
