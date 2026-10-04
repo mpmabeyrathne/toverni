@@ -579,9 +579,32 @@ import type {
           ),
       );
 
+    const directionalAuthMatch =
+      (
+        behaviorTransactionTokens
+          .has(
+            'login',
+          ) &&
+        requirementTransactionTokens
+          .has(
+            'login',
+          )
+      ) ||
+      (
+        behaviorTransactionTokens
+          .has(
+            'logout',
+          ) &&
+        requirementTransactionTokens
+          .has(
+            'logout',
+          )
+      );
+
     return (
+      directionalAuthMatch ||
       commonTokens.length >=
-      2
+        2
     );
   }
   
