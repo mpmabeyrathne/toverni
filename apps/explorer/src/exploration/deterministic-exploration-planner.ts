@@ -507,14 +507,14 @@ this.globalActionCounts.set(
       !sensitiveFormGrounded
     ) {
       blockReasons.push(
-        'Sensitive form field requires an explicit OpenAPI example/default before autonomous execution',
+        'Sensitive form field requires an explicit trusted test value before autonomous execution',
       );
     } else if (
       sensitiveFormAction &&
       sensitiveFormGrounded
     ) {
       reasons.push(
-        'Sensitive form value is explicitly grounded by OpenAPI example/default evidence',
+        'Sensitive form value is explicitly grounded by trusted product evidence',
       );
     }
 
@@ -1152,12 +1152,22 @@ this.globalActionCounts.set(
         ?.evidence
         .some(
           (item) =>
-            item.source ===
-              'openapi' &&
-            /\b(?:example|default)\b/i
-              .test(
-                item.detail,
-              ),
+            (
+              item.source ===
+                'openapi' &&
+              /\b(?:example|default)\b/i
+                .test(
+                  item.detail,
+                )
+            ) ||
+            (
+              item.source ===
+                'requirements' &&
+              /\bother\s+than\b.*\b(?:rejected|invalid|not\s+allowed|forbidden)\b/i
+                .test(
+                  item.detail,
+                )
+            ),
         ) ??
       false
     );
