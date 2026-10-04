@@ -193,6 +193,11 @@ export class DeterministicExplorationPlanner {
       });
     }
 
+    const validationProbeLabels =
+      this.requirementValidationProbeLabels(
+        input,
+      );
+
     const candidates =
       input.observation.actions
         .map(
@@ -204,6 +209,7 @@ export class DeterministicExplorationPlanner {
               input.productContext,
               input.knowledge,
               input.apiOperationIds,
+              validationProbeLabels,
             ),
         )
         .sort(
@@ -417,6 +423,9 @@ this.globalActionCounts.set(
     apiOperationIds:
       | string[]
       | undefined,
+
+    validationProbeLabels:
+      Set<string>,
   ): ExplorationCandidate {
     const signature =
       createActionSignature(
@@ -626,6 +635,20 @@ this.globalActionCounts.set(
       );
     }
 
+    if (
+      validationProbeLabels.has(
+        this.normalize(
+          label,
+        ),
+      )
+    ) {
+      score += 80;
+
+      reasons.push(
+        'Requirement-grounded empty-field validation is probed before valid form setup',
+      );
+    }
+
     const contextResult =
       this.scoreProductContext(
         label,
@@ -669,6 +692,203 @@ this.globalActionCounts.set(
 
       graphVisitCount,
     };
+  }
+
+  private requirementValidationProbeLabels(
+    input:
+      PlanExplorationInput,
+  ): Set<string> {
+    const requirements =
+      input.knowledge
+        ?.requirements;
+
+    if (!requirements) {
+      return new Set();
+    }
+
+    const requirementTexts = [
+      ...requirements
+        .acceptanceCriteria,
+      ...requirements
+        .constraints,
+    ];
+
+    const emptyVisibleFields =
+      input.observation.actions
+        .filter(
+          (action) =>
+            action.visible &&
+            this.requiresFormExecution(
+              action,
+            ) &&
+            typeof action.formField
+              ?.value ===
+              'string' &&
+            action.formField
+              .value
+              .trim()
+              .length ===
+              0,
+        );
+
+    if (
+      emptyVisibleFields.length ===
+      0
+    ) {
+      return new Set();
+    }
+
+    const progressionActions =
+      input.observation.actions
+        .filter(
+          (action) =>
+            action.visible &&
+            !action.disabled &&
+            (
+              action.type ===
+                'button' ||
+              action.type ===
+                'link'
+            ) &&
+            /\b(?:continue|next|proceed|advance|submit)\b/i
+              .test(
+                getActionLabel(
+                  action,
+                ),
+              ),
+        );
+
+    const labels =
+      new Set<string>();
+
+    for (
+      const field of
+        emptyVisibleFields
+    ) {
+      const fieldText =
+        [
+          field.name,
+          field.formField
+            ?.htmlName,
+          field.formField
+            ?.placeholder,
+        ]
+          .filter(
+            (
+              value,
+            ): value is string =>
+              typeof value ===
+              'string',
+          )
+          .join(
+            ' ',
+          );
+
+      const fieldTerms =
+        [
+          ...new Set(
+            this.normalize(
+              fieldText,
+            )
+              .replace(
+                /[^a-z0-9]+/g,
+                ' ',
+              )
+              .split(
+                /\s+/,
+              )
+              .filter(
+                (term) =>
+                  term.length >=
+                    3 &&
+                  ![
+                    'field',
+                    'input',
+                    'text',
+                  ].includes(
+                    term,
+                  ),
+              ),
+          ),
+        ];
+
+      if (
+        fieldTerms.length ===
+        0
+      ) {
+        continue;
+      }
+
+      const groundedRequirement =
+        requirementTexts.find(
+          (requirement) => {
+            const normalized =
+              this.normalize(
+                requirement,
+              );
+
+            const terms =
+              new Set(
+                normalized
+                  .replace(
+                    /[^a-z0-9]+/g,
+                    ' ',
+                  )
+                  .split(
+                    /\s+/,
+                  )
+                  .filter(
+                    Boolean,
+                  ),
+              );
+
+            const referencesField =
+              fieldTerms.every(
+                (term) =>
+                  terms.has(
+                    term,
+                  ),
+              );
+
+            const marksRequired =
+              /\b(?:requires?|required|mandatory|must\s+(?:provide|enter|supply|include))\b/i
+                .test(
+                  requirement,
+                );
+
+            const blocksProgression =
+              /\b(?:before\s+(?:continuing|proceeding|advancing|submitting)|cannot\s+(?:continue|proceed|advance|submit)|can't\s+(?:continue|proceed|advance|submit))\b/i
+                .test(
+                  requirement,
+                );
+
+            return (
+              referencesField &&
+              marksRequired &&
+              blocksProgression
+            );
+          },
+        );
+
+      if (!groundedRequirement) {
+        continue;
+      }
+
+      for (
+        const action of
+          progressionActions
+      ) {
+        labels.add(
+          this.normalize(
+            getActionLabel(
+              action,
+            ),
+          ),
+        );
+      }
+    }
+
+    return labels;
   }
 
   private checkBudget(
