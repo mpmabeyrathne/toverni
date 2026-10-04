@@ -442,6 +442,31 @@ import type {
     return scenarios;
   }
   
+  const SCENARIO_MATCH_TOKEN_ALIASES:
+    Readonly<
+      Record<
+        string,
+        string
+      >
+    > = {
+      sign:
+        'auth',
+      signed:
+        'auth',
+      signing:
+        'auth',
+      login:
+        'auth',
+      logged:
+        'auth',
+      authenticate:
+        'auth',
+      authenticated:
+        'auth',
+      authentication:
+        'auth',
+    };
+
   const SCENARIO_MATCH_STOP_WORDS =
     new Set([
       'a',
@@ -486,6 +511,13 @@ import type {
         .map(
           (value) =>
             value.trim(),
+        )
+        .map(
+          (value) =>
+            SCENARIO_MATCH_TOKEN_ALIASES[
+              value
+            ] ??
+            value,
         )
         .filter(
           (value) =>
@@ -1357,7 +1389,16 @@ import type {
       const deterministicNegativeRequirementScenarios =
         createDeterministicNegativeRequirementScenarios(
           input.evidence,
-        );
+        )
+          .map(
+            (scenario) =>
+              enrichScenarioWithBusinessEvidence(
+                scenario,
+                input.businessBehaviors ??
+                  [],
+                input.evidence,
+              ),
+          );
   
       const allCandidates = [
         ...groundedModelScenarios,
