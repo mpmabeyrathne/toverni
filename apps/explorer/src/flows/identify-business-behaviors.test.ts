@@ -863,6 +863,176 @@ import {
 
 
       it(
+        'prefers duplicate read-query behaviors that preserve semantic setup',
+        () => {
+          const states = [
+            createState(
+              'grid',
+            ),
+            createState(
+              'page-2',
+            ),
+          ];
+
+          const sort =
+            createTransition(
+              'sort',
+              'grid',
+              'grid',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Sort Amount',
+              },
+              1,
+            );
+
+          sort.beforeObservation = {
+            ...sort.beforeObservation,
+
+            semanticText: [
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          sort.afterObservation = {
+            ...sort.afterObservation,
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const nextWithSort =
+            createTransition(
+              'next-with-sort',
+              'grid',
+              'page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              2,
+            );
+
+          nextWithSort.beforeObservation = {
+            ...nextWithSort.beforeObservation,
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          nextWithSort.afterObservation = {
+            ...nextWithSort.afterObservation,
+
+            semanticText: [
+              'Page 2',
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const nextDirect =
+            createTransition(
+              'next-direct',
+              'grid',
+              'page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              3,
+            );
+
+          nextDirect.beforeObservation = {
+            ...nextDirect.beforeObservation,
+
+            semanticText: [
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          nextDirect.afterObservation = {
+            ...nextDirect.afterObservation,
+
+            semanticText: [
+              'Page 2',
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions: [
+                sort,
+                nextWithSort,
+                nextDirect,
+              ],
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions: [
+                sort,
+                nextWithSort,
+                nextDirect,
+              ],
+              flows,
+              initialStateId:
+                'grid',
+            });
+
+          const nextPage =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                  'Next Page',
+            );
+
+          expect(
+            nextPage,
+          ).toBeDefined();
+
+          expect(
+            [
+              ...(
+                nextPage
+                  ?.preconditionTransitionIds ??
+                []
+              ),
+              ...(
+                nextPage
+                  ?.transitionIds ??
+                []
+              ),
+            ],
+          ).toEqual(
+            expect.arrayContaining([
+              'sort',
+              'next-with-sort',
+            ]),
+          );
+        },
+      );
+
+
+      it(
         'prefers duplicate business behavior candidates that preserve replay-safe setup',
         () => {
           const states = [
