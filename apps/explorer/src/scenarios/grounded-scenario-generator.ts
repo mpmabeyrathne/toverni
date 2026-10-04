@@ -456,15 +456,17 @@ import type {
       signing:
         'auth',
       login:
-        'auth',
+        'login',
       logged:
-        'auth',
+        'login',
+      logout:
+        'logout',
       authenticate:
-        'auth',
+        'login',
       authenticated:
-        'auth',
+        'login',
       authentication:
-        'auth',
+        'login',
 
       navigate:
         'navigate',
@@ -512,16 +514,33 @@ import type {
       'use',
       'observed',
       'business',
+      'navigate',
+      'navigation',
+      'state',
+      'application',
+      'executed',
+      'discovered',
     ]);
 
   function semanticTokens(
     values:
       string[],
   ): Set<string> {
-    return new Set(
+    const directionalValue =
       values
         .join(' ')
         .toLowerCase()
+        .replace(
+          /\b(?:sign|signed|signing)\s+out\b/g,
+          'logout',
+        )
+        .replace(
+          /\b(?:sign|signed|signing)\s+in\b/g,
+          'login',
+        );
+
+    return new Set(
+      directionalValue
         .replace(
           /[^a-z0-9]+/g,
           ' ',
@@ -1907,6 +1926,66 @@ import type {
     return selected;
   }
 
+  function appendLinkedEvidenceDescriptions(
+    scenario:
+      GroundedScenario,
+
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenario {
+    const evidenceById =
+      new Map(
+        evidence.map(
+          (item) => [
+            item.id,
+            item,
+          ],
+        ),
+      );
+
+    const linkedDescriptions =
+      scenario
+        .evidenceReferences
+        .flatMap(
+          (reference) => {
+            const item =
+              evidenceById.get(
+                reference,
+              );
+
+            if (
+              !item ||
+              (
+                item.type !==
+                  'requirement' &&
+                item.type !==
+                  'capability' &&
+                item.type !==
+                  'constraint'
+              )
+            ) {
+              return [];
+            }
+
+            return [
+              item.description,
+            ];
+          },
+        );
+
+    return {
+      ...scenario,
+
+      expectedOutcomes: [
+        ...new Set([
+          ...scenario
+            .expectedOutcomes,
+          ...linkedDescriptions,
+        ]),
+      ],
+    };
+  }
+
   export class GroundedScenarioGenerator {
     constructor(
       private readonly provider:
@@ -2362,6 +2441,13 @@ import type {
       return prioritizeCoverageBreadth(
         ranked,
         coverageGaps,
-      );
+      )
+        .map(
+          (scenario) =>
+            appendLinkedEvidenceDescriptions(
+              scenario,
+              input.evidence,
+            ),
+        );
     }
   }
