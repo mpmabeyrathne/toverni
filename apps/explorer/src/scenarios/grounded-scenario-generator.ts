@@ -483,6 +483,18 @@ import type {
       credentials:
         'credential',
 
+      reject:
+        'invalid',
+
+      rejected:
+        'invalid',
+
+      rejects:
+        'invalid',
+
+      rejecting:
+        'invalid',
+
       users:
         'user',
 
@@ -1084,19 +1096,51 @@ import type {
 
     const candidates =
       behaviors
-        .filter(
-          (behavior) =>
-            behavior
-              .requirementEvidenceIds
-              .some(
-                (reference) =>
-                  scenarioEvidence.has(
-                    reference,
-                  ),
-              ),
-        )
         .map(
           (behavior) => {
+            const directEvidenceMatch =
+              behavior
+                .requirementEvidenceIds
+                .some(
+                  (reference) =>
+                    scenarioEvidence.has(
+                      reference,
+                    ),
+                );
+
+            const outcomeTokens =
+              semanticTokens([
+                ...behavior
+                  .outcome
+                  .addedSemanticText,
+                ...behavior
+                  .outcome
+                  .removedSemanticText,
+              ]);
+
+            const outcomeOverlap =
+              tokenOverlapCount(
+                scenarioTokens,
+                outcomeTokens,
+              );
+
+            const negativeOutcomeMatch =
+              (
+                scenario.type ===
+                  'negative' ||
+                scenario.type ===
+                  'boundary'
+              ) &&
+              outcomeOverlap >=
+                2;
+
+            if (
+              !directEvidenceMatch &&
+              !negativeOutcomeMatch
+            ) {
+              return null;
+            }
+
             const behaviorTokens =
               semanticTokens([
                 behavior.name,
@@ -1115,14 +1159,10 @@ import type {
               ]);
 
             const overlap =
-              [
-                ...scenarioTokens,
-              ].filter(
-                (token) =>
-                  behaviorTokens.has(
-                    token,
-                  ),
-              ).length;
+              tokenOverlapCount(
+                scenarioTokens,
+                behaviorTokens,
+              );
 
             const nameTokens =
               semanticTokens([
@@ -1130,34 +1170,57 @@ import type {
               ]);
 
             const nameOverlap =
-              [
-                ...nameTokens,
-              ].filter(
-                (token) =>
-                  scenarioTokens.has(
-                    token,
-                  ),
-              ).length;
+              tokenOverlapCount(
+                scenarioTokens,
+                nameTokens,
+              );
 
             return {
               behavior,
               overlap,
               nameOverlap,
+              outcomeOverlap,
+              directEvidenceMatch,
+              negativeOutcomeMatch,
             };
           },
         )
         .filter(
-          (candidate) =>
+          (
+            candidate,
+          ): candidate is NonNullable<
+            typeof candidate
+          > =>
+            candidate !==
+              null &&
             candidate.overlap >
               0 &&
-            candidate.nameOverlap >
-              0,
+            (
+              candidate.nameOverlap >
+                0 ||
+              candidate
+                .negativeOutcomeMatch
+            ),
         )
         .sort(
           (
             left,
             right,
           ) =>
+            Number(
+              right.directEvidenceMatch,
+            ) -
+              Number(
+                left.directEvidenceMatch,
+              ) ||
+            Number(
+              right.negativeOutcomeMatch,
+            ) -
+              Number(
+                left.negativeOutcomeMatch,
+              ) ||
+            right.outcomeOverlap -
+              left.outcomeOverlap ||
             right.nameOverlap -
               left.nameOverlap ||
             right.overlap -
