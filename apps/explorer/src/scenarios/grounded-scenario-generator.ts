@@ -465,6 +465,27 @@ import type {
         'auth',
       authentication:
         'auth',
+
+      navigate:
+        'navigate',
+
+      navigates:
+        'navigate',
+
+      navigating:
+        'navigate',
+
+      navigation:
+        'navigate',
+
+      credentials:
+        'credential',
+
+      users:
+        'user',
+
+      admins:
+        'admin',
     };
 
   const SCENARIO_MATCH_STOP_WORDS =
@@ -529,6 +550,461 @@ import type {
               ),
         ),
     );
+  }
+
+  const NEGATIVE_REQUIREMENT_LANGUAGE =
+    /\b(?:invalid|reject(?:ed|s|ing)?|forbidden|prevent(?:ed|s|ing)?|must not|does not|cannot|can't|not allowed|validation error|access denied)\b/i;
+
+  function scenarioPolarityMatchesRequirement(
+    scenario:
+      GroundedScenarioCandidate,
+
+    description:
+      string,
+  ): boolean {
+    const requirementIsNegative =
+      NEGATIVE_REQUIREMENT_LANGUAGE
+        .test(
+          description,
+        );
+
+    if (
+      scenario.type ===
+        'negative' ||
+      scenario.type ===
+        'boundary'
+    ) {
+      return requirementIsNegative;
+    }
+
+    if (
+      scenario.type ===
+        'positive' ||
+      scenario.type ===
+        'navigation'
+    ) {
+      return !requirementIsNegative;
+    }
+
+    return true;
+  }
+
+  function tokenOverlapCount(
+    first:
+      Set<string>,
+
+    second:
+      Set<string>,
+  ): number {
+    return [
+      ...first,
+    ].filter(
+      (token) =>
+        second.has(
+          token,
+        ),
+    ).length;
+  }
+
+  function navigationFocusTokens(
+    scenario:
+      GroundedScenarioCandidate,
+  ): Set<string> {
+    if (
+      scenario.type !==
+      'navigation'
+    ) {
+      return new Set();
+    }
+
+    return semanticTokens([
+      scenario.title.replace(
+        /^navigation:\s*/i,
+        '',
+      ),
+    ]);
+  }
+
+  function enrichScenarioWithRequirementEvidence(
+    scenario:
+      GroundedScenarioCandidate,
+
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate {
+    if (
+      scenario
+        .evidenceReferences
+        .some(
+          (reference) =>
+            reference.startsWith(
+              'REQ-',
+            ),
+        )
+    ) {
+      return scenario;
+    }
+
+    const evidenceById =
+      new Map(
+        evidence.map(
+          (item) => [
+            item.id,
+            item,
+          ],
+        ),
+      );
+
+    const baseValues = [
+      scenario.title,
+      ...scenario.actions,
+      ...scenario
+        .expectedOutcomes,
+      ...scenario
+        .evidenceReferences
+        .flatMap(
+          (reference) => {
+            const item =
+              evidenceById.get(
+                reference,
+              );
+
+            return item
+              ? [
+                  item.description,
+                ]
+              : [];
+          },
+        ),
+    ];
+
+    const baseTokens =
+      semanticTokens(
+        baseValues,
+      );
+
+    const focusTokens =
+      navigationFocusTokens(
+        scenario,
+      );
+
+    const supportingEvidence =
+      evidence
+        .filter(
+          (item) =>
+            item.type ===
+              'capability' ||
+            item.type ===
+              'constraint',
+        )
+        .map(
+          (item) => {
+            const tokens =
+              semanticTokens([
+                item.description,
+              ]);
+
+            const overlap =
+              tokenOverlapCount(
+                baseTokens,
+                tokens,
+              );
+
+            const focusMatch =
+              focusTokens.size >
+                0 &&
+              [
+                ...focusTokens,
+              ].every(
+                (token) =>
+                  tokens.has(
+                    token,
+                  ),
+              );
+
+            return {
+              item,
+              overlap,
+              focusMatch,
+            };
+          },
+        )
+        .filter(
+          (candidate) =>
+            candidate.overlap >=
+              2 ||
+            candidate.focusMatch,
+        )
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            Number(
+              right.focusMatch,
+            ) -
+              Number(
+                left.focusMatch,
+              ) ||
+            right.overlap -
+              left.overlap ||
+            left.item.id
+              .localeCompare(
+                right.item.id,
+              ),
+        )
+        .slice(
+          0,
+          2,
+        );
+
+    const extendedValues = [
+      ...baseValues,
+      ...supportingEvidence.map(
+        (candidate) =>
+          candidate.item
+            .description,
+      ),
+    ];
+
+    const extendedTokens =
+      semanticTokens(
+        extendedValues,
+      );
+
+    const requirementCandidates =
+      evidence
+        .filter(
+          (item) =>
+            item.type ===
+              'requirement' &&
+            scenarioPolarityMatchesRequirement(
+              scenario,
+              item.description,
+            ),
+        )
+        .map(
+          (item) => {
+            const tokens =
+              semanticTokens([
+                item.description,
+              ]);
+
+            const overlap =
+              tokenOverlapCount(
+                extendedTokens,
+                tokens,
+              );
+
+            const focusMatch =
+              focusTokens.size >
+                0 &&
+              [
+                ...focusTokens,
+              ].every(
+                (token) =>
+                  tokens.has(
+                    token,
+                  ),
+              );
+
+            return {
+              item,
+              overlap,
+              focusMatch,
+            };
+          },
+        )
+        .filter(
+          (candidate) =>
+            candidate.overlap >=
+              2 ||
+            candidate.focusMatch,
+        )
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            Number(
+              right.focusMatch,
+            ) -
+              Number(
+                left.focusMatch,
+              ) ||
+            right.overlap -
+              left.overlap ||
+            left.item.id
+              .localeCompare(
+                right.item.id,
+              ),
+        );
+
+    const best =
+      requirementCandidates[0];
+
+    if (!best) {
+      return scenario;
+    }
+
+    return {
+      ...scenario,
+
+      evidenceReferences: [
+        ...new Set([
+          ...scenario
+            .evidenceReferences,
+          ...supportingEvidence.map(
+            (candidate) =>
+              candidate.item.id,
+          ),
+          best.item.id,
+        ]),
+      ].sort(),
+    };
+  }
+
+  function enrichScenarioWithActionEvidence(
+    scenario:
+      GroundedScenarioCandidate,
+
+    evidence:
+      ScenarioEvidence[],
+  ): GroundedScenarioCandidate {
+    if (
+      (
+        scenario.type !==
+          'navigation' &&
+        scenario.type !==
+          'positive'
+      ) ||
+      scenario
+        .evidenceReferences
+        .some(
+          (reference) =>
+            reference.startsWith(
+              'ACTION-',
+            ) ||
+            reference.startsWith(
+              'FLOW-BUSINESS-',
+            ),
+        )
+    ) {
+      return scenario;
+    }
+
+    const scenarioTokens =
+      semanticTokens([
+        scenario.title,
+        ...scenario.actions,
+        ...scenario
+          .expectedOutcomes,
+      ]);
+
+    const orderedActionText =
+      normalizeActionDescription(
+        scenario.actions
+          .join(' '),
+      );
+
+    const candidates =
+      evidence
+        .filter(
+          (item) =>
+            item.type ===
+              'action',
+        )
+        .flatMap(
+          (item) => {
+            const separatorIndex =
+              item.description
+                .indexOf(':');
+
+            if (
+              separatorIndex ===
+              -1
+            ) {
+              return [];
+            }
+
+            const label =
+              item.description
+                .slice(
+                  separatorIndex +
+                    1,
+                )
+                .trim();
+
+            const labelTokens =
+              semanticTokens([
+                label,
+              ]);
+
+            if (
+              labelTokens.size ===
+                0 ||
+              ![
+                ...labelTokens,
+              ].every(
+                (token) =>
+                  scenarioTokens.has(
+                    token,
+                  ),
+              )
+            ) {
+              return [];
+            }
+
+            return [
+              {
+                item,
+                label,
+                labelTokenCount:
+                  labelTokens.size,
+                actionOrder:
+                  orderedActionText
+                    .lastIndexOf(
+                      normalizeActionDescription(
+                        label,
+                      ),
+                    ),
+              },
+            ];
+          },
+        )
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            right.actionOrder -
+              left.actionOrder ||
+            right.labelTokenCount -
+              left.labelTokenCount ||
+            left.item.id
+              .localeCompare(
+                right.item.id,
+              ),
+        );
+
+    const best =
+      candidates[0];
+
+    if (!best) {
+      return scenario;
+    }
+
+    return {
+      ...scenario,
+
+      evidenceReferences: [
+        ...new Set([
+          ...scenario
+            .evidenceReferences,
+          best.item.id,
+        ]),
+      ].sort(),
+    };
   }
 
   function enrichScenarioWithBusinessEvidence(
@@ -1405,19 +1881,43 @@ import type {
         ...deterministicNegativeRequirementScenarios,
         ...deterministicBusinessScenarios,
         ...deterministicActionScenarios,
-      ].sort(
-        (
-          left,
-          right,
-        ) =>
-          stableCandidateKey(
-            left,
-          ).localeCompare(
-            stableCandidateKey(
-              right,
+      ]
+        .map(
+          (scenario) =>
+            enrichScenarioWithRequirementEvidence(
+              scenario,
+              input.evidence,
             ),
-          ),
-      );
+        )
+        .map(
+          (scenario) =>
+            enrichScenarioWithActionEvidence(
+              scenario,
+              input.evidence,
+            ),
+        )
+        .map(
+          (scenario) =>
+            enrichScenarioWithBusinessEvidence(
+              scenario,
+              input.businessBehaviors ??
+                [],
+              input.evidence,
+            ),
+        )
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            stableCandidateKey(
+              left,
+            ).localeCompare(
+              stableCandidateKey(
+                right,
+              ),
+            ),
+        );
   
       const deduplicated =
         deduplicateScenariosWithReasons(
