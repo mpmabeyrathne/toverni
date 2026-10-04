@@ -495,6 +495,51 @@ import type {
       rejecting:
         'invalid',
 
+      require:
+        'required',
+
+      requires:
+        'required',
+
+      requiring:
+        'required',
+
+      continue:
+        'continue',
+
+      continues:
+        'continue',
+
+      continuing:
+        'continue',
+
+      continued:
+        'continue',
+
+      advance:
+        'continue',
+
+      advances:
+        'continue',
+
+      advancing:
+        'continue',
+
+      advanced:
+        'continue',
+
+      proceed:
+        'continue',
+
+      proceeds:
+        'continue',
+
+      proceeding:
+        'continue',
+
+      proceeded:
+        'continue',
+
       users:
         'user',
 
@@ -1124,23 +1169,6 @@ import type {
                 outcomeTokens,
               );
 
-            const negativeOutcomeMatch =
-              (
-                scenario.type ===
-                  'negative' ||
-                scenario.type ===
-                  'boundary'
-              ) &&
-              outcomeOverlap >=
-                2;
-
-            if (
-              !directEvidenceMatch &&
-              !negativeOutcomeMatch
-            ) {
-              return null;
-            }
-
             const behaviorTokens =
               semanticTokens([
                 behavior.name,
@@ -1163,6 +1191,31 @@ import type {
                 scenarioTokens,
                 behaviorTokens,
               );
+
+            const negativeOutcomeMatch =
+              (
+                scenario.type ===
+                  'negative' ||
+                scenario.type ===
+                  'boundary'
+              ) &&
+              (
+                outcomeOverlap >=
+                  2 ||
+                (
+                  outcomeOverlap >=
+                    1 &&
+                  overlap >=
+                    2
+                )
+              );
+
+            if (
+              !directEvidenceMatch &&
+              !negativeOutcomeMatch
+            ) {
+              return null;
+            }
 
             const nameTokens =
               semanticTokens([
