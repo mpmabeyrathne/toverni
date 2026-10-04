@@ -1430,8 +1430,18 @@ function generateSelectValues(
             )
             : undefined;
 
+    const currentValue =
+        action.formField
+            ?.value;
+
     const selectedOption =
         exampleOption ??
+        observedOptions.find(
+            (option) =>
+                !option.selected &&
+                option.value !==
+                    currentValue,
+        ) ??
         observedOptions.find(
             (option) =>
                 option.selected,
