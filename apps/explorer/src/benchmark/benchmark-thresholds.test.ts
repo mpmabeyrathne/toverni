@@ -148,6 +148,89 @@ describe(
     );
 
     it(
+      'does not fail when both Toverni and the baseline have zero unsupported actions',
+      () => {
+        const result =
+          evaluateBenchmarkThresholds(
+            metrics({
+              unsupportedActionRate:
+                0,
+
+              unsupportedStepCount:
+                0,
+            }),
+            metrics({
+              scenarioCount:
+                5,
+
+              executabilityRate:
+                0,
+
+              unsupportedActionRate:
+                0,
+
+              unsupportedStepCount:
+                0,
+            }),
+          );
+
+        expect(
+          result.reasons,
+        ).not.toContain(
+          'Toverni does not reduce unsupported actions compared with the baseline.',
+        );
+
+        expect(
+          result.decision,
+        ).toBe(
+          'continue',
+        );
+      },
+    );
+
+    it(
+      'still reworks when Toverni has a higher unsupported-action rate than the baseline',
+      () => {
+        const result =
+          evaluateBenchmarkThresholds(
+            metrics({
+              unsupportedActionRate:
+                0.05,
+
+              unsupportedStepCount:
+                1,
+            }),
+            metrics({
+              scenarioCount:
+                5,
+
+              executabilityRate:
+                0,
+
+              unsupportedActionRate:
+                0,
+
+              unsupportedStepCount:
+                0,
+            }),
+          );
+
+        expect(
+          result.reasons,
+        ).toContain(
+          'Toverni does not reduce unsupported actions compared with the baseline.',
+        );
+
+        expect(
+          result.decision,
+        ).toBe(
+          'rework',
+        );
+      },
+    );
+
+
+    it(
       'does not compare against an intentionally empty baseline',
       () => {
         const result =
