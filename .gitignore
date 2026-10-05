@@ -143,3 +143,9 @@ vite.config.ts.timestamp-*
 .vite/
 
 artifacts/
+
+# Generated competitive-agent workspace
+apps/explorer/seed.spec.ts
+apps/explorer/specs/competitive/
+apps/explorer/tests/competitive/
+apps/explorer/.codex/agents/
