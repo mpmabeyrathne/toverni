@@ -484,6 +484,122 @@ function mapPlaywrightStatus(
   return 'not_run';
 }
 
+function extractFirstJsonObject(
+  raw:
+    string,
+): string {
+  const start =
+    raw.indexOf(
+      '{',
+    );
+
+  if (
+    start <
+    0
+  ) {
+    throw new Error(
+      'Playwright reporter output does not contain a JSON object.',
+    );
+  }
+
+  let depth =
+    0;
+
+  let inString =
+    false;
+
+  let escaped =
+    false;
+
+  for (
+    let index =
+      start;
+    index <
+      raw.length;
+    index += 1
+  ) {
+    const character =
+      raw[index];
+
+    if (
+      inString
+    ) {
+      if (
+        escaped
+      ) {
+        escaped =
+          false;
+
+        continue;
+      }
+
+      if (
+        character ===
+        '\\'
+      ) {
+        escaped =
+          true;
+
+        continue;
+      }
+
+      if (
+        character ===
+        '"'
+      ) {
+        inString =
+          false;
+      }
+
+      continue;
+    }
+
+    if (
+      character ===
+      '"'
+    ) {
+      inString =
+        true;
+
+      continue;
+    }
+
+    if (
+      character ===
+      '{'
+    ) {
+      depth +=
+        1;
+
+      continue;
+    }
+
+    if (
+      character !==
+      '}'
+    ) {
+      continue;
+    }
+
+    depth -=
+      1;
+
+    if (
+      depth ===
+      0
+    ) {
+      return raw.slice(
+        start,
+        index + 1,
+      );
+    }
+  }
+
+  throw new Error(
+    'Playwright reporter output contains an incomplete JSON object.',
+  );
+}
+
 export function parsePlaywrightJsonReport(
   raw:
     string,
@@ -493,7 +609,9 @@ export function parsePlaywrightJsonReport(
 > {
   const report =
     JSON.parse(
-      raw,
+      extractFirstJsonObject(
+        raw,
+      ),
     ) as
       PlaywrightJsonReport;
 
