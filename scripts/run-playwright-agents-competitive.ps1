@@ -76,12 +76,22 @@ foreach ($fixture in $fixtures) {
     continue
   }
 
-  $fixtureIndex = [Array]::IndexOf(
-    $allFixtures,
-    $fixture
-  )
+  $portProbe =
+    [System.Net.Sockets.TcpListener]::new(
+      [System.Net.IPAddress]::Loopback,
+      0
+    )
 
-  $port = 9753 + $fixtureIndex
+  $portProbe.Start()
+
+  try {
+    $port =
+      ([System.Net.IPEndPoint]$portProbe.LocalEndpoint).Port
+  }
+  finally {
+    $portProbe.Stop()
+  }
+
   $targetUrl = "http://127.0.0.1:$port"
 
   $rawDir =
