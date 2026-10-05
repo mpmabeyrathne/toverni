@@ -183,56 +183,111 @@ test.describe('Competitive seed: $fixture', () => {
     $testsRelative =
       "tests/competitive/$fixture"
 
-    $prompt = @"
-This is an automated competitive benchmark run.
+    $plannerPrompt = @"
+You are performing exactly one Playwright Test planner pass for a competitive benchmark.
 
 Fixture: $fixture
 Target application: $targetUrl
 Seed test: seed.spec.ts
 Product requirements: $requirementsPath
 OpenAPI context: $openApiPath
+Required output: $planRelative
 
-Perform exactly one Playwright Test Agents planner pass and then exactly one generator pass.
+Use the Playwright Test MCP tools directly.
 
-1. Invoke the playwright_test_planner agent.
-2. Save its untouched plan to $planRelative.
-3. After the planner finishes successfully and the plan file exists, invoke the playwright_test_generator agent exactly once.
-4. Generate tests under $testsRelative.
-5. If the planner fails for any reason or does not save the plan, stop immediately and return failure. Do not invoke the generator.
+Protocol:
+1. Read the supplied requirements and OpenAPI context.
+2. Invoke planner_setup_page exactly once using seed.spec.ts.
+3. Explore the running application only with the available browser_* Playwright MCP tools.
+4. Create a comprehensive plan grounded only in the supplied requirements and observed application behavior.
+5. Invoke planner_save_plan exactly once and save the untouched plan to $planRelative.
+6. Stop after the plan is saved.
 
 Hard benchmark rules:
-- Do not invoke playwright_test_healer.
-- Do not manually edit, repair, simplify, or improve the generated plan.
-- Do not manually edit or repair generated tests.
-- Do not rerun the planner or generator.
-- Do not add scenarios that are absent from the planner output.
+- Do not generate tests.
+- Do not invoke any healer behavior.
 - Do not modify the fixture application.
 - Do not modify requirements.md or openapi.yaml.
 - Do not invent unsupported actions or outcomes.
-- Keep planner omissions and generator omissions visible.
-- Do not execute or heal the generated tests; the benchmark harness will execute them once after generation.
-
-Finish after the generator has written its files.
+- Do not manually simplify or improve the saved plan after planner_save_plan.
 "@
 
-    $prompt |
-      Set-Content -Encoding UTF8 (Join-Path $rawDir "prompt.txt")
+    $plannerPrompt |
+      Set-Content -Encoding UTF8 (Join-Path $rawDir "planner-prompt.txt")
 
-    Write-Host "Running planner + generator..."
+    Write-Host "Running planner..."
 
     Push-Location $explorerRoot
     try {
-      codex exec --json --sandbox workspace-write $prompt 2>&1 |
-        Tee-Object -FilePath (Join-Path $rawDir "codex.jsonl")
+      codex exec --json --sandbox workspace-write $plannerPrompt 2>&1 |
+        Tee-Object -FilePath (Join-Path $rawDir "planner-codex.jsonl")
 
-      $codexExit = $LASTEXITCODE
+      $plannerExit = $LASTEXITCODE
     }
     finally {
       Pop-Location
     }
 
-    if ($codexExit -ne 0) {
-      throw "Codex exited with code $codexExit."
+    if ($plannerExit -ne 0) {
+      throw "Planner Codex run exited with code $plannerExit."
+    }
+
+    if (-not (Test-Path $planPath)) {
+      throw "Planner output missing: $planPath"
+    }
+
+    $generatorPrompt = @"
+You are performing exactly one Playwright Test generator pass for a competitive benchmark.
+
+Fixture: $fixture
+Target application: $targetUrl
+Seed test: seed.spec.ts
+Test plan: $planRelative
+Required output directory: $testsRelative
+
+Use the Playwright Test MCP tools directly.
+
+Protocol:
+1. Read the saved test plan at $planRelative.
+2. For each scenario in that plan, invoke generator_setup_page for the scenario.
+3. Execute the scenario steps with the available browser_* Playwright MCP tools.
+4. Invoke generator_read_log.
+5. Invoke generator_write_test to save the generated test under $testsRelative.
+6. Preserve the scenario title from the plan.
+7. Stop after all generated tests are written.
+
+Hard benchmark rules:
+- Do not invoke healer behavior.
+- Do not manually repair generated tests.
+- Do not add scenarios absent from the saved plan.
+- Do not modify the fixture application.
+- Do not modify requirements.md or openapi.yaml.
+- Do not rerun the planner.
+- Do not execute the generated test suite; the benchmark harness will execute it once afterward.
+"@
+
+    $generatorPrompt |
+      Set-Content -Encoding UTF8 (Join-Path $rawDir "generator-prompt.txt")
+
+    Write-Host "Running generator..."
+
+    Push-Location $explorerRoot
+    try {
+      codex exec --json --sandbox workspace-write $generatorPrompt 2>&1 |
+        Tee-Object -FilePath (Join-Path $rawDir "generator-codex.jsonl")
+
+      $generatorExit = $LASTEXITCODE
+    }
+    finally {
+      Pop-Location
+    }
+
+    if ($generatorExit -ne 0) {
+      throw "Generator Codex run exited with code $generatorExit."
+    }
+
+    if ($generatorExit -ne 0) {
+      throw "Generator Codex run exited with code $generatorExit."
     }
 
     if (-not (Test-Path $planPath)) {
