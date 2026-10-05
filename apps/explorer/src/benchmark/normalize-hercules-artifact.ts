@@ -17,6 +17,7 @@ import {
 import {
   extractGeneratedHerculesGherkin,
   normalizeHerculesScenarios,
+  parseHerculesFinalRuntimeStatus,
   parseHerculesJUnitXml,
 } from './hercules-normalizer.js';
 
@@ -191,6 +192,30 @@ async function main():
     parseHerculesJUnitXml(
       junitXml,
     );
+
+  const finalRuntimeStatus =
+    parseHerculesFinalRuntimeStatus(
+      herculesLog,
+    );
+
+  if (
+    finalRuntimeStatus &&
+    runtimeStatuses.size === 1
+  ) {
+    const onlyKey =
+      [
+        ...runtimeStatuses.keys(),
+      ][0];
+
+    if (
+      onlyKey
+    ) {
+      runtimeStatuses.set(
+        onlyKey,
+        finalRuntimeStatus,
+      );
+    }
+  }
 
   if (
     runtimeStatuses.size === 0
