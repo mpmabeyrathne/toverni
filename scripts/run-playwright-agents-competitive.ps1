@@ -106,13 +106,15 @@ foreach ($fixture in $fixtures) {
   $testsDir =
     Join-Path $explorerRoot "tests\competitive\$fixture"
 
+  Remove-Item $rawDir -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item $planPath -Force -ErrorAction SilentlyContinue
+  Remove-Item $testsDir -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item $normalizedPath -Force -ErrorAction SilentlyContinue
+
   New-Item -ItemType Directory -Force $rawDir | Out-Null
   New-Item -ItemType Directory -Force $planDir | Out-Null
   New-Item -ItemType Directory -Force (Split-Path $testsDir) | Out-Null
   New-Item -ItemType Directory -Force (Split-Path $normalizedPath) | Out-Null
-
-  Remove-Item $planPath -Force -ErrorAction SilentlyContinue
-  Remove-Item $testsDir -Recurse -Force -ErrorAction SilentlyContinue
 
   $seedPath =
     Join-Path $explorerRoot "seed.spec.ts"
@@ -232,6 +234,14 @@ Hard benchmark rules:
       throw "Planner Codex run exited with code $plannerExit."
     }
 
+    $plannerLog = Join-Path $rawDir "planner-codex.jsonl"
+
+    if (
+      Select-String -Path $plannerLog -SimpleMatch "MCP tool call requires approval" -Quiet
+    ) {
+      throw "Planner was blocked by an MCP approval gate."
+    }
+
     if (-not (Test-Path $planPath)) {
       throw "Planner output missing: $planPath"
     }
@@ -284,6 +294,14 @@ Hard benchmark rules:
 
     if ($generatorExit -ne 0) {
       throw "Generator Codex run exited with code $generatorExit."
+    }
+
+    $generatorLog = Join-Path $rawDir "generator-codex.jsonl"
+
+    if (
+      Select-String -Path $generatorLog -SimpleMatch "MCP tool call requires approval" -Quiet
+    ) {
+      throw "Generator was blocked by an MCP approval gate."
     }
 
     if (-not (Test-Path $planPath)) {
