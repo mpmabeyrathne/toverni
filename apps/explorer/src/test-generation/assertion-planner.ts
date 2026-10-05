@@ -748,10 +748,20 @@ export function buildEvidenceBackedAssertions(
 
     if (
       beforeItems.length !==
-      afterItems.length &&
-      afterItems.some(
-        (item) =>
-          item.visible,
+        afterItems.length &&
+      (
+        afterItems.some(
+          (item) =>
+            item.visible,
+        ) ||
+        (
+          afterItems.length ===
+            0 &&
+          beforeItems.some(
+            (item) =>
+              item.visible,
+          )
+        )
       )
     ) {
       pushAssertion({
