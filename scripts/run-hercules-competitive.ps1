@@ -121,9 +121,27 @@ foreach ($fixture in $fixtures) {
     Write-Host "Running one Hercules guided pass..."
     Push-Location $repoRoot
     try {
-      & $herculesExe --test $prompt --output-path $rawDir --project-base $rawDir --agents-llm-config-file $configPath --agents-llm-config-file-ref-key litellm 2>&1 | Tee-Object -FilePath $logPath
-      $herculesExit = $LASTEXITCODE
-    } finally { Pop-Location }
+      # Windows PowerShell 5 converts native-process stderr lines into
+      # ErrorRecord objects. Hercules writes harmless Python warnings to
+      # stderr, so the script-level ErrorActionPreference=Stop would abort
+      # before the native process can finish. Let the process complete, then
+      # fail closed using its exit code and explicit provider-error checks.
+      $previousErrorActionPreference = $ErrorActionPreference
+      $ErrorActionPreference = "Continue"
+
+      try {
+        & $herculesExe --test $prompt --output-path $rawDir --project-base $rawDir --agents-llm-config-file $configPath --agents-llm-config-file-ref-key litellm 2>&1 |
+          Tee-Object -FilePath $logPath
+
+        $herculesExit = $LASTEXITCODE
+      }
+      finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+      }
+    }
+    finally {
+      Pop-Location
+    }
 
     $providerFailure = (Test-Path $logPath) -and (Select-String -Path $logPath -Pattern @("rate_limit_error","RateLimitError","Missing credentials","authentication_error","APIConnectionError","APITimeoutError","AccessDenied","Too many tokens per day") -Quiet)
     if ($providerFailure) { throw "Hercules provider/infra failure detected. Raw log preserved at $logPath." }
