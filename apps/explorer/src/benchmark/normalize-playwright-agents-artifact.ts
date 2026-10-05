@@ -21,6 +21,56 @@ import {
   parsePlaywrightJsonReport,
 } from './playwright-agents-normalizer.js';
 
+async function readTextAutoEncoding(
+  path:
+    string,
+): Promise<string> {
+  const raw =
+    await readFile(
+      path,
+    );
+
+  if (
+    raw.length >=
+      2 &&
+    raw[0] ===
+      0xff &&
+    raw[1] ===
+      0xfe
+  ) {
+    return raw
+      .subarray(
+        2,
+      )
+      .toString(
+        'utf16le',
+      );
+  }
+
+  if (
+    raw.length >=
+      3 &&
+    raw[0] ===
+      0xef &&
+    raw[1] ===
+      0xbb &&
+    raw[2] ===
+      0xbf
+  ) {
+    return raw
+      .subarray(
+        3,
+      )
+      .toString(
+        'utf8',
+      );
+  }
+
+  return raw.toString(
+    'utf8',
+  );
+}
+
 function parseSection(
   markdown:
     string,
@@ -225,9 +275,8 @@ async function main():
         'utf8',
       ),
 
-      readFile(
+      readTextAutoEncoding(
         reportPath,
-        'utf8',
       ),
 
       readFile(
