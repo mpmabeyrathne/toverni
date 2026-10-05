@@ -243,22 +243,23 @@ Hard benchmark rules:
       Pop-Location
     }
 
+    $plannerLog = Join-Path $rawDir "planner-codex.jsonl"
+
+    if (
+      (Test-Path $plannerLog) -and
+      (Select-String -Path $plannerLog -SimpleMatch "hit your usage limit" -Quiet)
+    ) {
+      throw "CODEX_USAGE_LIMIT: planner usage limit reached."
+    }
+
     if ($plannerExit -ne 0) {
       throw "Planner Codex run exited with code $plannerExit."
     }
-
-    $plannerLog = Join-Path $rawDir "planner-codex.jsonl"
 
     if (
       Select-String -Path $plannerLog -SimpleMatch "MCP tool call requires approval" -Quiet
     ) {
       throw "Planner was blocked by an MCP approval gate."
-    }
-
-    if (
-      Select-String -Path $plannerLog -SimpleMatch "hit your usage limit" -Quiet
-    ) {
-      throw "CODEX_USAGE_LIMIT: planner usage limit reached."
     }
 
 
@@ -317,22 +318,23 @@ Hard benchmark rules:
       Pop-Location
     }
 
+    $generatorLog = Join-Path $rawDir "generator-codex.jsonl"
+
+    if (
+      (Test-Path $generatorLog) -and
+      (Select-String -Path $generatorLog -SimpleMatch "hit your usage limit" -Quiet)
+    ) {
+      throw "CODEX_USAGE_LIMIT: generator usage limit reached."
+    }
+
     if ($generatorExit -ne 0) {
       throw "Generator Codex run exited with code $generatorExit."
     }
-
-    $generatorLog = Join-Path $rawDir "generator-codex.jsonl"
 
     if (
       Select-String -Path $generatorLog -SimpleMatch "MCP tool call requires approval" -Quiet
     ) {
       throw "Generator was blocked by an MCP approval gate."
-    }
-
-    if (
-      Select-String -Path $generatorLog -SimpleMatch "hit your usage limit" -Quiet
-    ) {
-      throw "CODEX_USAGE_LIMIT: generator usage limit reached."
     }
 
 
