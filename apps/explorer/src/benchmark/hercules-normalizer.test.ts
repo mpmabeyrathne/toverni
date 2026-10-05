@@ -7,6 +7,7 @@ import {
 import {
   extractGeneratedHerculesGherkin,
   normalizeHerculesScenarios,
+  parseHerculesFinalRuntimeStatus,
   parseHerculesGherkin,
   parseHerculesJUnitXml,
 } from './hercules-normalizer.js';
@@ -75,6 +76,22 @@ describe(
               2,
           },
         ]);
+      },
+    );
+
+    it(
+      'uses the final Hercules is_passed signal when available',
+      () => {
+        const raw =
+          "[2026-10-06] INFO Final message: {'role': 'assistant', 'content': {'is_passed': False}, 'terminate': 'yes'}";
+
+        expect(
+          parseHerculesFinalRuntimeStatus(
+            raw,
+          ),
+        ).toBe(
+          'failed',
+        );
       },
     );
 
