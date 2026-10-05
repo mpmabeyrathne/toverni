@@ -942,6 +942,141 @@ describe(
 
 
     it(
+      'emits a zero-count assertion when an observed control is removed from the DOM',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-delete',
+
+            actionEvidenceReference:
+              'ACTION-DELETE',
+
+            actionLabel:
+              'Delete Todo',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-DELETE',
+
+                type:
+                  'action',
+
+                source:
+                  'action-delete',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-delete',
+
+                actionId:
+                  'action-delete',
+
+                actionTarget:
+                  'Delete Todo',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-05T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Learn Playwright Complete Todo Delete Todo',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Complete Todo',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Delete Todo',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [],
+                    actions: [],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind:
+                'count',
+
+              matcher:
+                'count',
+
+              expected:
+                0,
+
+              target: {
+                kind:
+                  'locator',
+
+                target: {
+                  by:
+                    'role',
+
+                  role:
+                    'button',
+
+                  name:
+                    'Delete Todo',
+
+                  exact:
+                    true,
+                },
+              },
+            }),
+          ]),
+        );
+      },
+    );
+
+
+    it(
       'does not emit count assertions for hidden after-elements',
       () => {
         const result =
