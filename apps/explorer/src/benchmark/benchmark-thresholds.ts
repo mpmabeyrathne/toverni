@@ -245,7 +245,7 @@ export function evaluateBenchmarkThresholds(
   if (
     baseline.scenarioCount >
       0 &&
-    toverni.unsupportedActionRate >=
+    toverni.unsupportedActionRate >
       baseline.unsupportedActionRate
   ) {
     reasons.push(
