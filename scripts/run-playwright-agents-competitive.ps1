@@ -286,10 +286,6 @@ Hard benchmark rules:
       throw "Generator Codex run exited with code $generatorExit."
     }
 
-    if ($generatorExit -ne 0) {
-      throw "Generator Codex run exited with code $generatorExit."
-    }
-
     if (-not (Test-Path $planPath)) {
       throw "Planner output missing: $planPath"
     }
