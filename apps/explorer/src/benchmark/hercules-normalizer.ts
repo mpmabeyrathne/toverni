@@ -242,16 +242,23 @@ export function extractGeneratedHerculesGherkin(
 export function parseHerculesFinalRuntimeStatus(
   raw: string,
 ): HerculesRuntimeStatus | null {
-  const finalMessages =
+  /*
+   * PowerShell can wrap Hercules stdout across physical lines, so the
+   * serialized "Final message" object is not guaranteed to stay on one line.
+   * Hercules may also emit the same is_passed value in planner debug output
+   * immediately before the final message. Taking the last is_passed marker
+   * preserves the final run result without depending on line boundaries.
+   */
+  const statusMatches =
     [
       ...raw.matchAll(
-        /Final message:\s*\{[^\r\n]*?'is_passed':\s*(True|False)[^\r\n]*\}/gi,
+        /['"]is_passed['"]\s*:\s*(True|False|true|false)/g,
       ),
     ];
 
   const last =
-    finalMessages[
-      finalMessages.length - 1
+    statusMatches[
+      statusMatches.length - 1
     ]?.[1];
 
   if (
