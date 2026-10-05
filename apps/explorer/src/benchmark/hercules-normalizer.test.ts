@@ -96,6 +96,29 @@ describe(
     );
 
     it(
+      'parses a wrapped Hercules final status from PowerShell output',
+      () => {
+        const raw =
+          [
+            "[2026-10-06] INFO Final message: {'role': 'assistant', 'content': {'plan': 'step 1",
+            "failed', 'next_step': '', 'terminate': 'yes', 'final_response': 'Unable to proceed',",
+            "'is_assert': False, 'assert_summary': '', 'is_passed': False,",
+            "'target_helper': 'Not_Applicable'}, 'terminate': 'yes'}",
+          ].join(
+            '\n',
+          );
+
+        expect(
+          parseHerculesFinalRuntimeStatus(
+            raw,
+          ),
+        ).toBe(
+          'failed',
+        );
+      },
+    );
+
+    it(
       'maps JUnit test cases to benchmark runtime statuses',
       () => {
         const statuses =
