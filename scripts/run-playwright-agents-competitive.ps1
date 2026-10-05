@@ -221,7 +221,7 @@ Finish after the generator has written its files.
 
     Push-Location $repoRoot
     try {
-      codex exec --json --full-auto $prompt 2>&1 |
+      codex exec --json --sandbox workspace-write $prompt 2>&1 |
         Tee-Object -FilePath (Join-Path $rawDir "codex.jsonl")
 
       $codexExit = $LASTEXITCODE
