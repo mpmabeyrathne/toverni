@@ -78,6 +78,16 @@ import type {
       );
   }
   
+  function isHarnessNavigation(
+    value:
+      string,
+  ): boolean {
+    return /\b(?:open|navigate|visit|go\s+to)\b[\s\S]*https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/\S*)?/i
+      .test(
+        value,
+      );
+  }
+  
   function isSupported(
     value:
       string,
@@ -142,6 +152,9 @@ import type {
             ? []
             : scenario.actions.filter(
                 (action) =>
+                  !isHarnessNavigation(
+                    action,
+                  ) &&
                   !isSupported(
                     action,
                     corpusTokens,
