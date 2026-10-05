@@ -1,0 +1,159 @@
+import {
+  describe,
+  expect,
+  it,
+} from 'vitest';
+
+import {
+  extractGeneratedHerculesGherkin,
+  normalizeHerculesScenarios,
+  parseHerculesGherkin,
+  parseHerculesJUnitXml,
+} from './hercules-normalizer.js';
+
+describe(
+  'hercules-normalizer',
+  () => {
+    const gherkin =
+      [
+        'Feature: Room booking',
+        '',
+        '  Scenario: Book an available room',
+        '    Given I open "http://127.0.0.1:4567"',
+        '    When I click Book Ocean Room',
+        '    Then a successful booking confirmation is displayed',
+        '    And Cancel Booking is available',
+      ].join('\n');
+
+    it(
+      'extracts the generated feature from Hercules guided-mode output',
+      () => {
+        const raw =
+          [
+            'Generating feature...',
+            '',
+            '==================================================',
+            gherkin,
+            '==================================================',
+            '',
+            'Running generated test...',
+          ].join('\n');
+
+        expect(
+          extractGeneratedHerculesGherkin(
+            raw,
+          ),
+        ).toContain(
+          'Scenario: Book an available room',
+        );
+      },
+    );
+
+    it(
+      'parses Gherkin actions and assertions',
+      () => {
+        const scenarios =
+          parseHerculesGherkin(
+            gherkin,
+          );
+
+        expect(
+          scenarios,
+        ).toEqual([
+          {
+            title:
+              'Book an available room',
+            actions: [
+              'I open "http://127.0.0.1:4567"',
+              'I click Book Ocean Room',
+            ],
+            expectedOutcomes: [
+              'a successful booking confirmation is displayed',
+              'Cancel Booking is available',
+            ],
+            assertionCount:
+              2,
+          },
+        ]);
+      },
+    );
+
+    it(
+      'maps JUnit test cases to benchmark runtime statuses',
+      () => {
+        const statuses =
+          parseHerculesJUnitXml(
+            [
+              '<testsuites><testsuite>',
+              '<testcase name="Book an available room" classname="Room booking"><system-out>ok</system-out></testcase>',
+              '<testcase name="Cancel booking" classname="Room booking"><failure message="failed" /></testcase>',
+              '</testsuite></testsuites>',
+            ].join(''),
+          );
+
+        expect(
+          [
+            ...statuses.values(),
+          ],
+        ).toEqual([
+          'passed',
+          'failed',
+        ]);
+      },
+    );
+
+    it(
+      'normalizes a guided scenario with requirement evidence and runtime result',
+      () => {
+        const statuses =
+          parseHerculesJUnitXml(
+            '<testsuites><testsuite><testcase name="Scenario: Book an available room" /></testsuite></testsuites>',
+          );
+
+        const scenarios =
+          normalizeHerculesScenarios({
+            gherkin,
+            runtimeStatuses:
+              statuses,
+            requirements: {
+              acceptanceCriteria: [
+                'A customer can book an available room.',
+              ],
+              capabilities: [
+                'Book an available room.',
+              ],
+              constraints: [
+                'The same room cannot be booked twice for the same date.',
+              ],
+            },
+          });
+
+        expect(
+          scenarios,
+        ).toHaveLength(
+          1,
+        );
+
+        expect(
+          scenarios[0],
+        ).toMatchObject({
+          executable:
+            true,
+          runtimeStatus:
+            'passed',
+          humanEditsRequired:
+            0,
+          assertionCount:
+            2,
+        });
+
+        expect(
+          scenarios[0]
+            ?.evidenceReferences,
+        ).toContain(
+          'REQ-1',
+        );
+      },
+    );
+  },
+);
