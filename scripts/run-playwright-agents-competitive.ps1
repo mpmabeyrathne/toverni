@@ -33,6 +33,9 @@ if ($invalid.Count -gt 0) {
 $skipExisting =
   $env:COMPETITIVE_SKIP_EXISTING -eq "true"
 
+$resumePartial =
+  $env:COMPETITIVE_RESUME -eq "true"
+
 $plannerDefinition =
   Join-Path $explorerRoot ".codex\agents\playwright_test_planner.toml"
 
@@ -106,8 +109,14 @@ foreach ($fixture in $fixtures) {
   $testsDir =
     Join-Path $explorerRoot "tests\competitive\$fixture"
 
-  Remove-Item $rawDir -Recurse -Force -ErrorAction SilentlyContinue
-  Remove-Item $planPath -Force -ErrorAction SilentlyContinue
+  $resumePlanner =
+    $resumePartial -and (Test-Path $planPath)
+
+  if (-not $resumePlanner) {
+    Remove-Item $rawDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $planPath -Force -ErrorAction SilentlyContinue
+  }
+
   Remove-Item $testsDir -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item $normalizedPath -Force -ErrorAction SilentlyContinue
 
@@ -217,9 +226,13 @@ Hard benchmark rules:
     $plannerPrompt |
       Set-Content -Encoding UTF8 (Join-Path $rawDir "planner-prompt.txt")
 
-    Write-Host "Running planner..."
+    if ($resumePlanner) {
+      Write-Host "Reusing completed planner output: $planPath"
+    }
+    else {
+      Write-Host "Running planner..."
 
-    Push-Location $explorerRoot
+      Push-Location $explorerRoot
     try {
       codex exec --json --sandbox workspace-write $plannerPrompt 2>&1 |
         Tee-Object -FilePath (Join-Path $rawDir "planner-codex.jsonl")
@@ -240,6 +253,18 @@ Hard benchmark rules:
       Select-String -Path $plannerLog -SimpleMatch "MCP tool call requires approval" -Quiet
     ) {
       throw "Planner was blocked by an MCP approval gate."
+    }
+
+    if (
+      Select-String -Path $plannerLog -SimpleMatch "hit your usage limit" -Quiet
+    ) {
+      throw "CODEX_USAGE_LIMIT: planner usage limit reached."
+    }
+
+
+      if (-not (Test-Path $planPath)) {
+        throw "Planner output missing: $planPath"
+      }
     }
 
     if (-not (Test-Path $planPath)) {
@@ -303,6 +328,13 @@ Hard benchmark rules:
     ) {
       throw "Generator was blocked by an MCP approval gate."
     }
+
+    if (
+      Select-String -Path $generatorLog -SimpleMatch "hit your usage limit" -Quiet
+    ) {
+      throw "CODEX_USAGE_LIMIT: generator usage limit reached."
+    }
+
 
     if (-not (Test-Path $planPath)) {
       throw "Planner output missing: $planPath"
@@ -370,12 +402,22 @@ Hard benchmark rules:
     }
   }
   catch {
-    Write-Warning "Fixture $fixture failed: $($_.Exception.Message)"
+    $failureMessage =
+      $_.Exception.Message
+
+    Write-Warning "Fixture $fixture failed: $failureMessage"
 
     $summary += [PSCustomObject]@{
       Fixture = $fixture
       Status = "failed"
       ExitCode = 1
+    }
+
+    if (
+      $failureMessage -like "CODEX_USAGE_LIMIT:*"
+    ) {
+      Write-Warning "Codex usage limit reached. Stopping the batch immediately so remaining fixtures are not attempted."
+      break
     }
   }
   finally {
