@@ -37,6 +37,39 @@ $env:MODEL_API_KEY = $env:BEDROCK_API_KEY
 if (-not $env:LLM_REQUEST_TIMEOUT) { $env:LLM_REQUEST_TIMEOUT = "180" }
 if (-not $env:LLM_MAX_RETRIES) { $env:LLM_MAX_RETRIES = "0" }
 
+Write-Host "Checking Bedrock Mantle credentials..."
+
+$preflightHeaders = @{
+  Authorization = "Bearer $env:BEDROCK_API_KEY"
+  "Content-Type" = "application/json"
+}
+
+$preflightBody = @{
+  model = "openai.gpt-oss-20b"
+  messages = @(
+    @{
+      role = "user"
+      content = "Reply only with OK"
+    }
+  )
+  max_tokens = 16
+  temperature = 0
+} | ConvertTo-Json -Depth 10
+
+try {
+  $null = Invoke-RestMethod -Uri "https://bedrock-mantle.us-east-1.api.aws/v1/chat/completions" -Method Post -Headers $preflightHeaders -Body $preflightBody
+  Write-Host "Bedrock Mantle credentials OK."
+}
+catch {
+  $detail = $_.ErrorDetails.Message
+
+  if (-not $detail) {
+    $detail = $_.Exception.Message
+  }
+
+  throw "Bedrock Mantle preflight failed. Re-set BEDROCK_API_KEY in this PowerShell session and retry. AWS response: $detail"
+}
+
 $summary = @()
 
 foreach ($fixture in $fixtures) {
@@ -143,7 +176,7 @@ foreach ($fixture in $fixtures) {
       Pop-Location
     }
 
-    $providerFailure = (Test-Path $logPath) -and (Select-String -Path $logPath -Pattern @("rate_limit_error","RateLimitError","Missing credentials","authentication_error","APIConnectionError","APITimeoutError","AccessDenied","Too many tokens per day") -Quiet)
+    $providerFailure = (Test-Path $logPath) -and (Select-String -Path $logPath -Pattern @("rate_limit_error","RateLimitError","Missing credentials","authentication_error","AuthenticationError","invalid_api_key","APIConnectionError","APITimeoutError","AccessDenied","Too many tokens per day") -Quiet)
     if ($providerFailure) { throw "Hercules provider/infra failure detected. Raw log preserved at $logPath." }
     if ($herculesExit -ne 0) { throw "Hercules exited with code $herculesExit." }
 
