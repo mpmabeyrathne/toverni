@@ -12,7 +12,9 @@
     "benchmark": "tsx src/benchmark/run-benchmark.ts",
     "benchmark:competitive": "tsx src/benchmark/run-competitive-benchmark.ts",
     "benchmark:competitive:playwright": "powershell -ExecutionPolicy Bypass -File ../../scripts/run-playwright-agents-competitive.ps1",
-    "benchmark:competitive:playwright:normalize": "tsx src/benchmark/normalize-playwright-agents-artifact.ts"
+    "benchmark:competitive:playwright:normalize": "tsx src/benchmark/normalize-playwright-agents-artifact.ts",
+    "benchmark:competitive:hercules": "powershell -ExecutionPolicy Bypass -File ../../scripts/run-hercules-competitive.ps1",
+    "benchmark:competitive:hercules:normalize": "tsx src/benchmark/normalize-hercules-artifact.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
