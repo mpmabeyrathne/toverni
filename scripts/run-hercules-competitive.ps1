@@ -178,6 +178,38 @@ foreach ($fixture in $fixtures) {
 
     $providerFailure = (Test-Path $logPath) -and (Select-String -Path $logPath -Pattern @("rate_limit_error","RateLimitError","Missing credentials","authentication_error","AuthenticationError","invalid_api_key","APIConnectionError","APITimeoutError","AccessDenied","Too many tokens per day") -Quiet)
     if ($providerFailure) { throw "Hercules provider/infra failure detected. Raw log preserved at $logPath." }
+
+    $generationFailure =
+      (Test-Path $logPath) -and
+      (Select-String -Path $logPath -SimpleMatch "No scenarios found in feature file" -Quiet)
+
+    if ($generationFailure) {
+      Write-Warning "Hercules generated no valid Scenario block for fixture $fixture. Recording an empty competitor artifact; the one-pass generation failure is a benchmark result and will not be retried."
+
+      $emptyArtifact = @{
+        fixtureId = $fixture
+        scenarios = @()
+      } | ConvertTo-Json -Depth 10
+
+      $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+      [System.IO.File]::WriteAllText(
+        $normalizedPath,
+        $emptyArtifact,
+        $utf8NoBom
+      )
+
+      $summary += [PSCustomObject]@{
+        Fixture = $fixture
+        Status = "completed-generation-failure"
+        ExitCode = 0
+        Scenarios = 0
+        Passed = 0
+        Failed = 0
+      }
+
+      continue
+    }
+
     if ($herculesExit -ne 0) { throw "Hercules exited with code $herculesExit." }
 
     $junitCandidates = @(Get-ChildItem -Path $rawDir -Recurse -Filter "*.feature_result.xml" -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
