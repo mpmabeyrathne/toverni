@@ -44,9 +44,9 @@ if (
   -not (Test-Path $generatorDefinition)
 ) {
   Write-Host "Initializing Playwright Test Agents..."
-  Push-Location $repoRoot
+  Push-Location $explorerRoot
   try {
-    pnpm --filter @toverni/explorer exec playwright init-agents --loop=codex
+    pnpm exec playwright init-agents --loop=codex
 
     if ($LASTEXITCODE -ne 0) {
       throw "playwright init-agents failed."
@@ -172,23 +172,23 @@ test.describe('Competitive seed: $fixture', () => {
     }
 
     $requirementsPath =
-      "fixtures/benchmark/$fixture/requirements.md"
+      "../../fixtures/benchmark/$fixture/requirements.md"
 
     $openApiPath =
-      "fixtures/benchmark/$fixture/openapi.yaml"
+      "../../fixtures/benchmark/$fixture/openapi.yaml"
 
     $planRelative =
-      "apps/explorer/specs/competitive/$fixture.md"
+      "specs/competitive/$fixture.md"
 
     $testsRelative =
-      "apps/explorer/tests/competitive/$fixture"
+      "tests/competitive/$fixture"
 
     $prompt = @"
 This is an automated competitive benchmark run.
 
 Fixture: $fixture
 Target application: $targetUrl
-Seed test: apps/explorer/seed.spec.ts
+Seed test: seed.spec.ts
 Product requirements: $requirementsPath
 OpenAPI context: $openApiPath
 
@@ -196,8 +196,9 @@ Perform exactly one Playwright Test Agents planner pass and then exactly one gen
 
 1. Invoke the playwright_test_planner agent.
 2. Save its untouched plan to $planRelative.
-3. After the planner finishes, invoke the playwright_test_generator agent exactly once.
+3. After the planner finishes successfully and the plan file exists, invoke the playwright_test_generator agent exactly once.
 4. Generate tests under $testsRelative.
+5. If the planner fails for any reason or does not save the plan, stop immediately and return failure. Do not invoke the generator.
 
 Hard benchmark rules:
 - Do not invoke playwright_test_healer.
@@ -219,7 +220,7 @@ Finish after the generator has written its files.
 
     Write-Host "Running planner + generator..."
 
-    Push-Location $repoRoot
+    Push-Location $explorerRoot
     try {
       codex exec --json --sandbox workspace-write $prompt 2>&1 |
         Tee-Object -FilePath (Join-Path $rawDir "codex.jsonl")
