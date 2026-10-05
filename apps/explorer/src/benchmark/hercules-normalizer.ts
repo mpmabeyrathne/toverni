@@ -148,22 +148,12 @@ export function extractGeneratedHerculesGherkin(
 ): string {
   const lines = raw.split(/\r?\n/);
 
-  const runningIndex =
-    lines.findIndex(
-      (line) =>
-        line.includes(
-          'Running generated test...',
-        ),
-    );
-
-  const limit =
-    runningIndex >= 0
-      ? runningIndex
-      : lines.length;
+  const candidates:
+    string[] = [];
 
   for (
     let index = 0;
-    index < limit;
+    index < lines.length;
     index += 1
   ) {
     if (
@@ -178,7 +168,7 @@ export function extractGeneratedHerculesGherkin(
 
     for (
       let candidateIndex = index + 1;
-      candidateIndex < limit;
+      candidateIndex < lines.length;
       candidateIndex += 1
     ) {
       if (
@@ -211,25 +201,74 @@ export function extractGeneratedHerculesGherkin(
       /\bFeature\s*:/i.test(candidate) &&
       /\bScenario(?:\s+Outline)?\s*:/i.test(candidate)
     ) {
-      return candidate;
+      candidates.push(candidate);
     }
 
     index = end;
   }
 
-  const fenced = raw.match(
-    /\u0060\u0060\u0060(?:gherkin)?\s*([\s\S]*?\bFeature\s*:[\s\S]*?\bScenario(?:\s+Outline)?\s*:[\s\S]*?)\u0060\u0060\u0060/i,
-  );
+  if (
+    candidates.length >
+    0
+  ) {
+    return candidates[
+      candidates.length - 1
+    ] as string;
+  }
+
+  const fencedMatches =
+    [
+      ...raw.matchAll(
+        /\u0060\u0060\u0060(?:gherkin)?\s*([\s\S]*?\bFeature\s*:[\s\S]*?\bScenario(?:\s+Outline)?\s*:[\s\S]*?)\u0060\u0060\u0060/gi,
+      ),
+    ];
+
+  const lastFenced =
+    fencedMatches[
+      fencedMatches.length - 1
+    ]?.[1];
 
   if (
-    fenced?.[1]
+    lastFenced
   ) {
-    return fenced[1].trim();
+    return lastFenced.trim();
   }
 
   throw new Error(
     'Hercules output does not contain a generated Gherkin feature.',
   );
+}
+
+export function parseHerculesFinalRuntimeStatus(
+  raw: string,
+): HerculesRuntimeStatus | null {
+  const finalMessages =
+    [
+      ...raw.matchAll(
+        /Final message:\s*\{[^\r\n]*?'is_passed':\s*(True|False)[^\r\n]*\}/gi,
+      ),
+    ];
+
+  const last =
+    finalMessages[
+      finalMessages.length - 1
+    ]?.[1];
+
+  if (
+    last?.toLowerCase() ===
+    'true'
+  ) {
+    return 'passed';
+  }
+
+  if (
+    last?.toLowerCase() ===
+    'false'
+  ) {
+    return 'failed';
+  }
+
+  return null;
 }
 
 export function parseHerculesGherkin(
