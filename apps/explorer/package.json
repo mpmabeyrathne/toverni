@@ -34,7 +34,8 @@
     "benchmark:competitive:hercules": "powershell -ExecutionPolicy Bypass -File ../../scripts/run-hercules-competitive.ps1",
     "benchmark:competitive:hercules:normalize": "tsx src/benchmark/normalize-hercules-artifact.ts",
     "generate": "tsx src/index.ts generate",
-    "release:gate": "tsx src/release/run-public-beta-gate.ts"
+    "release:gate": "tsx src/release/run-public-beta-gate.ts",
+    "release:validate": "pnpm test && pnpm typecheck && pnpm build && pnpm package:smoke && pnpm release:gate"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
