@@ -661,6 +661,51 @@ const decision =
       : {}),
   });
 
+    const safetySkippedActions =
+      decision
+        .rankedCandidates
+        .filter(
+          (candidate) =>
+            candidate
+              .blockReasons
+              .some(
+                (reason) =>
+                  reason.includes(
+                    'unsafe for autonomous exploration',
+                  ),
+              ),
+        )
+        .map(
+          (candidate) => ({
+            label:
+              candidate.label,
+
+            reasons:
+              candidate
+                .blockReasons,
+          }),
+        );
+
+    if (
+      safetySkippedActions.length >
+      0
+    ) {
+      logger.info(
+        {
+          stateId:
+            currentState.id,
+
+          skippedActionCount:
+            safetySkippedActions
+              .length,
+
+          skippedActions:
+            safetySkippedActions,
+        },
+        'High-impact actions skipped by exploration safety policy',
+      );
+    }
+
     // ------------------------------
     // Persist decision
     // ------------------------------
