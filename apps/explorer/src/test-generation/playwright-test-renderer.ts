@@ -95,6 +95,14 @@ function toBrowserTarget(
                 target.exact,
             }
           : {}),
+
+        ...(target.index !==
+          undefined
+          ? {
+              index:
+                target.index,
+            }
+          : {}),
       };
 
     case 'label':
@@ -112,6 +120,14 @@ function toBrowserTarget(
                 target.exact,
             }
           : {}),
+
+        ...(target.index !==
+          undefined
+          ? {
+              index:
+                target.index,
+            }
+          : {}),
       };
 
     case 'text':
@@ -127,6 +143,14 @@ function toBrowserTarget(
           ? {
               exact:
                 target.exact,
+            }
+          : {}),
+
+        ...(target.index !==
+          undefined
+          ? {
+              index:
+                target.index,
             }
           : {}),
       };
