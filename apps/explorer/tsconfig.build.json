@@ -3,6 +3,7 @@
   "exclude": [
     "src/**/*.test.ts",
     "src/**/*.smoke.ts",
-    "src/benchmark/**"
+    "src/benchmark/**",
+    "src/release/**"
   ]
 }
