@@ -19,6 +19,7 @@ import {
 
 import {
   fileURLToPath,
+  pathToFileURL,
 } from 'node:url';
 
 import {
@@ -289,6 +290,40 @@ try {
         `Dev-only directory was published: ${forbidden}`,
       );
     }
+  }
+
+  const databaseModule =
+    await import(
+      pathToFileURL(
+        join(
+          installedPackage,
+          'dist',
+          'configuration',
+          'database.js',
+        ),
+      ).href
+    );
+
+  const databaseConfiguration =
+    databaseModule
+      .resolveDatabaseConfiguration({
+        cwd:
+          installDirectory,
+      });
+
+  if (
+    databaseConfiguration.kind !==
+      'local' ||
+    databaseConfiguration
+      .migrationsDirectory !==
+      join(
+        installedPackage,
+        'drizzle',
+      )
+  ) {
+    throw new Error(
+      `Installed package did not resolve bundled migrations: ${JSON.stringify(databaseConfiguration)}`,
+    );
   }
 
   const packageFiles =
