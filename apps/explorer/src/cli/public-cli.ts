@@ -1476,6 +1476,7 @@ Usage:
   toverni generate <url> [options]
   toverni generate --config ./toverni.yaml
   toverni <url> [options]
+  toverni --version
 
 Core options:
   -c, --config <path>              YAML config file (default: ./toverni.yaml or ./toverni.yml)
