@@ -76,3 +76,13 @@ export type {
   TestPlanStepOperation,
   TestPlanTarget,
 } from './test-plan-ir.js';
+
+
+export {
+  resolvePlaywrightProjectOutput,
+} from './playwright-project-output.js';
+
+export type {
+  PlaywrightProjectOutput,
+  ResolvePlaywrightProjectOutputInput,
+} from './playwright-project-output.js';
