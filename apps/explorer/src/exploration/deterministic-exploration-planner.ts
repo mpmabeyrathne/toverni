@@ -130,7 +130,7 @@ const HIGH_IMPACT_ACTION_RULES:
         'communication',
 
       pattern:
-        /\b(?:invite|send\s+(?:invite|invitation|email|message|notification))\b/i,
+        /\b(?:invite\s+(?:user|member|guest|team|collaborator)|send\s+(?:invite|invitation|email|message|notification))\b/i,
 
       description:
         'external communication or invitation',
