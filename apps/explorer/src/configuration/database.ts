@@ -69,55 +69,40 @@ export type DatabaseConfiguration =
         string;
     };
 
-function resolveLocalDataDirectory():
-string {
-  const configured =
-    process.env
-      .TOVERNI_DATA_DIR
-      ?.trim();
+export interface ResolveDatabaseConfigurationInput {
+  databaseUrl?:
+    string;
 
-  return configured
-    ? resolve(
-        process.cwd(),
-        configured,
-      )
-    : resolve(
-        process.cwd(),
-        '.toverni',
-        'db',
-      );
+  dataDirectory?:
+    string;
+
+  migrationsDirectory?:
+    string;
+
+  cwd:
+    string;
 }
 
-function resolveMigrationsDirectory():
-string {
-  const configured =
-    process.env
-      .TOVERNI_MIGRATIONS_DIR
-      ?.trim();
+function nonEmpty(
+  value:
+    string | undefined,
+): string | undefined {
+  const trimmed =
+    value?.trim();
 
-  if (
-    configured
-  ) {
-    return resolve(
-      process.cwd(),
-      configured,
-    );
-  }
-
-  return fileURLToPath(
-    new URL(
-      '../../../../drizzle/',
-      import.meta.url,
-    ),
-  );
+  return trimmed
+    ? trimmed
+    : undefined;
 }
 
-export function getDatabaseConfiguration():
-DatabaseConfiguration {
+export function resolveDatabaseConfiguration(
+  input:
+    ResolveDatabaseConfigurationInput,
+): DatabaseConfiguration {
   const databaseUrl =
-    process.env
-      .DATABASE_URL
-      ?.trim();
+    nonEmpty(
+      input.databaseUrl,
+    );
 
   if (
     databaseUrl
@@ -133,14 +118,56 @@ DatabaseConfiguration {
     };
   }
 
+  const dataDirectory =
+    resolve(
+      input.cwd,
+      nonEmpty(
+        input.dataDirectory,
+      ) ??
+        '.toverni/db',
+    );
+
+  const migrationsDirectory =
+    nonEmpty(
+      input.migrationsDirectory,
+    )
+      ? resolve(
+          input.cwd,
+          input.migrationsDirectory!,
+        )
+      : fileURLToPath(
+          new URL(
+            '../../../../drizzle/',
+            import.meta.url,
+          ),
+        );
+
   return {
     kind:
       'local',
 
+    dataDirectory,
+
+    migrationsDirectory,
+  };
+}
+
+export function getDatabaseConfiguration():
+DatabaseConfiguration {
+  return resolveDatabaseConfiguration({
+    databaseUrl:
+      process.env
+        .DATABASE_URL,
+
     dataDirectory:
-      resolveLocalDataDirectory(),
+      process.env
+        .TOVERNI_DATA_DIR,
 
     migrationsDirectory:
-      resolveMigrationsDirectory(),
-  };
+      process.env
+        .TOVERNI_MIGRATIONS_DIR,
+
+    cwd:
+      process.cwd(),
+  });
 }
