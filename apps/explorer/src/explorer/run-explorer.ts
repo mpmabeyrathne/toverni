@@ -92,6 +92,8 @@ export interface RunExplorerInput {
 
     artifactsDirectory?: string;
 
+    outputDirectory?: string;
+
     resumeRunId?: string;
 
     explorationBudget?:
@@ -1022,6 +1024,7 @@ export async function runExplorer(
     // --------------------------------
   
     const generatedTestsDirectory =
+      input.outputDirectory ??
       join(
         process.cwd(),
         'artifacts',
