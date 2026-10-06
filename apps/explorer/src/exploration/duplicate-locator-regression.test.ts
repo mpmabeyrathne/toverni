@@ -14,9 +14,6 @@ import {
   PlaywrightBrowserController,
 } from '../browser/index.js';
 
-import type {
-  ActionElement,
-} from '../contracts/page-observation.js';
 
 import {
   createActionSignature,
@@ -124,96 +121,12 @@ afterAll(
   },
 );
 
-function completeTodo(
-  locatorIndex?:
-    number,
-): ActionElement {
-  return {
-    type:
-      'button',
-
-    tagName:
-      'button',
-
-    name:
-      'Complete Todo',
-
-    text:
-      'Complete Todo',
-
-    ...(locatorIndex !==
-      undefined
-      ? {
-          locatorIndex,
-        }
-      : {}),
-
-    disabled:
-      locatorIndex ===
-      undefined,
-
-    visible:
-      true,
-  };
-}
-
 describe(
   'duplicate locator regression',
   () => {
     it(
       'keeps repeated controls distinct and clicks the intended occurrence',
       async () => {
-        const first =
-          completeTodo();
-
-        const second =
-          completeTodo(
-            1,
-          );
-
-        expect(
-          createActionSignature(
-            first,
-          ),
-        ).not.toBe(
-          createActionSignature(
-            second,
-          ),
-        );
-
-        const target =
-          createBrowserTarget(
-            second,
-          );
-
-        expect(
-          target,
-        ).toEqual({
-          by:
-            'role',
-
-          role:
-            'button',
-
-          name:
-            'Complete Todo',
-
-          exact:
-            true,
-
-          index:
-            1,
-        });
-
-        expect(
-          target &&
-            renderPlaywrightLocator(
-              target,
-            ),
-        ).toBe(
-          'page.getByRole("button", { name: "Complete Todo", exact: true }).nth(1)',
-        );
-
         const controller =
           new PlaywrightBrowserController({
             headless:
@@ -229,6 +142,83 @@ describe(
 
           await session.navigate(
             baseUrl,
+          );
+
+          const initialObservation =
+            await session.observe();
+
+          const completeActions =
+            initialObservation
+              .actions
+              .filter(
+                (action) =>
+                  action.name ===
+                  'Complete Todo',
+              );
+
+          expect(
+            completeActions,
+          ).toHaveLength(
+            2,
+          );
+
+          const first =
+            completeActions[0]!;
+
+          const second =
+            completeActions[1]!;
+
+          expect(
+            first.locatorIndex,
+          ).toBeUndefined();
+
+          expect(
+            second.locatorIndex,
+          ).toBe(
+            1,
+          );
+
+          expect(
+            createActionSignature(
+              first,
+            ),
+          ).not.toBe(
+            createActionSignature(
+              second,
+            ),
+          );
+
+          const target =
+            createBrowserTarget(
+              second,
+            );
+
+          expect(
+            target,
+          ).toEqual({
+            by:
+              'role',
+
+            role:
+              'button',
+
+            name:
+              'Complete Todo',
+
+            exact:
+              true,
+
+            index:
+              1,
+          });
+
+          expect(
+            target &&
+              renderPlaywrightLocator(
+                target,
+              ),
+          ).toBe(
+            'page.getByRole("button", { name: "Complete Todo", exact: true }).nth(1)',
           );
 
           await session.click(
