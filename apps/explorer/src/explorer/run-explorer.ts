@@ -1039,6 +1039,60 @@ export async function runExplorer(
                 );
 
         // --------------------------------
+        // Resolve generated Playwright output
+        // --------------------------------
+
+        const playwrightProjectOutput =
+            await resolvePlaywrightProjectOutput({
+                workingDirectory:
+                    process.cwd(),
+
+                ...(input.outputDirectory
+                    ? {
+                        explicitOutputDirectory:
+                            input.outputDirectory,
+                      }
+                    : {}),
+            });
+
+        const generatedTestsDirectory =
+            playwrightProjectOutput
+                .outputDirectory;
+
+        logger.info(
+            {
+                outputDirectory:
+                    generatedTestsDirectory,
+
+                projectDetected:
+                    playwrightProjectOutput
+                        .projectDetected,
+
+                configPath:
+                    playwrightProjectOutput
+                        .configPath,
+            },
+            'Resolved generated Playwright suite output',
+        );
+
+        if (
+            playwrightProjectOutput
+                .bootstrapCommand
+        ) {
+            logger.warn(
+                {
+                    outputDirectory:
+                        generatedTestsDirectory,
+
+                    bootstrapCommand:
+                        playwrightProjectOutput
+                            .bootstrapCommand,
+                },
+                'Playwright project was not detected; generated specs are ready, but bootstrap Playwright before running them',
+            );
+        }
+
+        // --------------------------------
         // Grounded scenario generation
         // --------------------------------
 
@@ -1168,56 +1222,7 @@ export async function runExplorer(
     // Executable Playwright generation
     // --------------------------------
   
-    const playwrightProjectOutput =
-      await resolvePlaywrightProjectOutput({
-        workingDirectory:
-          process.cwd(),
 
-        ...(input.outputDirectory
-          ? {
-              explicitOutputDirectory:
-                input.outputDirectory,
-            }
-          : {}),
-      });
-
-    const generatedTestsDirectory =
-      playwrightProjectOutput
-        .outputDirectory;
-
-    logger.info(
-      {
-        outputDirectory:
-          generatedTestsDirectory,
-
-        projectDetected:
-          playwrightProjectOutput
-            .projectDetected,
-
-        configPath:
-          playwrightProjectOutput
-            .configPath,
-      },
-      'Resolved generated Playwright suite output',
-    );
-
-    if (
-      playwrightProjectOutput
-        .bootstrapCommand
-    ) {
-      logger.warn(
-        {
-          outputDirectory:
-            generatedTestsDirectory,
-
-          bootstrapCommand:
-            playwrightProjectOutput
-              .bootstrapCommand,
-        },
-        'Playwright project was not detected; generated specs are ready, but bootstrap Playwright before running them',
-      );
-    }
-  
     for (
       const storedScenario of
       storedScenarios
