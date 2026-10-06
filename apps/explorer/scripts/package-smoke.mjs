@@ -49,7 +49,8 @@ function runNpm(
   args,
   options = {},
 ) {
-  return runNpm(
+  return execFileSync(
+    npmCommand,
     args,
     {
       ...options,
