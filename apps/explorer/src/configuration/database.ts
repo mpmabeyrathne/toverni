@@ -3,6 +3,10 @@ import {
 } from 'node:path';
 
 import {
+  existsSync,
+} from 'node:fs';
+
+import {
   fileURLToPath,
 } from 'node:url';
 
@@ -127,6 +131,22 @@ export function resolveDatabaseConfiguration(
         '.toverni/db',
     );
 
+  const packagedMigrationsDirectory =
+    fileURLToPath(
+      new URL(
+        '../../drizzle/',
+        import.meta.url,
+      ),
+    );
+
+  const repositoryMigrationsDirectory =
+    fileURLToPath(
+      new URL(
+        '../../../../drizzle/',
+        import.meta.url,
+      ),
+    );
+
   const migrationsDirectory =
     nonEmpty(
       input.migrationsDirectory,
@@ -135,12 +155,11 @@ export function resolveDatabaseConfiguration(
           input.cwd,
           input.migrationsDirectory!,
         )
-      : fileURLToPath(
-          new URL(
-            '../../../../drizzle/',
-            import.meta.url,
-          ),
-        );
+      : existsSync(
+          packagedMigrationsDirectory,
+        )
+        ? packagedMigrationsDirectory
+        : repositoryMigrationsDirectory;
 
   return {
     kind:

@@ -84,7 +84,7 @@ import {
           code: 'BROWSER_LAUNCH_FAILED',
           operation: 'launch',
           message:
-            'Failed to launch Chromium',
+            'Failed to launch Chromium. Install the browser with "npx playwright install chromium" and retry.',
           cause: error,
         });
       }

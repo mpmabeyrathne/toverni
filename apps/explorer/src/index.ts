@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import {
   ZodError,
 } from 'zod';
@@ -12,6 +14,10 @@ import {
   getPublicCliHelp,
   parsePublicCli,
 } from './cli/public-cli.js';
+
+import {
+  getPackageVersion,
+} from './cli/version.js';
 
 import {
   logger,
@@ -52,9 +58,31 @@ function formatZodError(
 async function main():
 Promise<void> {
   try {
+    const argumentsList =
+      process.argv.slice(
+        2,
+      );
+
+    if (
+      argumentsList.includes(
+        '--version',
+      ) ||
+      argumentsList.includes(
+        '-v',
+      ) ||
+      argumentsList[0] ===
+        'version'
+    ) {
+      console.log(
+        await getPackageVersion(),
+      );
+
+      return;
+    }
+
     const command =
       await parsePublicCli(
-        process.argv.slice(2),
+        argumentsList,
       );
 
     if (
