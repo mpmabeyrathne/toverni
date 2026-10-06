@@ -1,6 +1,6 @@
 # Toverni Free v1 guide
 
-This guide describes the **current source-checkout workflow**. It intentionally does not document `npx toverni` as available yet because package publication and clean-install validation are tracked in TOV-116.
+This guide describes the packaged Free v1 CLI. Registry commands apply after the package is published to npm; before publication, maintainers validate the same artifact with the clean-install package smoke test.
 
 ## What Toverni does
 
@@ -20,16 +20,15 @@ Toverni does **not** require a hosted Toverni backend for Free v1.
 ## Prerequisites
 
 - Node.js 24
-- pnpm
 - a reachable target application
 - Chromium for Playwright
 - Ollama only if you enable model reasoning
 
-Install project dependencies and Chromium:
+After npm publication:
 
 ```bash
-pnpm install
-pnpm --filter @toverni/explorer exec playwright install chromium
+npm install --save-dev @toverni/explorer
+npx playwright install chromium
 ```
 
 ## Five-minute quick start
@@ -37,7 +36,7 @@ pnpm --filter @toverni/explorer exec playwright install chromium
 Start your application, then run:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 --headless
+npx toverni generate http://localhost:3000 --headless
 ```
 
 This is **browser-only mode**. Model reasoning defaults to off, so Ollama is not required.
@@ -56,7 +55,7 @@ The terminal summary reports:
 ## Browser-only example
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --headless \
   --summary-json ./artifacts/toverni-summary.json
 ```
@@ -70,7 +69,7 @@ Example requirements file: `examples/free-v1/requirements.md`.
 ```bash
 ollama pull llama3.2:3b
 
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --requirements ./examples/free-v1/requirements.md \
   --model-reasoning \
   --headless
@@ -83,7 +82,7 @@ Model reasoning uses Ollama only after the preflight succeeds.
 Example OpenAPI file: `examples/free-v1/openapi.yaml`.
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --requirements ./examples/free-v1/requirements.md \
   --openapi ./examples/free-v1/openapi.yaml \
   --model-reasoning \
@@ -119,7 +118,7 @@ await browser.close();
 Then run:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000/dashboard \
+npx toverni generate http://localhost:3000/dashboard \
   --storage-state ./playwright/.auth/user.json \
   --headless
 ```
@@ -154,7 +153,7 @@ ollama pull llama3.2:3b
 Run with model reasoning:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --model-provider ollama \
   --model-reasoning \
   --model-retry-attempts 2 \
@@ -233,7 +232,7 @@ pnpm --dir ../.. --filter @toverni/explorer exec tsx src/index.ts generate --con
 Alternatively, run from the repository root and provide the full config path:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate --config ./examples/free-v1/toverni.yaml
+npx toverni generate --config ./examples/free-v1/toverni.yaml
 ```
 
 CLI flags override YAML values.
@@ -334,8 +333,10 @@ The JSON summary contains the same canonical information used by the terminal su
 Install Chromium:
 
 ```bash
-pnpm --filter @toverni/explorer exec playwright install chromium
+npx playwright install chromium
 ```
+
+If Chromium is missing, Toverni's browser-launch error also prints this command.
 
 ### Ollama is not reachable
 
@@ -396,12 +397,18 @@ Do this intentionally; budgets protect runtime and model usage.
 
 ## Current limitations
 
-- npm/npx package publication is not complete yet (TOV-116).
+- npm registry publication is a release operation after the package smoke test passes;
 - current model provider is Ollama only;
 - cloud BYOK adapters are deferred to production-release work (TOV-125);
 - model reasoning is optional and local-model quality/performance depends on the model and hardware;
 - some application-specific flows remain manual-required when there is insufficient safe executable evidence.
 
-## Release packaging note
+## Release packaging validation
 
-After TOV-116 completes, this guide should replace source-checkout invocation with the validated package command. Until that clean-install smoke test passes, source commands above are the supported documented workflow.
+Maintainers validate the exact npm artifact from the repository with:
+
+```bash
+pnpm --filter @toverni/explorer package:smoke
+```
+
+The smoke test packs the package, installs the tarball into a temporary empty project, verifies the public binary/version/help, confirms bundled migrations resolve correctly, and rejects accidental test/benchmark/source files.
