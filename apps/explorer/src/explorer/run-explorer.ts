@@ -1,4 +1,5 @@
 import {
+    assertAuthenticatedLanding,
     PlaywrightBrowserController,
 } from '../browser/index.js';
 
@@ -91,6 +92,10 @@ export interface RunExplorerInput {
 
     outputDirectory?: string;
 
+    auth?: {
+        storageStatePath?: string;
+    };
+
     resumeRunId?: string;
 
     explorationBudget?:
@@ -158,6 +163,15 @@ export async function runExplorer(
             artifactsDirectory:
                 input.artifactsDirectory ??
                 'artifacts',
+
+            ...(input.auth
+                ?.storageStatePath
+                ? {
+                    storageStatePath:
+                        input.auth
+                            .storageStatePath,
+                  }
+                : {}),
         });
 
     const stateModel =
@@ -583,13 +597,38 @@ export async function runExplorer(
             }
         }
 
+        const loadedTitle =
+            await session.getTitle();
+
+        if (
+            input.auth
+                ?.storageStatePath
+        ) {
+            assertAuthenticatedLanding({
+                requestedUrl:
+                    input.targetUrl,
+
+                actualUrl:
+                    session.getUrl(),
+
+                title:
+                    loadedTitle,
+            });
+        }
+
         logger.info(
             {
                 url:
                     session.getUrl(),
 
                 title:
-                    await session.getTitle(),
+                    loadedTitle,
+
+                authenticatedSession:
+                    Boolean(
+                        input.auth
+                            ?.storageStatePath,
+                    ),
             },
             'Target application loaded',
         );
