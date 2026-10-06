@@ -17,7 +17,6 @@ import {
   calculateBenchmarkMetrics,
   loadBenchmarkFixture,
   startBenchmarkFixtureServer,
-  type BenchmarkMetrics,
   type BenchmarkScenario,
 } from '../benchmark/index.js';
 
