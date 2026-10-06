@@ -33,7 +33,8 @@
     "benchmark:competitive:playwright:normalize": "tsx src/benchmark/normalize-playwright-agents-artifact.ts",
     "benchmark:competitive:hercules": "powershell -ExecutionPolicy Bypass -File ../../scripts/run-hercules-competitive.ps1",
     "benchmark:competitive:hercules:normalize": "tsx src/benchmark/normalize-hercules-artifact.ts",
-    "generate": "tsx src/index.ts generate"
+    "generate": "tsx src/index.ts generate",
+    "release:gate": "tsx src/release/run-public-beta-gate.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
