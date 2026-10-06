@@ -25,6 +25,14 @@ import {
 } from './public-cli.js';
 
 const originalEnvironment = {
+  MODEL_PROVIDER:
+    process.env
+      .MODEL_PROVIDER,
+
+  MODEL_RETRY_ATTEMPTS:
+    process.env
+      .MODEL_RETRY_ATTEMPTS,
+
   MODEL_REASONING_ENABLED:
     process.env
       .MODEL_REASONING_ENABLED,
@@ -73,6 +81,111 @@ afterEach(
 describe(
   'parsePublicCli',
   () => {
+    it(
+      'parses provider-neutral model settings while keeping Ollama as the current runtime provider',
+      async () => {
+        const command =
+          await parsePublicCli(
+            [
+              'generate',
+              'http://localhost:3000',
+              '--model-provider',
+              'ollama',
+              '--model-retry-attempts',
+              '3',
+              '--model-reasoning',
+              '--cheap-model',
+              'llama3.2:3b',
+              '--complex-model',
+              'qwen3:4b',
+            ],
+            process.cwd(),
+          );
+
+        expect(
+          command,
+        ).toMatchObject({
+          kind:
+            'generate',
+
+          config: {
+            model: {
+              provider:
+                'ollama',
+
+              retryAttempts:
+                3,
+
+              reasoningEnabled:
+                true,
+
+              cheapModel:
+                'llama3.2:3b',
+
+              complexModel:
+                'qwen3:4b',
+            },
+          },
+        });
+      },
+    );
+
+    it(
+      'rejects unsupported cloud providers until BYOK adapters are intentionally enabled',
+      async () => {
+        await expect(
+          parsePublicCli(
+            [
+              'generate',
+              'http://localhost:3000',
+              '--model-provider',
+              'openai',
+            ],
+            process.cwd(),
+          ),
+        ).rejects.toThrow(
+          'currently supports only "ollama"',
+        );
+      },
+    );
+
+    it(
+      'applies provider and retry model settings without requiring credentials',
+      () => {
+        applyModelEnvironment({
+          provider:
+            'ollama',
+
+          retryAttempts:
+            4,
+
+          reasoningEnabled:
+            true,
+        });
+
+        expect(
+          process.env
+            .MODEL_PROVIDER,
+        ).toBe(
+          'ollama',
+        );
+
+        expect(
+          process.env
+            .MODEL_RETRY_ATTEMPTS,
+        ).toBe(
+          '4',
+        );
+
+        expect(
+          process.env
+            .MODEL_REASONING_ENABLED,
+        ).toBe(
+          'true',
+        );
+      },
+    );
+
     it(
       'supports a browser-only generate command',
       async () => {
