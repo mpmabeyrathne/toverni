@@ -43,6 +43,11 @@ const publicConfigSchema =
         .min(1)
         .optional(),
 
+    summaryJson:
+      z.string()
+        .min(1)
+        .optional(),
+
     headless:
       z.boolean()
         .optional(),
@@ -193,6 +198,9 @@ interface ParsedArguments {
     string;
 
   output?:
+    string;
+
+  summaryJson?:
     string;
 
   headless?:
@@ -430,6 +438,20 @@ function parseArguments(
       case '--output':
       case '-o': {
         parsed.output =
+          requireValue(
+            args,
+            index,
+            argument,
+          );
+
+        index +=
+          1;
+
+        break;
+      }
+
+      case '--summary-json': {
+        parsed.summaryJson =
           requireValue(
             args,
             index,
@@ -844,6 +866,12 @@ function normalizeConfigPaths(
       config.output,
     );
 
+  const summaryJson =
+    resolvePathValue(
+      baseDirectory,
+      config.summaryJson,
+    );
+
   const storageState =
     resolvePathValue(
       baseDirectory,
@@ -869,6 +897,12 @@ function normalizeConfigPaths(
     ...(output
       ? {
           output,
+        }
+      : {}),
+
+    ...(summaryJson
+      ? {
+          summaryJson,
         }
       : {}),
 
@@ -964,6 +998,12 @@ function buildCliOverrides(
     resolvePathValue(
       cwd,
       parsed.output,
+    );
+
+  const summaryJson =
+    resolvePathValue(
+      cwd,
+      parsed.summaryJson,
     );
 
   const storageState =
@@ -1161,6 +1201,12 @@ function buildCliOverrides(
     ...(output
       ? {
           output,
+        }
+      : {}),
+
+    ...(summaryJson
+      ? {
+          summaryJson,
         }
       : {}),
 

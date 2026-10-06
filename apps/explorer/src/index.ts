@@ -21,6 +21,11 @@ import {
   runExplorer,
 } from './explorer/run-explorer.js';
 
+import {
+  renderGenerationSummary,
+  writeGenerationSummaryJson,
+} from './explorer/generation-summary.js';
+
 function formatZodError(
   error:
     ZodError,
@@ -72,7 +77,8 @@ Promise<void> {
       config.model,
     );
 
-    await runExplorer({
+    const result =
+      await runExplorer({
       targetUrl:
         config.target!,
 
@@ -212,6 +218,25 @@ Promise<void> {
           }
         : {}),
     });
+
+    console.log(
+      renderGenerationSummary(
+        result.summary,
+      ),
+    );
+
+    if (
+      config.summaryJson
+    ) {
+      await writeGenerationSummaryJson(
+        result.summary,
+        config.summaryJson,
+      );
+
+      console.log(
+        `Summary JSON: ${config.summaryJson}`,
+      );
+    }
   } catch (
     error:
       unknown

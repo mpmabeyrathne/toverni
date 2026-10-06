@@ -22,6 +22,11 @@ import {
 } from '../state/persisted-application-graph.js';
 
 import {
+    buildGenerationSummary,
+    type GenerationSummary,
+} from './generation-summary.js';
+
+import {
     buildEvidenceCatalog,
     GroundedScenarioGenerator,
 } from '../scenarios/index.js';
@@ -141,6 +146,9 @@ export interface RunExplorerResult {
 
     coverage:
     CoverageReport;
+
+    summary:
+    GenerationSummary;
 }
 
 export async function runExplorer(
@@ -1031,6 +1039,60 @@ export async function runExplorer(
                 );
 
         // --------------------------------
+        // Resolve generated Playwright output
+        // --------------------------------
+
+        const playwrightProjectOutput =
+            await resolvePlaywrightProjectOutput({
+                workingDirectory:
+                    process.cwd(),
+
+                ...(input.outputDirectory
+                    ? {
+                        explicitOutputDirectory:
+                            input.outputDirectory,
+                      }
+                    : {}),
+            });
+
+        const generatedTestsDirectory =
+            playwrightProjectOutput
+                .outputDirectory;
+
+        logger.info(
+            {
+                outputDirectory:
+                    generatedTestsDirectory,
+
+                projectDetected:
+                    playwrightProjectOutput
+                        .projectDetected,
+
+                configPath:
+                    playwrightProjectOutput
+                        .configPath,
+            },
+            'Resolved generated Playwright suite output',
+        );
+
+        if (
+            playwrightProjectOutput
+                .bootstrapCommand
+        ) {
+            logger.warn(
+                {
+                    outputDirectory:
+                        generatedTestsDirectory,
+
+                    bootstrapCommand:
+                        playwrightProjectOutput
+                            .bootstrapCommand,
+                },
+                'Playwright project was not detected; generated specs are ready, but bootstrap Playwright before running them',
+            );
+        }
+
+        // --------------------------------
         // Grounded scenario generation
         // --------------------------------
 
@@ -1160,56 +1222,7 @@ export async function runExplorer(
     // Executable Playwright generation
     // --------------------------------
   
-    const playwrightProjectOutput =
-      await resolvePlaywrightProjectOutput({
-        workingDirectory:
-          process.cwd(),
 
-        ...(input.outputDirectory
-          ? {
-              explicitOutputDirectory:
-                input.outputDirectory,
-            }
-          : {}),
-      });
-
-    const generatedTestsDirectory =
-      playwrightProjectOutput
-        .outputDirectory;
-
-    logger.info(
-      {
-        outputDirectory:
-          generatedTestsDirectory,
-
-        projectDetected:
-          playwrightProjectOutput
-            .projectDetected,
-
-        configPath:
-          playwrightProjectOutput
-            .configPath,
-      },
-      'Resolved generated Playwright suite output',
-    );
-
-    if (
-      playwrightProjectOutput
-        .bootstrapCommand
-    ) {
-      logger.warn(
-        {
-          outputDirectory:
-            generatedTestsDirectory,
-
-          bootstrapCommand:
-            playwrightProjectOutput
-              .bootstrapCommand,
-        },
-        'Playwright project was not detected; generated specs are ready, but bootstrap Playwright before running them',
-      );
-    }
-  
     for (
       const storedScenario of
       storedScenarios
@@ -1817,6 +1830,30 @@ export async function runExplorer(
             'Browser session closed',
         );
 
+        const summary =
+            buildGenerationSummary({
+                runId:
+                    run.id,
+
+                targetUrl:
+                    input.targetUrl,
+
+                flow,
+
+                coverage,
+
+                discoveredFlows:
+                    reconstructedFlows
+                        .length,
+
+                outputDirectory:
+                    generatedTestsDirectory,
+
+                stopReason:
+                    explorationResult
+                        .stopReason,
+            });
+
         return {
             applicationId:
                 application.id,
@@ -1838,6 +1875,8 @@ export async function runExplorer(
             flow,
 
             coverage,
+
+            summary,
         };
     } catch (
     error:
