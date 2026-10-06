@@ -43,7 +43,8 @@
     "playwright": "^1.63.0",
     "undici": "^8.10.2",
     "yaml": "^2.9.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "dotenv": "^18.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
