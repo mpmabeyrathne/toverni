@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: Example Store API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/products:
+    get:
+      operationId: listProducts
+      responses:
+        '200':
+          description: Product list
+  /api/cart:
+    post:
+      operationId: addCartItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCartItem'
+      responses:
+        '200':
+          description: Item added
+components:
+  schemas:
+    AddCartItem:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: string
+          example: product-1
+        quantity:
+          type: integer
+          minimum: 1
+          example: 1
