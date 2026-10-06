@@ -15,21 +15,25 @@ Free v1 is local-first:
 
 ## Run it in 5 minutes
 
-> **Current repository workflow:** npm/npx packaging is tracked separately in TOV-116 and is not released yet.
-
 Requirements:
 
 - Node.js 24
-- pnpm
 - Chromium installed for Playwright
 - a web app you can reach locally or over HTTP(S)
 
-From a cloned Toverni repository:
+After the package is published to npm:
 
 ```bash
-pnpm install
-pnpm --filter @toverni/explorer exec playwright install chromium
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 --headless
+npm install --save-dev @toverni/explorer
+npx playwright install chromium
+npx toverni --version
+npx toverni generate http://localhost:3000 --headless
+```
+
+Before registry publication, maintainers can validate the exact packed artifact with:
+
+```bash
+pnpm --filter @toverni/explorer package:smoke
 ```
 
 That browser-only command does not require Ollama.
@@ -38,7 +42,7 @@ To enable model-backed grounded scenario generation:
 
 ```bash
 ollama pull llama3.2:3b
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --headless \
   --model-reasoning
 ```
@@ -50,13 +54,13 @@ Generated Playwright specs are written into an existing Playwright project under
 Browser only:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 --headless
+npx toverni generate http://localhost:3000 --headless
 ```
 
 Requirements grounded:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --requirements ./examples/free-v1/requirements.md \
   --model-reasoning \
   --headless
@@ -65,7 +69,7 @@ pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:
 Requirements + OpenAPI:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --requirements ./examples/free-v1/requirements.md \
   --openapi ./examples/free-v1/openapi.yaml \
   --model-reasoning \
@@ -75,7 +79,7 @@ pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:
 Authenticated app:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000/dashboard \
+npx toverni generate http://localhost:3000/dashboard \
   --storage-state ./playwright/.auth/user.json \
   --headless
 ```
@@ -83,7 +87,7 @@ pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:
 Machine-readable summary:
 
 ```bash
-pnpm --filter @toverni/explorer exec tsx src/index.ts generate http://localhost:3000 \
+npx toverni generate http://localhost:3000 \
   --headless \
   --summary-json ./artifacts/toverni-summary.json
 ```
