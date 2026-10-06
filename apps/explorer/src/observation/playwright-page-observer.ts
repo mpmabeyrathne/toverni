@@ -152,6 +152,41 @@ export class PlaywrightPageObserver
     });
   }
 
+  private redactNetworkUrl(
+    value:
+      string,
+  ): string {
+    try {
+      const url =
+        new URL(
+          value,
+        );
+
+      for (
+        const key of
+          [
+            ...url.searchParams.keys(),
+          ]
+      ) {
+        if (
+          /password|passcode|secret|token|api[_-]?key|authorization/i
+            .test(
+              key,
+            )
+        ) {
+          url.searchParams.set(
+            key,
+            '[REDACTED]',
+          );
+        }
+      }
+
+      return url.toString();
+    } catch {
+      return value;
+    }
+  }
+
   private handleRequest(
     request: Request,
   ): void {
@@ -169,7 +204,9 @@ export class PlaywrightPageObserver
           request.method(),
 
         url:
-          request.url(),
+          this.redactNetworkUrl(
+            request.url(),
+          ),
 
         resourceType:
           request.resourceType(),
@@ -462,6 +499,37 @@ export class PlaywrightPageObserver
                     ? element.type
                     : undefined;
 
+                const fieldName =
+                  (
+                    element.getAttribute(
+                      'name',
+                    ) ??
+                    element.getAttribute(
+                      'id',
+                    ) ??
+                    ''
+                  );
+
+                const autocomplete =
+                  element.getAttribute(
+                    'autocomplete',
+                  ) ??
+                  '';
+
+                const sensitiveField =
+                  inputType ===
+                    'password' ||
+                  inputType ===
+                    'hidden' ||
+                  /password|passcode|secret|token|api[_-]?key|authorization/i
+                    .test(
+                      fieldName,
+                    ) ||
+                  /current-password|new-password/i
+                    .test(
+                      autocomplete,
+                    );
+
                 const contentEditable =
                   htmlElement.isContentEditable;
                 // --------------------------------
@@ -624,7 +692,9 @@ export class PlaywrightPageObserver
                         'radio'
                         ? {
                           value:
-                            element.value,
+                            sensitiveField
+                              ? '[REDACTED]'
+                              : element.value,
                         }
                         : {}
                     ),
@@ -688,7 +758,9 @@ export class PlaywrightPageObserver
                     ),
 
                     value:
-                      element.value,
+                      sensitiveField
+                        ? '[REDACTED]'
+                        : element.value,
                   };
                 }
 
