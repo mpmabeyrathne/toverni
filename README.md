@@ -7,6 +7,8 @@ Free v1 is local-first:
 - Playwright + Chromium for browser exploration
 - embedded PGlite for local persistence
 - Ollama for optional model-backed scenario generation
+- **Ollama runs on the Toverni user's own computer** and uses that machine's CPU/GPU/RAM
+- model prompts stay on the user's machine when using the local Ollama path
 - no mandatory Toverni-hosted service
 - destructive/high-impact actions blocked by default
 - authenticated apps supported through Playwright storage state
@@ -99,6 +101,8 @@ Only use this override in an isolated environment where those actions are intent
 ## Ollama and BYOK
 
 Free v1 currently supports `ollama` as the runtime model provider. Model reasoning is optional and is off unless enabled.
+
+When Ollama is enabled, it runs locally on the **user's computer**, not on Toverni infrastructure. The user's machine provides the CPU/GPU/RAM for inference, and the local Ollama endpoint defaults to `http://127.0.0.1:11434`.
 
 The provider boundary is already separated from exploration logic so BYOK cloud adapters can be added later without redesigning the explorer. **Cloud BYOK is not enabled in the current CLI yet**; production-release work is tracked in TOV-125.
 
