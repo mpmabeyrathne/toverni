@@ -74,16 +74,101 @@ const SENSITIVE_FIELD_TERMS = [
   'otp',
 ];
 
-const DESTRUCTIVE_TERMS = [
-  'delete',
-  'remove',
-  'destroy',
-  'purchase',
-  'pay now',
-  'place order',
-  'confirm order',
-  'cancel subscription',
-];
+interface HighImpactActionRule {
+  category:
+    'destructive'
+    | 'financial'
+    | 'communication'
+    | 'subscription'
+    | 'transfer'
+    | 'admin';
+
+  pattern:
+    RegExp;
+
+  description:
+    string;
+}
+
+const HIGH_IMPACT_ACTION_RULES:
+  HighImpactActionRule[] = [
+    {
+      category:
+        'destructive',
+
+      pattern:
+        /\b(?:delete|destroy|erase|purge)\b/i,
+
+      description:
+        'destructive data mutation',
+    },
+
+    {
+      category:
+        'destructive',
+
+      pattern:
+        /\bremove\s+(?:user|member|account|project|workspace|organization|record|item)\b/i,
+
+      description:
+        'destructive removal',
+    },
+
+    {
+      category:
+        'financial',
+
+      pattern:
+        /\b(?:purchase|buy\s+now|pay\s+now|place\s+order|confirm\s+order|submit\s+payment|complete\s+purchase|charge\s+card|issue\s+refund)\b/i,
+
+      description:
+        'financial transaction',
+    },
+
+    {
+      category:
+        'communication',
+
+      pattern:
+        /\b(?:invite\s+(?:user|member|guest|team|collaborator)|send\s+(?:invite|invitation|email|message|notification))\b/i,
+
+      description:
+        'external communication or invitation',
+    },
+
+    {
+      category:
+        'subscription',
+
+      pattern:
+        /\b(?:cancel\s+subscription|unsubscribe|terminate\s+(?:subscription|plan))\b/i,
+
+      description:
+        'subscription cancellation',
+    },
+
+    {
+      category:
+        'transfer',
+
+      pattern:
+        /\b(?:transfer\s+(?:funds|money|ownership)|wire\s+(?:funds|money)|withdraw\s+(?:funds|money))\b/i,
+
+      description:
+        'asset or ownership transfer',
+    },
+
+    {
+      category:
+        'admin',
+
+      pattern:
+        /\b(?:suspend|ban|deactivate|disable)\s+(?:user|member|account)\b|\brevoke\s+(?:access|role|permission)\b|\breset\s+(?:database|workspace|organization)\b/i,
+
+      description:
+        'destructive administrative operation',
+    },
+  ];
 
 const ACTION_TYPE_SCORES:
   Partial<
@@ -555,20 +640,33 @@ this.globalActionCounts.set(
       }
     }
 
-    if (
-      this.containsDestructiveTerm(
+    const highImpactClassification =
+      this.classifyHighImpactAction(
         label,
-      )
+      );
+
+    if (
+      highImpactClassification
     ) {
+      const explanation =
+        [
+          highImpactClassification
+            .category,
+          highImpactClassification
+            .description,
+        ].join(
+          ': ',
+        );
+
       if (
         this.allowDestructiveActions
       ) {
         reasons.push(
-          'Destructive action is explicitly allowed for this isolated exploration run',
+          `High-impact action is explicitly allowed for this isolated exploration run (${explanation})`,
         );
       } else {
         blockReasons.push(
-          'Action appears destructive or unsafe for autonomous exploration',
+          `Action appears destructive or unsafe for autonomous exploration (${explanation})`,
         );
       }
     }
@@ -1900,18 +1998,36 @@ this.globalActionCounts.set(
     );
   }
 
-  private containsDestructiveTerm(
-    value: string,
-  ): boolean {
-    const normalized =
-      this.normalize(value);
+  private classifyHighImpactAction(
+    value:
+      string,
+  ): {
+    category:
+      HighImpactActionRule['category'];
 
-    return DESTRUCTIVE_TERMS.some(
-      (term) =>
-        normalized.includes(
-          term,
-        ),
-    );
+    description:
+      string;
+  } | null {
+    for (
+      const rule of
+        HIGH_IMPACT_ACTION_RULES
+    ) {
+      if (
+        rule.pattern.test(
+          value,
+        )
+      ) {
+        return {
+          category:
+            rule.category,
+
+          description:
+            rule.description,
+        };
+      }
+    }
+
+    return null;
   }
 
   private scoreProductContext(
