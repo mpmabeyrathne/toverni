@@ -160,12 +160,21 @@ export async function runExplorer(
                     ?.actionMs ??
                 15_000,
 
-            artifactsDirectory:
+            ...(
                 input.auth
                     ?.storageStatePath
                     ? input.artifactsDirectory
-                    : input.artifactsDirectory ??
-                        'artifacts',
+                        ? {
+                            artifactsDirectory:
+                                input.artifactsDirectory,
+                          }
+                        : {}
+                    : {
+                        artifactsDirectory:
+                            input.artifactsDirectory ??
+                            'artifacts',
+                      }
+            ),
 
             ...(input.auth
                 ?.storageStatePath
