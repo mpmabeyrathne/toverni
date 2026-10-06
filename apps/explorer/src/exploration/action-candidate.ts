@@ -156,6 +156,14 @@ import type {
     
         exact:
           true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -183,6 +191,14 @@ import type {
     
         exact:
           true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
