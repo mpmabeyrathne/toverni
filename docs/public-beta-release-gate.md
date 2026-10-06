@@ -51,15 +51,6 @@ Recurring categories should become focused regression tests before the public be
 
 ## Prerequisites
 
-Run the ordinary validation first:
-
-```powershell
-pnpm --filter @toverni/explorer test
-pnpm --filter @toverni/explorer typecheck
-pnpm --filter @toverni/explorer build
-pnpm --filter @toverni/explorer package:smoke
-```
-
 Ollama must be running locally with the configured cheap and complex models installed.
 
 For the default configuration:
@@ -68,13 +59,29 @@ For the default configuration:
 ollama pull llama3.2:3b
 ```
 
-## Run the gate
+## Run the full local beta validation
+
+Use the canonical one-command validation:
+
+```powershell
+pnpm --filter @toverni/explorer release:validate
+```
+
+This runs, in order:
+
+1. full test suite;
+2. TypeScript typecheck;
+3. release build;
+4. clean-install npm package smoke;
+5. real-world public-beta release gate.
+
+If you already completed the first four checks and only need to rerun the real-world gate:
 
 ```powershell
 pnpm --filter @toverni/explorer release:gate
 ```
 
-The command writes:
+The release gate writes:
 
 ```text
 artifacts/release-gate/public-beta-release-gate.json
