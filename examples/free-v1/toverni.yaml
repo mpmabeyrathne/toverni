@@ -1,0 +1,27 @@
+target: http://localhost:3000
+requirements: ./requirements.md
+openapi: ./openapi.yaml
+output: ../../tests/toverni
+summaryJson: ../../artifacts/toverni-summary.json
+headless: true
+
+safety:
+  allowDestructiveActions: false
+
+model:
+  provider: ollama
+  reasoningEnabled: true
+  retryAttempts: 2
+  ollamaBaseUrl: http://127.0.0.1:11434
+  cheapModel: llama3.2:3b
+  complexModel: llama3.2:3b
+
+exploration:
+  maxActions: 50
+  maxModelCalls: 20
+
+timeouts:
+  navigationMs: 30000
+  actionMs: 15000
+  modelCallMs: 600000
+  testMs: 60000
