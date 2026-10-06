@@ -1482,6 +1482,7 @@ Core options:
       --requirements <path>        Requirements/document input
       --openapi <path>             OpenAPI YAML/JSON input
   -o, --output <path>              Generated Playwright test output directory
+      --summary-json <path>        Save machine-readable generation summary
       --headless                   Run Chromium headless
       --headed                     Show Chromium
       --resume <run-id>            Resume a prior exploration run
@@ -1491,8 +1492,10 @@ Safety:
       --deny-destructive-actions   Keep destructive actions blocked (default)
 
 Model:
+      --model-provider <name>      Model provider (currently: ollama)
       --model-reasoning            Enable grounded model reasoning/scenario generation
       --no-model-reasoning         Disable model reasoning
+      --model-retry-attempts <n>   Retry attempts per model call
       --ollama-base-url <url>      Ollama endpoint
       --cheap-model <name>         Cheap/fast model name
       --complex-model <name>       Complex model name
@@ -1505,8 +1508,8 @@ Budgets/timeouts:
       --model-timeout-ms <n>
       --test-timeout-ms <n>
 
-Authentication contract:
-      --storage-state <path>       Accepted by the CLI contract; authenticated exploration is implemented in TOV-118
+Authentication:
+      --storage-state <path>       Playwright storageState for authenticated exploration
 
 Config precedence:
   CLI flags > explicit/default YAML config > engine defaults
@@ -1526,7 +1529,9 @@ Config example:
   safety:
     allowDestructiveActions: false
   model:
+    provider: ollama
     reasoningEnabled: true
+    retryAttempts: 2
     ollamaBaseUrl: http://127.0.0.1:11434
     cheapModel: llama3.2:3b
     complexModel: llama3.2:3b
