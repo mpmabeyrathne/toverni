@@ -82,6 +82,46 @@ describe(
   'parsePublicCli',
   () => {
     it(
+      'resolves summary JSON output relative to the working directory',
+      async () => {
+        const directory =
+          await mkdtemp(
+            join(
+              tmpdir(),
+              'toverni-summary-cli-',
+            ),
+          );
+
+        const command =
+          await parsePublicCli(
+            [
+              'generate',
+              'http://localhost:3000',
+              '--summary-json',
+              './artifacts/summary.json',
+            ],
+            directory,
+          );
+
+        expect(
+          command,
+        ).toMatchObject({
+          kind:
+            'generate',
+
+          config: {
+            summaryJson:
+              join(
+                directory,
+                'artifacts',
+                'summary.json',
+              ),
+          },
+        });
+      },
+    );
+
+    it(
       'parses provider-neutral model settings while keeping Ollama as the current runtime provider',
       async () => {
         const command =
