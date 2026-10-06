@@ -7,8 +7,11 @@ import {
 } from './browser/index.js';
 
 import {
-  parseTargetUrl,
-} from './cli/parse-target.js';
+  applyModelEnvironment,
+  CliInputError,
+  getPublicCliHelp,
+  parsePublicCli,
+} from './cli/public-cli.js';
 
 import {
   logger,
@@ -18,17 +21,194 @@ import {
   runExplorer,
 } from './explorer/run-explorer.js';
 
+function formatZodError(
+  error:
+    ZodError,
+): string {
+  return error.issues
+    .map(
+      (issue) => {
+        const path =
+          issue.path.length >
+          0
+            ? issue.path.join(
+                '.',
+              )
+            : 'configuration';
+
+        return `${path}: ${issue.message}`;
+      },
+    )
+    .join(
+      '\n',
+    );
+}
+
 async function main():
 Promise<void> {
   try {
-    const job =
-      parseTargetUrl(
+    const command =
+      await parsePublicCli(
         process.argv.slice(2),
       );
 
+    if (
+      command.kind ===
+      'help'
+    ) {
+      console.log(
+        getPublicCliHelp(),
+      );
+
+      return;
+    }
+
+    const {
+      config,
+    } =
+      command;
+
+    if (
+      config.auth
+        ?.storageState
+    ) {
+      throw new CliInputError(
+        'Authenticated storage-state exploration is part of TOV-118 and is not active yet. Remove auth.storageState/--storage-state for browser-only generation.',
+      );
+    }
+
+    applyModelEnvironment(
+      config.model,
+    );
+
     await runExplorer({
       targetUrl:
-        job.targetUrl,
+        config.target!,
+
+      ...(config.requirements ||
+      config.openapi
+        ? {
+            knowledgeInput: {
+              ...(config.requirements
+                ? {
+                    requirementsPath:
+                      config.requirements,
+                  }
+                : {}),
+
+              ...(config.openapi
+                ? {
+                    openApiPath:
+                      config.openapi,
+                  }
+                : {}),
+            },
+          }
+        : {}),
+
+      ...(config.headless !==
+      undefined
+        ? {
+            headless:
+              config.headless,
+          }
+        : {}),
+
+      ...(config.output
+        ? {
+            outputDirectory:
+              config.output,
+          }
+        : {}),
+
+      ...(config.resumeRunId
+        ? {
+            resumeRunId:
+              config.resumeRunId,
+          }
+        : {}),
+
+      ...(config.safety
+        ?.allowDestructiveActions !==
+      undefined
+        ? {
+            allowDestructiveActions:
+              config.safety
+                .allowDestructiveActions,
+          }
+        : {}),
+
+      ...(config.exploration
+        ? {
+            explorationBudget: {
+              ...(config.exploration
+                .maxActions !==
+              undefined
+                ? {
+                    maxActions:
+                      config.exploration
+                        .maxActions,
+                  }
+                : {}),
+
+              ...(config.exploration
+                .maxModelCalls !==
+              undefined
+                ? {
+                    maxModelCalls:
+                      config.exploration
+                        .maxModelCalls,
+                  }
+                : {}),
+            },
+          }
+        : {}),
+
+      ...(config.timeouts
+        ? {
+            timeouts: {
+              ...(config.timeouts
+                .navigationMs !==
+              undefined
+                ? {
+                    navigationMs:
+                      config.timeouts
+                        .navigationMs,
+                  }
+                : {}),
+
+              ...(config.timeouts
+                .actionMs !==
+              undefined
+                ? {
+                    actionMs:
+                      config.timeouts
+                        .actionMs,
+                  }
+                : {}),
+
+              ...(config.timeouts
+                .modelCallMs !==
+              undefined
+                ? {
+                    modelCallMs:
+                      config.timeouts
+                        .modelCallMs,
+                  }
+                : {}),
+
+              ...(config.timeouts
+                .testMs !==
+              undefined
+                ? {
+                    testMs:
+                      config.timeouts
+                        .testMs,
+                  }
+                : {}),
+            },
+          }
+        : {}),
     });
   } catch (
     error:
@@ -36,14 +216,24 @@ Promise<void> {
   ) {
     if (
       error instanceof
+      CliInputError
+    ) {
+      console.error(
+        `Toverni: ${error.message}`,
+      );
+
+      process.exitCode =
+        1;
+
+      return;
+    }
+
+    if (
+      error instanceof
       ZodError
     ) {
-      logger.error(
-        {
-          issues:
-            error.issues,
-        },
-        'Invalid exploration configuration',
+      console.error(
+        `Toverni configuration is invalid:\n${formatZodError(error)}`,
       );
 
       process.exitCode =
