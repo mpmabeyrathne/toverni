@@ -448,8 +448,7 @@ try {
   }
 
   const version =
-    execFileSync(
-      npmCommand,
+    runNpm(
       [
         'exec',
         '--',
@@ -476,8 +475,7 @@ try {
   }
 
   const help =
-    execFileSync(
-      npmCommand,
+    runNpm(
       [
         'exec',
         '--',
