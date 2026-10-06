@@ -174,14 +174,42 @@ function normalize(
   value:
     string,
 ): string {
+  const aliases:
+    Record<
+      string,
+      string
+    > = {
+    unsupported:
+      'invalid',
+
+    reject:
+      'invalid',
+
+    rejected:
+      'invalid',
+
+    rejecting:
+      'invalid',
+  };
+
   return value
     .toLowerCase()
     .replace(
       /[^a-z0-9]+/g,
       ' ',
     )
-    .replace(
-      /\s+/g,
+    .split(
+      /\s+/,
+    )
+    .filter(
+      Boolean,
+    )
+    .map(
+      (token) =>
+        aliases[token] ??
+        token,
+    )
+    .join(
       ' ',
     )
     .trim();

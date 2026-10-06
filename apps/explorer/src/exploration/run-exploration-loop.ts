@@ -20,6 +20,7 @@ import type {
 
 import {
   ApplicationStateModel,
+  type TransitionAction,
 } from '../state/index.js';
 
 import {
@@ -30,6 +31,7 @@ import type {
   ExplorationBudget,
   ExplorationCheckpoint,
   ExplorationStopReason,
+  ExplorationCandidate,
 } from './exploration-contracts.js';
 
 import {
@@ -98,6 +100,9 @@ export interface RunExplorationLoopInput {
 export interface RunExplorationLoopResult {
   initialObservation:
   Observation;
+
+  initialStateId:
+  string;
 
   finalObservation:
   Observation;
@@ -179,6 +184,128 @@ function getContextualApiOperationIds(
         ),
     ),
   ].sort();
+}
+
+function createTransitionAction(
+  selected:
+    ExplorationCandidate,
+): TransitionAction {
+  const target =
+    selected.label;
+
+  switch (
+    selected.action.type
+  ) {
+    case 'input':
+    case 'textarea':
+    case 'contenteditable':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'upload-file'
+      ) {
+        return {
+          type:
+            'set-input-files',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .file
+              .name,
+        };
+      }
+
+      if (
+        selected.formExecution
+          ?.kind ===
+        'fill'
+      ) {
+        return {
+          type:
+            'fill',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+
+    case 'select':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'select'
+      ) {
+        return {
+          type:
+            'select',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+
+    case 'combobox':
+    case 'listbox':
+      if (
+        selected.formExecution
+          ?.kind ===
+        'fill'
+      ) {
+        return {
+          type:
+            'fill',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      if (
+        selected.formExecution
+          ?.kind ===
+        'choose-option'
+      ) {
+        return {
+          type:
+            'select',
+
+          target,
+
+          value:
+            selected
+              .formExecution
+              .value,
+        };
+      }
+
+      break;
+  }
+
+  return {
+    type:
+      'click',
+
+    target,
+  };
 }
 
 async function withRetry<T>(
@@ -416,6 +543,9 @@ export async function runExplorationLoop(
         currentState,
       );
 
+  const initialStateId =
+    currentPersistedState.id;
+
   // --------------------------------
   // Preserve raw observation evidence
   // --------------------------------
@@ -643,13 +773,10 @@ const decision =
           after:
             nextObservation,
 
-          action: {
-            type:
-              'click',
-
-            target:
-              selected.label,
-          },
+          action:
+            createTransitionAction(
+              selected,
+            ),
         });
 
     // ------------------------------
@@ -869,6 +996,8 @@ const decision =
 
   return {
     initialObservation,
+
+    initialStateId,
 
     finalObservation:
       currentObservation,

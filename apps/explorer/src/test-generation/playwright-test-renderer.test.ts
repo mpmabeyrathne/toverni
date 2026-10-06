@@ -149,6 +149,75 @@ describe(
     );
 
     it(
+      'sanitizes multiline descriptions before emitting comments',
+      () => {
+        const source =
+          compilePlaywrightTest({
+            targetUrl:
+              'https://example.com',
+
+            plan: {
+              ...readyPlan,
+
+              assertions: [
+                {
+                  afterActionId:
+                    'action-1',
+
+                  kind:
+                    'count' as const,
+
+                  description:
+                    'Confirm order total $25\n\nConfirm OrderCancel count became 1',
+
+                  target: {
+                    kind:
+                      'locator' as const,
+
+                    target: {
+                      by:
+                        'role' as const,
+
+                      role:
+                        'dialog',
+
+                      name:
+                        'Confirm order total $25\n\nConfirm OrderCancel',
+
+                      exact:
+                        true,
+                    },
+                  },
+
+                  matcher:
+                    'count' as const,
+
+                  expected:
+                    1,
+
+                  evidenceReferences: [
+                    'ACTION-1',
+                  ],
+                },
+              ],
+            },
+          });
+
+        expect(
+          source,
+        ).toContain(
+          '// Confirm order total $25 Confirm OrderCancel count became 1',
+        );
+
+        expect(
+          source,
+        ).not.toContain(
+          '// Confirm order total $25\n\nConfirm OrderCancel count became 1',
+        );
+      },
+    );
+
+    it(
       'produces deterministic source for the same validated IR',
       () => {
         const first =
@@ -252,5 +321,67 @@ describe(
         );
       },
     );
+
+    it(
+      'compiles deterministic file payloads into setInputFiles calls',
+      () => {
+        const source =
+          compilePlaywrightTest({
+            targetUrl:
+              'https://example.com',
+
+            plan: {
+              ...readyPlan,
+
+              steps: [
+                {
+                  actionId:
+                    'action-1',
+
+                  evidenceReference:
+                    'ACTION-1',
+
+                  description:
+                    'Upload file',
+
+                  operation: {
+                    kind:
+                      'set-input-files',
+
+                    target: {
+                      by:
+                        'label',
+
+                      label:
+                        'Upload file',
+
+                      exact:
+                        true,
+                    },
+
+                    file: {
+                      name:
+                        'toverni-test.txt',
+
+                      mimeType:
+                        'text/plain',
+
+                      content:
+                        'Toverni deterministic upload fixture',
+                    },
+                  },
+                },
+              ],
+            },
+          });
+
+        expect(
+          source,
+        ).toContain(
+          '.setInputFiles({ name: "toverni-test.txt", mimeType: "text/plain", buffer: Buffer.from("Toverni deterministic upload fixture", "utf8") });',
+        );
+      },
+    );
+
   },
 );

@@ -13,13 +13,16 @@ function observation(
     url?: string;
     semanticText?: string[];
     actions?: Array<{
-      type: 'button' | 'input';
+      type: 'button' | 'input' | 'dialog';
       tagName: string;
+      role?: string;
       name?: string;
+      text?: string;
       disabled: boolean;
       visible: boolean;
       formField?: {
         required: boolean;
+        inputType?: string;
         value?: string;
       };
     }>;
@@ -61,6 +64,166 @@ function observation(
 describe(
   'buildEvidenceBackedAssertions',
   () => {
+    it(
+      'ignores semantic text composed from multiple visible control labels',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-next',
+
+            actionEvidenceReference:
+              'ACTION-NEXT',
+
+            actionLabel:
+              'Next Page',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-NEXT',
+
+                type:
+                  'action',
+
+                source:
+                  'action-next',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-next',
+
+                actionId:
+                  'action-next',
+
+                actionTarget:
+                  'Next Page',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Previous PagePage 1Next Page',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Previous Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Next Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Previous PagePage 2Next Page',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Previous Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Next Page',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'text' &&
+              assertion.description
+                .includes(
+                  'Previous PagePage',
+                ),
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'visibility' &&
+              assertion.description
+                .includes(
+                  'Previous PagePage',
+                ),
+          ),
+        ).toBe(false);
+      },
+    );
+
+
     it(
       'derives meaningful assertions from an observed transition delta',
       () => {
@@ -429,5 +592,883 @@ describe(
         ).toEqual([]);
       },
     );
+    it(
+      'uses equivalent-state transitions as assertion evidence',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-page',
+
+            actionEvidenceReference:
+              'ACTION-PAGE',
+
+            actionLabel:
+              'Next Page',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-PAGE',
+
+                type:
+                  'action',
+
+                source:
+                  'action-page',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-page',
+
+                actionId:
+                  'action-page',
+
+                actionTarget:
+                  'Next Page',
+
+                explorationBlocked:
+                  true,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Page 1',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Page 2',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (item) =>
+              item.description ===
+              'Observed text appeared: Page 2',
+          ),
+        ).toBe(
+          true,
+        );
+      },
+    );
+
+
+    it(
+      'does not emit a brittle value assertion for file inputs',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-upload',
+
+            actionEvidenceReference:
+              'ACTION-UPLOAD',
+
+            actionLabel:
+              'Upload',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-UPLOAD',
+
+                type:
+                  'action',
+
+                source:
+                  'action-upload',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-upload',
+
+                actionId:
+                  'action-upload',
+
+                actionTarget:
+                  'Upload',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-02T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'No file selected',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          value:
+                            '',
+                        },
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'toverni-test.txt ready',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Upload file',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          inputType:
+                            'file',
+
+                          value:
+                            'C:\\fakepath\\toverni-test.txt',
+                        },
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'value',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+                'text' &&
+              assertion.description.includes(
+                'toverni-test.txt ready',
+              ),
+          ),
+        ).toBe(true);
+      },
+    );
+
+
+    it(
+      'treats dialog text fallback as an unlabeled role target',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-review',
+
+            actionEvidenceReference:
+              'ACTION-REVIEW',
+
+            actionLabel:
+              'Review Order',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-REVIEW',
+
+                type:
+                  'action',
+
+                source:
+                  'action-review',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-review',
+
+                actionId:
+                  'action-review',
+
+                actionTarget:
+                  'Review Order',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-04T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        text:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        text:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toHaveLength(1);
+
+        expect(
+          result[0],
+        ).toMatchObject({
+          kind:
+            'visibility',
+
+          matcher:
+            'visible',
+
+          target: {
+            kind:
+              'locator',
+
+            target: {
+              by:
+                'role',
+
+              role:
+                'dialog',
+            },
+          },
+        });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'count',
+          ),
+        ).toBe(false);
+      },
+    );
+
+
+    it(
+      'emits a zero-count assertion when an observed control is removed from the DOM',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-delete',
+
+            actionEvidenceReference:
+              'ACTION-DELETE',
+
+            actionLabel:
+              'Delete Todo',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-DELETE',
+
+                type:
+                  'action',
+
+                source:
+                  'action-delete',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-delete',
+
+                actionId:
+                  'action-delete',
+
+                actionTarget:
+                  'Delete Todo',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-05T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Learn Playwright Complete Todo Delete Todo',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Complete Todo',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Delete Todo',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [],
+                    actions: [],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind:
+                'count',
+
+              matcher:
+                'count',
+
+              expected:
+                0,
+
+              target: {
+                kind:
+                  'locator',
+
+                target: {
+                  by:
+                    'role',
+
+                  role:
+                    'button',
+
+                  name:
+                    'Delete Todo',
+
+                  exact:
+                    true,
+                },
+              },
+            }),
+          ]),
+        );
+      },
+    );
+
+
+    it(
+      'does not emit count assertions for hidden after-elements',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-confirm',
+
+            actionEvidenceReference:
+              'ACTION-CONFIRM',
+
+            actionLabel:
+              'Confirm Order',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-CONFIRM',
+
+                type:
+                  'action',
+
+                source:
+                  'action-confirm',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-confirm',
+
+                actionId:
+                  'action-confirm',
+
+                actionTarget:
+                  'Confirm Order',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-04T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25\n\nConfirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Order complete',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'dialog',
+
+                        tagName:
+                          'dialog',
+
+                        name:
+                          'Confirm order total $25Confirm OrderCancel',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.kind ===
+              'count',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: Order complete',
+          ),
+        ).toBe(true);
+      },
+    );
+
+
+    it(
+      'targets tab-separated table rows by ARIA row role',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-refresh',
+
+            actionEvidenceReference:
+              'ACTION-REFRESH',
+
+            actionLabel:
+              'Refresh',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-REFRESH',
+
+                type:
+                  'action',
+
+                source:
+                  'action-refresh',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-refresh',
+
+                actionId:
+                  'action-refresh',
+
+                actionTarget:
+                  'Refresh',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-01T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Alice\tPaid\t30',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Alice\tUpdated\t30',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind:
+                'text',
+
+              target: {
+                kind:
+                  'locator',
+
+                target: {
+                  by:
+                    'role',
+
+                  role:
+                    'row',
+
+                  name:
+                    'Alice Updated 30',
+
+                  exact:
+                    true,
+                },
+              },
+            }),
+          ]),
+        );
+      },
+    );
+
+
+    it(
+      'ignores semantic text composed only of visible action labels',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-retry',
+
+            actionEvidenceReference:
+              'ACTION-RETRY',
+
+            actionLabel:
+              'Retry',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-RETRY',
+
+                type:
+                  'action',
+
+                source:
+                  'action-retry',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-retry',
+
+                actionId:
+                  'action-retry',
+
+                actionTarget:
+                  'Retry',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-03T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Upload failed',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'UploadClear',
+                      'Uploaded',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Upload',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Retry',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          false,
+                      },
+
+                      {
+                        type:
+                          'button',
+
+                        tagName:
+                          'button',
+
+                        name:
+                          'Clear',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: UploadClear',
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description ===
+              'Observed text appeared: Uploaded',
+          ),
+        ).toBe(true);
+      },
+    );
+
   },
 );

@@ -209,6 +209,84 @@ describe(
         );
 
         it(
+            'chooses a different enabled select option when no explicit example exists',
+            () => {
+                const action:
+                    ActionElement = {
+                    type:
+                        'select',
+
+                    tagName:
+                        'select',
+
+                    name:
+                        'Status filter',
+
+                    disabled:
+                        false,
+
+                    visible:
+                        true,
+
+                    formField: {
+                        required:
+                            false,
+
+                        multiple:
+                            false,
+
+                        value:
+                            'All',
+
+                        options: [
+                            {
+                                value:
+                                    'All',
+
+                                label:
+                                    'All',
+
+                                disabled:
+                                    false,
+
+                                selected:
+                                    true,
+                            },
+
+                            {
+                                value:
+                                    'Paid',
+
+                                label:
+                                    'Paid',
+
+                                disabled:
+                                    false,
+
+                                selected:
+                                    false,
+                            },
+                        ],
+                    },
+                };
+
+                expect(
+                    generateFormTestData(
+                        action,
+                    ).values,
+                ).toContainEqual(
+                    expect.objectContaining({
+                        kind:
+                            'valid',
+
+                        value:
+                            'Paid',
+                    }),
+                );
+            },
+        );
+
+        it(
             'only creates an invalid empty value when required evidence exists',
             () => {
                 const requiredAction:
@@ -1063,6 +1141,115 @@ describe(
               ).toBe(0);
             },
           );
+          it(
+            'derives an invalid value when requirements define one exclusive allowed text value',
+            () => {
+              const action:
+                ActionElement = {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Card number',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              };
+
+              const knowledge:
+                KnowledgeContext = {
+                requirements: {
+                  sourcePath:
+                    '/fixtures/checkout-requirements.md',
+
+                  acceptanceCriteria: [
+                    'Invalid card input shows a validation error.',
+                  ],
+
+                  userRoles: [],
+
+                  capabilities: [
+                    'Local payment-like validation.',
+                  ],
+
+                  constraints: [
+                    'Card values other than 4242424242424242 are rejected.',
+                  ],
+
+                  domainTerms: [
+                    'card',
+                  ],
+
+                  rawText:
+                    'Card values other than 4242424242424242 are rejected.',
+                },
+
+                openApi:
+                  null,
+              };
+
+              const result =
+                generateFormTestData(
+                  action,
+                  knowledge,
+                );
+
+              expect(
+                result.values,
+              ).toContainEqual(
+                expect.objectContaining({
+                  kind:
+                    'valid',
+
+                  value:
+                    '4242424242424242',
+                }),
+              );
+
+              const invalid =
+                result.values.find(
+                  (value) =>
+                    value.kind ===
+                      'invalid' &&
+                    value.evidence.some(
+                      (item) =>
+                        item.source ===
+                        'requirements',
+                    ),
+                );
+
+              expect(
+                invalid,
+              ).toBeDefined();
+
+              expect(
+                invalid?.value,
+              ).not.toBe(
+                '4242424242424242',
+              );
+            },
+          );
+
           it(
             'generates valid checked and invalid unchecked values for a required checkbox',
             () => {

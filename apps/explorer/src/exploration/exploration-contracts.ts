@@ -106,6 +106,19 @@ export type ExplorationFormExecution =
   }
   | {
     kind:
+      'upload-file';
+
+    file: {
+      name: string;
+      mimeType: string;
+      content: string;
+    };
+
+    evidence:
+      TestDataEvidence[];
+  }
+  | {
+    kind:
     'set-checked';
 
     value:

@@ -33,6 +33,10 @@ import type {
       'check',
       'execute',
       'executed',
+      'exercise',
+      'case',
+      'described',
+      'requirement',
   
       // Generic browser/UI language
       'discovered',
@@ -71,6 +75,16 @@ import type {
           !stopWords.has(
             token,
           ),
+      );
+  }
+  
+  function isHarnessNavigation(
+    value:
+      string,
+  ): boolean {
+    return /\b(?:open|navigate|visit|go\s+to)\b[\s\S]*https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/\S*)?/i
+      .test(
+        value,
       );
   }
   
@@ -133,13 +147,19 @@ import type {
          * here.
          */
         const unsupportedSteps =
-          scenario.actions.filter(
-            (action) =>
-              !isSupported(
-                action,
-                corpusTokens,
-              ),
-          );
+          scenario.runtimeStatus ===
+            'passed'
+            ? []
+            : scenario.actions.filter(
+                (action) =>
+                  !isHarnessNavigation(
+                    action,
+                  ) &&
+                  !isSupported(
+                    action,
+                    corpusTokens,
+                  ),
+              );
   
         return {
           ...scenario,

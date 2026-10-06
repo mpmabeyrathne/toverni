@@ -92,6 +92,69 @@ export const testPlanStepOperationSchema =
         target:
           testPlanTargetSchema,
       }),
+
+      z.object({
+        kind:
+          z.literal(
+            'fill',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        value:
+          z.string(),
+      }),
+
+      z.object({
+        kind:
+          z.literal(
+            'select',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        value:
+          z.string(),
+      }),
+
+      z.object({
+        kind:
+          z.literal(
+            'set-checked',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        checked:
+          z.boolean(),
+      }),
+
+      z.object({
+        kind:
+          z.literal(
+            'set-input-files',
+          ),
+
+        target:
+          testPlanTargetSchema,
+
+        file:
+          z.object({
+            name:
+              z.string()
+                .min(1),
+
+            mimeType:
+              z.string()
+                .min(1),
+
+            content:
+              z.string(),
+          }),
+      }),
     ],
   );
 
@@ -135,6 +198,11 @@ export const testPlanStepSchema =
       z.string()
         .min(1),
 
+    transitionId:
+      z.string()
+        .min(1)
+        .optional(),
+
     description:
       z.string()
         .min(1),
@@ -152,6 +220,11 @@ export const testPlanAssertionSchema =
     afterActionId:
       z.string()
         .min(1),
+
+    afterTransitionId:
+      z.string()
+        .min(1)
+        .optional(),
 
     kind:
       z.enum([

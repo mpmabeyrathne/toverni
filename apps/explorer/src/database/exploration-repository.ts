@@ -763,6 +763,9 @@ export class ExplorationRepository {
   async getApplicationFlow(
     applicationId:
       string,
+
+    runId?:
+      string,
   ) {
     const [
       application,
@@ -784,7 +787,7 @@ export class ExplorationRepository {
       return null;
     }
 
-    const runs =
+    const applicationRuns =
       await this.db
         .select()
         .from(
@@ -798,6 +801,15 @@ export class ExplorationRepository {
             applicationId,
           ),
         );
+
+    const runs =
+      runId
+        ? applicationRuns.filter(
+            (run) =>
+              run.id ===
+              runId,
+          )
+        : applicationRuns;
 
     const states =
       await this.db

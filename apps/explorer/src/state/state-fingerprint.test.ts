@@ -518,5 +518,45 @@ describe(
         );
       },
     );
+
+    it(
+      'keeps bare-hash SPA views as different states',
+      () => {
+        const dashboard =
+          createStateFingerprint(
+            createObservation(
+              'https://example.com/#dashboard',
+              1,
+            ),
+          );
+
+        const profile =
+          createStateFingerprint(
+            createObservation(
+              'https://example.com/#profile',
+              1,
+            ),
+          );
+
+        expect(
+          dashboard.routePattern,
+        ).toBe(
+          '/dashboard',
+        );
+
+        expect(
+          profile.routePattern,
+        ).toBe(
+          '/profile',
+        );
+
+        expect(
+          dashboard.fingerprint,
+        ).not.toBe(
+          profile.fingerprint,
+        );
+      },
+    );
+
   },
 );

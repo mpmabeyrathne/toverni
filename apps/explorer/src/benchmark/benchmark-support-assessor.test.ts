@@ -61,6 +61,56 @@ import {
       );
   
       it(
+        'does not count loopback fixture navigation as an unsupported product action',
+        () => {
+          const result =
+            assessScenarioSupport(
+              [
+                {
+                  title:
+                    'Search and book an available room',
+  
+                  actions: [
+                    'I open the booking application at "http://127.0.0.1:10432"',
+                    'I search for available rooms',
+                  ],
+  
+                  expectedOutcomes: [
+                    'Available rooms are displayed',
+                  ],
+  
+                  executable:
+                    true,
+  
+                  runtimeStatus:
+                    'failed',
+  
+                  evidenceReferences: [],
+  
+                  unsupportedSteps: [],
+  
+                  humanEditsRequired:
+                    1,
+  
+                  assertionCount:
+                    1,
+                },
+              ],
+  
+              [
+                'Room Booking',
+                'Search available rooms',
+              ].join('\n'),
+            );
+  
+          expect(
+            result[0]
+              ?.unsupportedSteps,
+          ).toEqual([]);
+        },
+      );
+  
+      it(
         'flags an unsupported domain action',
         () => {
           const result =

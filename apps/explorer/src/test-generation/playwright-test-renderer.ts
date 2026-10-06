@@ -48,6 +48,18 @@ function quote(
   );
 }
 
+function commentText(
+  value:
+    string,
+): string {
+  return value
+    .replace(
+      /\s+/g,
+      ' ',
+    )
+    .trim();
+}
+
 function toBrowserTarget(
   target:
     TestPlanTarget,
@@ -163,6 +175,46 @@ function compileOperation(
           operation.target,
         ),
       )}.click();`;
+
+    case 'fill':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.fill(${quote(
+        operation.value,
+      )});`;
+
+    case 'select':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.selectOption(${quote(
+        operation.value,
+      )});`;
+
+    case 'set-checked':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setChecked(${String(
+        operation.checked,
+      )});`;
+
+    case 'set-input-files':
+      return `${renderPlaywrightLocator(
+        toBrowserTarget(
+          operation.target,
+        ),
+      )}.setInputFiles({ name: ${quote(
+        operation.file.name,
+      )}, mimeType: ${quote(
+        operation.file.mimeType,
+      )}, buffer: Buffer.from(${quote(
+        operation.file.content,
+      )}, "utf8") });`;
   }
 }
 
@@ -279,6 +331,22 @@ export function compilePlaywrightTest(
     ];
 
   for (
+    const assertion of
+      plan.assertions.filter(
+        (item) =>
+          item.afterActionId ===
+          '__initial__',
+      )
+  ) {
+    lines.push(
+      `  // Assertion evidence: ${assertion.evidenceReferences.join(', ')}`,
+      `  // ${commentText(assertion.description)}`,
+      `  await ${compileAssertion(assertion)}`,
+      '',
+    );
+  }
+
+  for (
     const step of
       plan.steps
   ) {
@@ -287,7 +355,7 @@ export function compilePlaywrightTest(
     );
 
     lines.push(
-      `  // ${step.description}`,
+      `  // ${commentText(step.description)}`,
     );
 
     lines.push(
@@ -299,8 +367,14 @@ export function compilePlaywrightTest(
     const assertions =
       plan.assertions.filter(
         (assertion) =>
-          assertion.afterActionId ===
-          step.actionId,
+          assertion
+            .afterTransitionId
+            ? assertion
+                .afterTransitionId ===
+              step.transitionId
+            : assertion
+                .afterActionId ===
+              step.actionId,
       );
 
     for (
@@ -312,7 +386,7 @@ export function compilePlaywrightTest(
       );
 
       lines.push(
-        `  // ${assertion.description}`,
+        `  // ${commentText(assertion.description)}`,
       );
 
       lines.push(

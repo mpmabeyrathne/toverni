@@ -1141,7 +1141,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1149,7 +1154,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1168,7 +1178,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'account@example.com',
           );
@@ -1176,7 +1191,12 @@ function setupWithObservation(
           expect(
             emailCandidate
               ?.formExecution
-              ?.value,
+              ?.kind ===
+            'fill'
+              ? emailCandidate
+                  .formExecution
+                  .value
+              : undefined,
           ).not.toBe(
             'invite@example.com',
           );
@@ -1407,7 +1427,12 @@ function setupWithObservation(
           const generatedValue =
             seatsCandidate
               ?.formExecution
-              ?.value;
+              ?.kind ===
+            'fill'
+              ? seatsCandidate
+                  .formExecution
+                  .value
+              : undefined;
       
           expect(
             typeof generatedValue,
@@ -1441,5 +1466,1278 @@ function setupWithObservation(
           ).toBe(true);
         },
       );
+
+      it(
+        'creates deterministic file upload execution from observed accept constraints',
+        () => {
+          const observation =
+            createObservation();
+
+          observation.actions.push({
+            type:
+              'input',
+
+            tagName:
+              'input',
+
+            name:
+              'Upload file',
+
+            inputType:
+              'file',
+
+            disabled:
+              false,
+
+            visible:
+              true,
+
+            formField: {
+              inputType:
+                'file',
+
+              required:
+                true,
+
+              accept:
+                '.txt',
+            },
+          });
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          const uploadCandidate =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Upload file',
+              );
+
+          expect(
+            uploadCandidate
+              ?.blocked,
+          ).toBe(false);
+
+          expect(
+            uploadCandidate
+              ?.formExecution,
+          ).toEqual(
+            expect.objectContaining({
+              kind:
+                'upload-file',
+
+              file: {
+                name:
+                  'toverni-test.txt',
+
+                mimeType:
+                  'text/plain',
+
+                content:
+                  'Toverni deterministic upload fixture',
+              },
+            }),
+          );
+        },
+      );
+
+
+      it(
+        'executes a sensitive field only when an explicit OpenAPI example grounds the value',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Password',
+
+                inputType:
+                  'password',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'password',
+
+                  inputType:
+                    'password',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const knowledge:
+            KnowledgeContext = {
+            requirements:
+              null,
+
+            openApi: {
+              sourcePath:
+                '/fixtures/auth.yaml',
+
+              title:
+                'Auth API',
+
+              version:
+                '1.0.0',
+
+              servers: [],
+
+              operations: [
+                {
+                  operationId:
+                    'createSession',
+
+                  method:
+                    'POST',
+
+                  path:
+                    '/api/session',
+
+                  parameters: [],
+
+                  requestBody: {
+                    content: {
+                      'application/json': {
+                        schema: {
+                          $ref:
+                            '#/components/schemas/SessionRequest',
+                        },
+                      },
+                    },
+                  },
+
+                  responses: [],
+
+                  security: [],
+
+                  tags: [],
+                },
+              ],
+
+              schemas: {
+                SessionRequest: {
+                  type:
+                    'object',
+
+                  required: [
+                    'password',
+                  ],
+
+                  properties: {
+                    password: {
+                      type:
+                        'string',
+
+                      example:
+                        'pass',
+                    },
+                  },
+                },
+              },
+            },
+          };
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+
+              apiOperationIds: [
+                'createSession',
+              ],
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Password',
+          );
+
+          expect(
+            decision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              'pass',
+          });
+
+          expect(
+            decision.selected
+              ?.blocked,
+          ).toBe(false);
+        },
+      );
+
+
+      it(
+        'explores a requirement-grounded invalid sensitive value before recovering to the allowed value',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'Invalid card input shows a validation error.',
+                'A valid local test card opens an order confirmation dialog.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Local payment-like validation.',
+              ],
+
+              constraints: [
+                'Card values other than 4242424242424242 are rejected.',
+              ],
+
+              domainTerms: [
+                'card',
+              ],
+
+              rawText:
+                'Card values other than 4242424242424242 are rejected.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const emptyObservation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Card number',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              emptyObservation,
+            );
+
+          const negativeDecision =
+            planner.plan({
+              state,
+
+              observation:
+                emptyObservation,
+
+              knowledge,
+            });
+
+          expect(
+            negativeDecision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+          });
+
+          const negativeValue =
+            negativeDecision.selected
+              ?.formExecution
+              ?.kind ===
+              'fill'
+                ? negativeDecision.selected
+                    .formExecution.value
+                : undefined;
+
+          expect(
+            negativeValue,
+          ).toBeDefined();
+
+          expect(
+            negativeValue,
+          ).not.toBe(
+            '4242424242424242',
+          );
+
+          const invalidObservation:
+            PageObservation = {
+            ...emptyObservation,
+
+            actions:
+              emptyObservation.actions.map(
+                (action) => ({
+                  ...action,
+
+                  formField:
+                    action.formField
+                      ? {
+                          ...action.formField,
+
+                          value:
+                            negativeValue ??
+                            '',
+                        }
+                      : undefined,
+                }),
+              ),
+          };
+
+          const invalidState =
+            setupWithObservation(
+              invalidObservation,
+            ).state;
+
+          const recoveryDecision =
+            planner.plan({
+              state:
+                invalidState,
+
+              observation:
+                invalidObservation,
+
+              knowledge,
+            });
+
+          const card =
+            recoveryDecision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Card number',
+              );
+
+          expect(
+            card?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              '4242424242424242',
+          });
+        },
+      );
+
+
+      it(
+        'recovers a sensitive field to the sole allowed test value when a prior value is present',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Card number',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '4242424242424240',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'A valid local test card opens an order confirmation dialog.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Local payment-like validation.',
+              ],
+
+              constraints: [
+                'Card values other than 4242424242424242 are rejected.',
+              ],
+
+              domainTerms: [
+                'card',
+              ],
+
+              rawText:
+                'Card values other than 4242424242424242 are rejected.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+              knowledge,
+            });
+
+          const card =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                  'Card number',
+              );
+
+          expect(
+            card?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              '4242424242424242',
+          });
+
+          expect(
+            card?.blocked,
+          ).toBe(false);
+        },
+      );
+
+
+      it(
+        'keeps a sensitive field blocked without explicit value evidence',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Password',
+
+                inputType:
+                  'password',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'password',
+
+                  inputType:
+                    'password',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          const password =
+            decision
+              .rankedCandidates[0];
+
+          expect(
+            password?.blocked,
+          ).toBe(true);
+
+          expect(
+            password
+              ?.blockReasons
+              .some(
+                (reason) =>
+                  reason.includes(
+                    'explicit trusted test value',
+                  ),
+              ),
+          ).toBe(true);
+        },
+      );
+
+
+      it(
+        'probes a requirement-grounded required field before autofill and then recovers',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/checkout-requirements.md',
+
+              acceptanceCriteria: [
+                'Checkout requires a customer name before continuing.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Multi-step checkout.',
+              ],
+
+              constraints: [
+                'Empty required fields cannot advance.',
+              ],
+
+              domainTerms: [
+                'checkout',
+                'customer',
+                'name',
+              ],
+
+              rawText:
+                'Checkout requires a customer name before continuing.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Customer name',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Continue',
+
+                text:
+                  'Continue',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const validationDecision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+            });
+
+          expect(
+            validationDecision.selected
+              ?.label,
+          ).toBe(
+            'Continue',
+          );
+
+          planner.recordActionExecution(
+            validationDecision.selected!,
+          );
+
+          const validationObservation:
+            PageObservation = {
+            ...observation,
+
+            semanticText: [
+              'Checkout',
+              'Name is required',
+            ],
+          };
+
+          const validationState =
+            setupWithObservation(
+              validationObservation,
+            ).state;
+
+          const recoveryDecision =
+            planner.plan({
+              state:
+                validationState,
+
+              observation:
+                validationObservation,
+
+              knowledge,
+            });
+
+          expect(
+            recoveryDecision.selected
+              ?.label,
+          ).toBe(
+            'Customer name',
+          );
+
+          expect(
+            recoveryDecision.selected
+              ?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+          });
+        },
+      );
+
+
+      it(
+        'derives search and filter values from observed table data',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/data-grid/requirements.md',
+
+              acceptanceCriteria: [
+                'Search filters rows by customer name.',
+                'Status filtering shows only matching rows.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Search and filter.',
+              ],
+
+              constraints: [],
+
+              domainTerms: [
+                'search',
+                'status',
+                'customer',
+              ],
+
+              rawText:
+                'Search filters rows by customer name. Status filtering shows only matching rows.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            semanticText: [
+              'Orders',
+              'Customer\tStatus\tAmount',
+              'Bob\tPending\t10',
+              'Dan\tPending\t20',
+            ],
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Search customers',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'select',
+
+                tagName:
+                  'select',
+
+                name:
+                  'Status filter',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  required:
+                    false,
+
+                  multiple:
+                    false,
+
+                  value:
+                    'All',
+
+                  options: [
+                    {
+                      value:
+                        'All',
+
+                      label:
+                        'All',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        true,
+                    },
+
+                    {
+                      value:
+                        'Paid',
+
+                      label:
+                        'Paid',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        false,
+                    },
+
+                    {
+                      value:
+                        'Pending',
+
+                      label:
+                        'Pending',
+
+                      disabled:
+                        false,
+
+                      selected:
+                        false,
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+              knowledge,
+            });
+
+          const search =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Search customers',
+              );
+
+          const filter =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Status filter',
+              );
+
+          expect(
+            search?.formExecution,
+          ).toMatchObject({
+            kind:
+              'fill',
+
+            value:
+              'Bob',
+          });
+
+          expect(
+            filter?.formExecution,
+          ).toMatchObject({
+            kind:
+              'select',
+
+            value:
+              'Pending',
+          });
+        },
+      );
+
+
+      it(
+        'prioritizes requirement-grounded data controls before generic empty text setup',
+        () => {
+          const knowledge:
+            KnowledgeContext = {
+            requirements: {
+              sourcePath:
+                '/fixtures/data-grid/requirements.md',
+
+              acceptanceCriteria: [
+                'Sorting by amount toggles ascending and descending order.',
+                'Pagination changes the visible result set.',
+                'Refresh updates the table status using a local API-like update.',
+              ],
+
+              userRoles: [],
+
+              capabilities: [
+                'Sort dynamic table.',
+                'Paginate results.',
+                'Refresh API-driven status.',
+              ],
+
+              constraints: [],
+
+              domainTerms: [
+                'sort',
+                'page',
+                'refresh',
+              ],
+
+              rawText:
+                'Sort, paginate, and refresh the data grid.',
+            },
+
+            openApi:
+              null,
+          };
+
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Search customers',
+
+                inputType:
+                  'text',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  inputType:
+                    'text',
+
+                  required:
+                    false,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sort Amount',
+
+                text:
+                  'Sort Amount',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              knowledge,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Sort Amount',
+          );
+        },
+      );
+
+
+      it(
+        'prioritizes unfilled grounded form setup before a submit button',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'input',
+
+                tagName:
+                  'input',
+
+                name:
+                  'Email',
+
+                inputType:
+                  'email',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+
+                formField: {
+                  htmlName:
+                    'email',
+
+                  inputType:
+                    'email',
+
+                  required:
+                    true,
+
+                  value:
+                    '',
+                },
+              },
+
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sign In',
+
+                text:
+                  'Sign In',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Email',
+          );
+        },
+      );
+
+
+      it(
+        'treats sign out as reversible session navigation rather than destructive data mutation',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'button',
+
+                tagName:
+                  'button',
+
+                name:
+                  'Sign Out',
+
+                text:
+                  'Sign Out',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const {
+            state,
+            planner,
+          } =
+            setupWithObservation(
+              observation,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+              observation,
+            });
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Sign Out',
+          );
+
+          expect(
+            decision.selected
+              ?.blocked,
+          ).toBe(false);
+        },
+      );
+
     },
   );

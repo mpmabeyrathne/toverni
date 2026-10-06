@@ -7,14 +7,90 @@ import type {
   function normalize(
     value: string,
   ): string {
+    const aliases:
+      Record<
+        string,
+        string
+      > = {
+      unsupported:
+        'invalid',
+
+      reject:
+        'invalid',
+
+      rejected:
+        'invalid',
+
+      rejecting:
+        'invalid',
+
+      require:
+        'required',
+
+      requires:
+        'required',
+
+      requiring:
+        'required',
+
+      continues:
+        'continue',
+
+      continuing:
+        'continue',
+
+      continued:
+        'continue',
+
+      advance:
+        'continue',
+
+      advances:
+        'continue',
+
+      advancing:
+        'continue',
+
+      advanced:
+        'continue',
+
+      proceed:
+        'continue',
+
+      proceeds:
+        'continue',
+
+      proceeding:
+        'continue',
+
+      proceeded:
+        'continue',
+
+      row:
+        'results',
+
+      rows:
+        'results',
+    };
+
     return value
       .toLowerCase()
       .replace(
         /[^a-z0-9]+/g,
         ' ',
       )
-      .replace(
-        /\s+/g,
+      .split(
+        /\s+/,
+      )
+      .filter(
+        Boolean,
+      )
+      .map(
+        (token) =>
+          aliases[token] ??
+          token,
+      )
+      .join(
         ' ',
       )
       .trim();

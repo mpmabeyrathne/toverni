@@ -299,6 +299,24 @@ function canonicalizeArray(
     .join('|');
 }
 
+function semanticScenarioTitle(
+  scenario:
+    GroundedScenarioCandidate,
+): string {
+  if (
+    scenario.type ===
+    'negative'
+  ) {
+    return scenario.title
+      .replace(
+        /^\s*negative requirement\s*:\s*/i,
+        '',
+      );
+  }
+
+  return scenario.title;
+}
+
 function createSemanticScenarioKey(
   scenario:
     GroundedScenarioCandidate,
@@ -331,7 +349,9 @@ function createSemanticScenarioKey(
   return [
     scenario.type,
     canonicalizeSemanticPhrase(
-      scenario.title,
+      semanticScenarioTitle(
+        scenario,
+      ),
     ),
     canonicalizeArray(
       scenario.actions,
@@ -342,6 +362,21 @@ function createSemanticScenarioKey(
   ].join('||');
 }
 
+function isExplicitNegativeRequirementScenario(
+  scenario:
+    GroundedScenarioCandidate,
+): boolean {
+  return (
+    scenario.type ===
+      'negative' &&
+    scenario.title
+      .toLowerCase()
+      .startsWith(
+        'negative requirement:',
+      )
+  );
+}
+
 function selectRepresentative(
   left:
     GroundedScenarioCandidate,
@@ -349,6 +384,25 @@ function selectRepresentative(
   right:
     GroundedScenarioCandidate,
 ): GroundedScenarioCandidate {
+  const leftExplicitNegative =
+    isExplicitNegativeRequirementScenario(
+      left,
+    );
+
+  const rightExplicitNegative =
+    isExplicitNegativeRequirementScenario(
+      right,
+    );
+
+  if (
+    leftExplicitNegative !==
+    rightExplicitNegative
+  ) {
+    return rightExplicitNegative
+      ? right
+      : left;
+  }
+
   const leftEvidence =
     new Set(
       left.evidenceReferences,

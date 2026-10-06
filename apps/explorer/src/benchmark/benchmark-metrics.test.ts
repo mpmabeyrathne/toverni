@@ -316,5 +316,208 @@ describe(
         ).toBe(1);
       },
     );
+
+    it(
+      'counts equivalent unsupported and invalid file-type wording as important-flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Unsupported file type',
+
+                actions: [
+                  'Choose unsupported file type',
+                ],
+
+                expectedOutcomes: [
+                  'Validation error',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-2',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+            [
+              {
+                id:
+                  'UP-1',
+
+                title:
+                  'Validate upload file type',
+
+                important:
+                  true,
+
+                keywords: [
+                  'file',
+                  'type',
+                  'invalid',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
+
+
+
+    it(
+      'counts equivalent required and progression wording for important-flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Checkout requires a customer name before continuing',
+
+                actions: [
+                  'Continue without customer name',
+                ],
+
+                expectedOutcomes: [
+                  'Name is required',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-1',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+
+            [
+              {
+                id:
+                  'CHECK-1',
+
+                title:
+                  'Validate required customer details',
+
+                important:
+                  true,
+
+                keywords: [
+                  'name',
+                  'required',
+                  'continue',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
+
+
+    it(
+      'normalizes row and results wording for search flow coverage',
+      () => {
+        const result =
+          calculateBenchmarkMetrics(
+            [
+              {
+                title:
+                  'Search customer rows',
+
+                actions: [
+                  'Fill Search customers',
+                ],
+
+                expectedOutcomes: [
+                  'Only matching customer rows remain',
+                ],
+
+                executable:
+                  true,
+
+                runtimeStatus:
+                  'passed',
+
+                evidenceReferences: [
+                  'REQ-1',
+                ],
+
+                unsupportedSteps: [],
+
+                humanEditsRequired:
+                  0,
+
+                assertionCount:
+                  1,
+              },
+            ],
+
+            [
+              {
+                id:
+                  'GRID-1',
+
+                title:
+                  'Search table rows',
+
+                important:
+                  true,
+
+                keywords: [
+                  'search',
+                  'customer',
+                  'results',
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result
+            .importantFlowCoverage,
+        ).toBe(
+          1,
+        );
+      },
+    );
   },
 );

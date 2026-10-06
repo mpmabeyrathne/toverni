@@ -169,7 +169,7 @@ import {
         ].join('\n'),
         {
           numPredict:
-            1024,
+            2048,
         },
       );
     }

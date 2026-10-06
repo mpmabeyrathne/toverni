@@ -1,5 +1,6 @@
 import type {
   ActionElement,
+  PageObservation,
 } from '../contracts/page-observation.js';
 
 import {
@@ -52,7 +53,6 @@ const DEFAULT_BUDGET:
 const SENSITIVE_INPUT_TYPES =
   new Set([
     'password',
-    'file',
     'hidden',
   ]);
 
@@ -78,9 +78,6 @@ const DESTRUCTIVE_TERMS = [
   'delete',
   'remove',
   'destroy',
-  'logout',
-  'log out',
-  'sign out',
   'purchase',
   'pay now',
   'place order',
@@ -160,6 +157,9 @@ export class DeterministicExplorationPlanner {
 
     budget:
       Partial<ExplorationBudget> = {},
+
+    private readonly allowDestructiveActions:
+      boolean = false,
   ) {
     this.budget = {
       ...DEFAULT_BUDGET,
@@ -194,6 +194,11 @@ export class DeterministicExplorationPlanner {
       });
     }
 
+    const validationProbeLabels =
+      this.requirementValidationProbeLabels(
+        input,
+      );
+
     const candidates =
       input.observation.actions
         .map(
@@ -205,6 +210,8 @@ export class DeterministicExplorationPlanner {
               input.productContext,
               input.knowledge,
               input.apiOperationIds,
+              input.observation,
+              validationProbeLabels,
             ),
         )
         .sort(
@@ -418,6 +425,12 @@ this.globalActionCounts.set(
     apiOperationIds:
       | string[]
       | undefined,
+
+    observation:
+      PageObservation,
+
+    validationProbeLabels:
+      Set<string>,
   ): ExplorationCandidate {
     const signature =
       createActionSignature(
@@ -441,13 +454,24 @@ this.globalActionCounts.set(
       );
 
     const formExecution =
-      sensitiveFormAction
-        ? null
-        : this.createFormExecution(
-          action,
-          knowledge,
-          apiOperationIds,
-        );
+      this.createFormExecution(
+        action,
+        knowledge,
+        apiOperationIds,
+        observation,
+      );
+
+    const requirementGroundedReadControl =
+      this.isRequirementGroundedReadControl(
+        label,
+        knowledge,
+      );
+
+    const sensitiveFormGrounded =
+      !sensitiveFormAction ||
+      this.hasExplicitSensitiveValueEvidence(
+        formExecution,
+      );
 
     const previouslyVisited =
       this.hasVisitedAction(
@@ -500,10 +524,18 @@ this.globalActionCounts.set(
     }
 
     if (
-      sensitiveFormAction
+      sensitiveFormAction &&
+      !sensitiveFormGrounded
     ) {
       blockReasons.push(
-        'Sensitive form field is not eligible for autonomous test-data execution',
+        'Sensitive form field requires an explicit trusted test value before autonomous execution',
+      );
+    } else if (
+      sensitiveFormAction &&
+      sensitiveFormGrounded
+    ) {
+      reasons.push(
+        'Sensitive form value is explicitly grounded by trusted product evidence',
       );
     }
 
@@ -528,9 +560,17 @@ this.globalActionCounts.set(
         label,
       )
     ) {
-      blockReasons.push(
-        'Action appears destructive or unsafe for autonomous exploration',
-      );
+      if (
+        this.allowDestructiveActions
+      ) {
+        reasons.push(
+          'Destructive action is explicitly allowed for this isolated exploration run',
+        );
+      } else {
+        blockReasons.push(
+          'Action appears destructive or unsafe for autonomous exploration',
+        );
+      }
     }
 
     if (previouslyVisited) {
@@ -594,6 +634,55 @@ this.globalActionCounts.set(
       );
     }
 
+    if (
+      formExecution &&
+      this.isUnfilledFormSetup(
+        action,
+      ) &&
+      !requirementGroundedReadControl
+    ) {
+      score += 50;
+
+      reasons.push(
+        'Unfilled grounded form setup is prioritized before submit or transaction actions',
+      );
+    }
+
+    if (
+      requirementGroundedReadControl
+    ) {
+      const refreshLike =
+        /\b(?:refresh|reload|sync)\b/i
+          .test(
+            label,
+          );
+
+      score +=
+        refreshLike
+          ? 10
+          : 60;
+
+      reasons.push(
+        refreshLike
+          ? 'Refresh-like data mutation is deferred until other grounded query controls are explored'
+          : 'Requirement-grounded read/query control is prioritized before generic form setup',
+      );
+    }
+
+    if (
+      validationProbeLabels.has(
+        this.normalize(
+          label,
+        ),
+      )
+    ) {
+      score += 80;
+
+      reasons.push(
+        'Requirement-grounded empty-field validation is probed before valid form setup',
+      );
+    }
+
     const contextResult =
       this.scoreProductContext(
         label,
@@ -637,6 +726,279 @@ this.globalActionCounts.set(
 
       graphVisitCount,
     };
+  }
+
+  private isRequirementGroundedReadControl(
+    label:
+      string,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): boolean {
+    const requirements =
+      knowledge?.requirements;
+
+    if (!requirements) {
+      return false;
+    }
+
+    const requirementText = [
+      ...requirements
+        .acceptanceCriteria,
+      ...requirements
+        .capabilities,
+      ...requirements
+        .constraints,
+      requirements.rawText,
+    ].join(
+      ' ',
+    );
+
+    const checks = [
+      {
+        label:
+          /\bsearch\b/i,
+
+        requirement:
+          /\bsearch\b/i,
+      },
+      {
+        label:
+          /\bfilter\b/i,
+
+        requirement:
+          /\bfilter(?:ing|s|ed)?\b/i,
+      },
+      {
+        label:
+          /\bsort\b/i,
+
+        requirement:
+          /\bsort(?:ing|s|ed)?\b/i,
+      },
+      {
+        label:
+          /\brefresh\b/i,
+
+        requirement:
+          /\brefresh(?:es|ed|ing)?\b/i,
+      },
+      {
+        label:
+          /\b(?:next|previous)\s+page\b|\bpage\b/i,
+
+        requirement:
+          /\b(?:page|pagination|paginate|paginates|paginated|paginating)\b/i,
+      },
+    ];
+
+    return checks.some(
+      (check) =>
+        check.label.test(
+          label,
+        ) &&
+        check.requirement.test(
+          requirementText,
+        ),
+    );
+  }
+
+  private requirementValidationProbeLabels(
+    input:
+      PlanExplorationInput,
+  ): Set<string> {
+    const requirements =
+      input.knowledge
+        ?.requirements;
+
+    if (!requirements) {
+      return new Set();
+    }
+
+    const requirementTexts = [
+      ...requirements
+        .acceptanceCriteria,
+      ...requirements
+        .constraints,
+    ];
+
+    const emptyVisibleFields =
+      input.observation.actions
+        .filter(
+          (action) =>
+            action.visible &&
+            this.requiresFormExecution(
+              action,
+            ) &&
+            typeof action.formField
+              ?.value ===
+              'string' &&
+            action.formField
+              .value
+              .trim()
+              .length ===
+              0,
+        );
+
+    if (
+      emptyVisibleFields.length ===
+      0
+    ) {
+      return new Set();
+    }
+
+    const progressionActions =
+      input.observation.actions
+        .filter(
+          (action) =>
+            action.visible &&
+            !action.disabled &&
+            (
+              action.type ===
+                'button' ||
+              action.type ===
+                'link'
+            ) &&
+            /\b(?:continue|next|proceed|advance|submit)\b/i
+              .test(
+                getActionLabel(
+                  action,
+                ),
+              ),
+        );
+
+    const labels =
+      new Set<string>();
+
+    for (
+      const field of
+        emptyVisibleFields
+    ) {
+      const fieldText =
+        [
+          field.name,
+          field.formField
+            ?.htmlName,
+          field.formField
+            ?.placeholder,
+        ]
+          .filter(
+            (
+              value,
+            ): value is string =>
+              typeof value ===
+              'string',
+          )
+          .join(
+            ' ',
+          );
+
+      const fieldTerms =
+        [
+          ...new Set(
+            this.normalize(
+              fieldText,
+            )
+              .replace(
+                /[^a-z0-9]+/g,
+                ' ',
+              )
+              .split(
+                /\s+/,
+              )
+              .filter(
+                (term) =>
+                  term.length >=
+                    3 &&
+                  ![
+                    'field',
+                    'input',
+                    'text',
+                  ].includes(
+                    term,
+                  ),
+              ),
+          ),
+        ];
+
+      if (
+        fieldTerms.length ===
+        0
+      ) {
+        continue;
+      }
+
+      const groundedRequirement =
+        requirementTexts.find(
+          (requirement) => {
+            const normalized =
+              this.normalize(
+                requirement,
+              );
+
+            const terms =
+              new Set(
+                normalized
+                  .replace(
+                    /[^a-z0-9]+/g,
+                    ' ',
+                  )
+                  .split(
+                    /\s+/,
+                  )
+                  .filter(
+                    Boolean,
+                  ),
+              );
+
+            const referencesField =
+              fieldTerms.every(
+                (term) =>
+                  terms.has(
+                    term,
+                  ),
+              );
+
+            const marksRequired =
+              /\b(?:requires?|required|mandatory|must\s+(?:provide|enter|supply|include))\b/i
+                .test(
+                  requirement,
+                );
+
+            const blocksProgression =
+              /\b(?:before\s+(?:continuing|proceeding|advancing|submitting)|cannot\s+(?:continue|proceed|advance|submit)|can't\s+(?:continue|proceed|advance|submit))\b/i
+                .test(
+                  requirement,
+                );
+
+            return (
+              referencesField &&
+              marksRequired &&
+              blocksProgression
+            );
+          },
+        );
+
+      if (!groundedRequirement) {
+        continue;
+      }
+
+      for (
+        const action of
+          progressionActions
+      ) {
+        labels.add(
+          this.normalize(
+            getActionLabel(
+              action,
+            ),
+          ),
+        );
+      }
+    }
+
+    return labels;
   }
 
   private checkBudget(
@@ -769,6 +1131,150 @@ this.globalActionCounts.set(
     );
   }
 
+  private createDeterministicUpload(
+    action:
+      ActionElement,
+  ):
+    | ExplorationFormExecution
+    | null {
+    const inputType =
+      action.formField
+        ?.inputType ??
+      action.inputType;
+
+    if (
+      action.type !==
+        'input' ||
+      inputType
+        ?.toLowerCase() !==
+        'file'
+    ) {
+      return null;
+    }
+
+    const accept =
+      action.formField
+        ?.accept
+        ?.split(',')
+        .map(
+          (value) =>
+            value.trim(),
+        )
+        .find(
+          (value) =>
+            value.length >
+            0,
+        );
+
+    let extension =
+      'txt';
+
+    let mimeType =
+      'text/plain';
+
+    if (
+      accept?.startsWith(
+        '.',
+      )
+    ) {
+      extension =
+        accept
+          .slice(1)
+          .replace(
+            /[^a-z0-9]+/gi,
+            '',
+          ) ||
+        'txt';
+
+      const mimeByExtension:
+        Record<
+          string,
+          string
+        > = {
+          txt:
+            'text/plain',
+
+          csv:
+            'text/csv',
+
+          json:
+            'application/json',
+
+          pdf:
+            'application/pdf',
+
+          png:
+            'image/png',
+
+          jpg:
+            'image/jpeg',
+
+          jpeg:
+            'image/jpeg',
+        };
+
+      mimeType =
+        mimeByExtension[
+          extension
+            .toLowerCase()
+        ] ??
+        'application/octet-stream';
+    } else if (
+      accept?.includes(
+        '/',
+      )
+    ) {
+      mimeType =
+        accept;
+
+      const subtype =
+        accept
+          .split('/')[1]
+          ?.split('+')[0]
+          ?.replace(
+            /[^a-z0-9]+/gi,
+            '',
+          );
+
+      if (subtype) {
+        extension =
+          subtype ===
+            'plain'
+            ? 'txt'
+            : subtype;
+      }
+    }
+
+    return {
+      kind:
+        'upload-file',
+
+      file: {
+        name:
+          `toverni-test.${extension}`,
+
+        mimeType,
+
+        content:
+          'Toverni deterministic upload fixture',
+      },
+
+      evidence: [
+        {
+          source:
+            accept
+              ? 'ui'
+              : 'fallback',
+
+          detail:
+            accept
+              ? `File input accept constraint: ${accept}`
+              : 'Deterministic file payload for unconstrained file input',
+        },
+      ],
+    };
+  }
+
   private createFormExecution(
     action:
       ActionElement,
@@ -780,6 +1286,9 @@ this.globalActionCounts.set(
     apiOperationIds:
       | string[]
       | undefined,
+
+    observation:
+      PageObservation,
   ):
     | ExplorationFormExecution
     | null {
@@ -789,6 +1298,15 @@ this.globalActionCounts.set(
       )
     ) {
       return null;
+    }
+
+    const uploadExecution =
+      this.createDeterministicUpload(
+        action,
+      );
+
+    if (uploadExecution) {
+      return uploadExecution;
     }
 
     const resolutionContext =
@@ -818,12 +1336,100 @@ this.globalActionCounts.set(
       return null;
     }
 
+    const requirementGroundedInvalidValue =
+      generated.values.find(
+        (value) =>
+          value.kind ===
+            'invalid' &&
+          value.evidence.some(
+            (item) =>
+              item.source ===
+                'requirements' &&
+              /\bother\s+than\b.*\b(?:rejected|invalid|not\s+allowed|forbidden)\b/i
+                .test(
+                  item.detail,
+                ),
+          ),
+      );
+
+    const currentValue =
+      action.formField
+        ?.value;
+
+    let selectedValue =
+      requirementGroundedInvalidValue &&
+      typeof currentValue ===
+        'string' &&
+      currentValue.trim()
+        .length ===
+        0
+        ? requirementGroundedInvalidValue
+        : validValue;
+
+    const observedSearchValue =
+      this.observedSearchValue(
+        action,
+        observation,
+        knowledge,
+      );
+
+    if (
+      observedSearchValue
+    ) {
+      selectedValue = {
+        kind:
+          'valid',
+
+        value:
+          observedSearchValue,
+
+        evidence: [
+          {
+            source:
+              'ui',
+
+            detail:
+              'Derived deterministic search value from an observed data row',
+          },
+        ],
+      };
+    }
+
+    const observedFilterValue =
+      this.observedFilterValue(
+        action,
+        observation,
+        knowledge,
+      );
+
+    if (
+      observedFilterValue
+    ) {
+      selectedValue = {
+        kind:
+          'valid',
+
+        value:
+          observedFilterValue,
+
+        evidence: [
+          {
+            source:
+              'ui',
+
+            detail:
+              'Derived deterministic filter value from observed data and enabled options',
+          },
+        ],
+      };
+    }
+
     switch (action.type) {
       case 'input':
       case 'textarea':
       case 'contenteditable': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -834,16 +1440,16 @@ this.globalActionCounts.set(
             'fill',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       case 'select': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -854,16 +1460,16 @@ this.globalActionCounts.set(
             'select',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       case 'combobox': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -878,10 +1484,10 @@ this.globalActionCounts.set(
               'choose-option',
 
             value:
-              validValue.value,
+              selectedValue.value,
 
             evidence:
-              validValue.evidence,
+              selectedValue.evidence,
           };
         }
 
@@ -894,10 +1500,10 @@ this.globalActionCounts.set(
               'fill',
 
             value:
-              validValue.value,
+              selectedValue.value,
 
             evidence:
-              validValue.evidence,
+              selectedValue.evidence,
           };
         }
 
@@ -906,7 +1512,7 @@ this.globalActionCounts.set(
 
       case 'listbox': {
         if (
-          typeof validValue.value !==
+          typeof selectedValue.value !==
           'string'
         ) {
           return null;
@@ -917,17 +1523,17 @@ this.globalActionCounts.set(
             'choose-option',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       case 'checkbox':
       case 'radio': {
         if (
-          typeof validValue
+          typeof selectedValue
             .value !==
           'boolean' ||
           action.formField
@@ -942,20 +1548,296 @@ this.globalActionCounts.set(
             'set-checked',
 
           value:
-            validValue.value,
+            selectedValue.value,
 
           currentValue:
             action.formField
               .checked,
 
           evidence:
-            validValue.evidence,
+            selectedValue.evidence,
         };
       }
 
       default:
         return null;
     }
+  }
+
+  private observedDataRows(
+    observation:
+      PageObservation,
+  ): string[][] {
+    return observation
+      .semanticText
+      .filter(
+        (value) =>
+          value.includes(
+            '\t',
+          ),
+      )
+      .map(
+        (value) =>
+          value
+            .split(
+              '\t',
+            )
+            .map(
+              (part) =>
+                part.trim(),
+            )
+            .filter(
+              Boolean,
+            ),
+      )
+      .filter(
+        (parts) =>
+          parts.length >=
+          2,
+      );
+  }
+
+  private observedSearchValue(
+    action:
+      ActionElement,
+
+    observation:
+      PageObservation,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): string | null {
+    const label =
+      getActionLabel(
+        action,
+      );
+
+    if (
+      !/\bsearch\b/i.test(
+        label,
+      ) ||
+      !knowledge
+        ?.requirements ||
+      !/\bsearch\b/i.test(
+        knowledge.requirements
+          .rawText,
+      )
+    ) {
+      return null;
+    }
+
+    const currentValue =
+      action.formField
+        ?.value;
+
+    if (
+      typeof currentValue ===
+        'string' &&
+      currentValue.trim()
+        .length >
+        0
+    ) {
+      return null;
+    }
+
+    const actionChrome =
+      this.normalize(
+        observation.actions
+          .map(
+            (candidate) =>
+              getActionLabel(
+                candidate,
+              ),
+          )
+          .join(
+            ' ',
+          ),
+      );
+
+    for (
+      const row of
+        this.observedDataRows(
+          observation,
+        )
+    ) {
+      const candidate =
+        row[0]?.trim();
+
+      if (
+        !candidate ||
+        candidate.length >
+          80
+      ) {
+        continue;
+      }
+
+      const normalized =
+        this.normalize(
+          candidate,
+        );
+
+      if (
+        normalized.length <
+          2 ||
+        actionChrome.includes(
+          normalized,
+        )
+      ) {
+        continue;
+      }
+
+      return candidate;
+    }
+
+    return null;
+  }
+
+  private observedFilterValue(
+    action:
+      ActionElement,
+
+    observation:
+      PageObservation,
+
+    knowledge:
+      | KnowledgeContext
+      | undefined,
+  ): string | null {
+    const label =
+      getActionLabel(
+        action,
+      );
+
+    if (
+      !/\bfilter\b/i.test(
+        label,
+      ) ||
+      !knowledge
+        ?.requirements ||
+      !/\bfilter(?:ing|s|ed)?\b/i.test(
+        knowledge.requirements
+          .rawText,
+      )
+    ) {
+      return null;
+    }
+
+    const options =
+      action.formField
+        ?.options
+        ?.filter(
+          (option) =>
+            !option.disabled &&
+            !option.selected &&
+            option.value !==
+              '',
+        ) ??
+      [];
+
+    if (
+      options.length ===
+      0
+    ) {
+      return null;
+    }
+
+    const dataText =
+      this.normalize(
+        this.observedDataRows(
+          observation,
+        )
+          .flat()
+          .join(
+            ' ',
+          ),
+      );
+
+    const matching =
+      options.find(
+        (option) =>
+          dataText.includes(
+            this.normalize(
+              option.label,
+            ),
+          ) ||
+          dataText.includes(
+            this.normalize(
+              option.value,
+            ),
+          ),
+      );
+
+    return matching
+      ?.value ??
+      null;
+  }
+
+  private hasExplicitSensitiveValueEvidence(
+    execution:
+      ExplorationFormExecution | null,
+  ): boolean {
+    return (
+      execution
+        ?.evidence
+        .some(
+          (item) =>
+            (
+              item.source ===
+                'openapi' &&
+              /\b(?:example|default)\b/i
+                .test(
+                  item.detail,
+                )
+            ) ||
+            (
+              item.source ===
+                'requirements' &&
+              /\bother\s+than\b.*\b(?:rejected|invalid|not\s+allowed|forbidden)\b/i
+                .test(
+                  item.detail,
+                )
+            ),
+        ) ??
+      false
+    );
+  }
+
+  private isUnfilledFormSetup(
+    action:
+      ActionElement,
+  ): boolean {
+    if (
+      !this.requiresFormExecution(
+        action,
+      )
+    ) {
+      return false;
+    }
+
+    const value =
+      action.formField
+        ?.value;
+
+    if (
+      typeof value ===
+      'string'
+    ) {
+      return (
+        value.trim()
+          .length ===
+        0
+      );
+    }
+
+    return (
+      action.type ===
+        'checkbox' ||
+      action.type ===
+        'radio'
+    )
+      ? false
+      : true;
   }
 
   private isSensitiveFormAction(

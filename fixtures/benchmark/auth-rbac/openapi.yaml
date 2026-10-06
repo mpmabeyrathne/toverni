@@ -6,6 +6,12 @@ paths:
   /api/session:
     post:
       operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
       responses:
         '200': { description: Session created }
         '401': { description: Invalid credentials }
@@ -19,3 +25,20 @@ paths:
       responses:
         '200': { description: Admin content }
         '403': { description: Forbidden }
+
+
+components:
+  schemas:
+    SessionRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        password:
+          type: string
+          example: pass

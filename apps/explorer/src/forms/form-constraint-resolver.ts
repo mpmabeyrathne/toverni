@@ -1565,10 +1565,17 @@ import type {
       getCandidateFieldNames(
         action,
       );
+
+    const fieldTerms =
+      getRequirementFieldTerms(
+        action,
+      );
   
     if (
       names.size ===
-      0
+        0 &&
+      fieldTerms.size ===
+        0
     ) {
       return null;
     }
@@ -1591,13 +1598,41 @@ import type {
           constraint,
         );
   
+      const compactConstraint =
+        normalizeFieldName(
+          constraint,
+        );
+
+      const constraintTerms =
+        new Set(
+          normalized
+            .replace(
+              /[^a-z0-9]+/g,
+              ' ',
+            )
+            .split(
+              /\s+/,
+            )
+            .filter(
+              Boolean,
+            ),
+        );
+  
       const referencesField =
         [
           ...names,
         ].some(
           (name) =>
-            normalized.includes(
+            compactConstraint.includes(
               name,
+            ),
+        ) ||
+        [
+          ...fieldTerms,
+        ].some(
+          (term) =>
+            constraintTerms.has(
+              term,
             ),
         );
   
@@ -1633,6 +1668,23 @@ import type {
         matched = true;
       }
   
+      const exclusiveAllowedLiteral =
+        constraint.match(
+          /\b(?:values?|inputs?)\s+other\s+than\s+["']?([^"'\s.,;]+)["']?\s+(?:are|is)\s+(?:rejected|invalid|not\s+allowed|forbidden)\b/i,
+        );
+
+      if (
+        exclusiveAllowedLiteral?.[1]
+      ) {
+        result.example =
+          exclusiveAllowedLiteral[1];
+
+        result.details.example =
+          `Requirement constraint: ${constraint}`;
+
+        matched = true;
+      }
+
       const inputType =
         action.formField
           ?.inputType;
@@ -1720,6 +1772,60 @@ import type {
       : null;
   }
   
+  const GENERIC_REQUIREMENT_FIELD_TERMS =
+    new Set([
+      'number',
+      'name',
+      'address',
+      'value',
+      'values',
+      'input',
+      'field',
+      'text',
+    ]);
+
+  function getRequirementFieldTerms(
+    action:
+      ActionElement,
+  ): Set<string> {
+    const values = [
+      action.formField
+        ?.htmlName,
+      action.name,
+      action.formField
+        ?.placeholder,
+    ];
+
+    return new Set(
+      values.flatMap(
+        (value) => {
+          if (!value) {
+            return [];
+          }
+
+          return value
+            .toLowerCase()
+            .replace(
+              /[^a-z0-9]+/g,
+              ' ',
+            )
+            .split(
+              /\s+/,
+            )
+            .filter(
+              (term) =>
+                term.length >=
+                  3 &&
+                !GENERIC_REQUIREMENT_FIELD_TERMS
+                  .has(
+                    term,
+                  ),
+            );
+        },
+      ),
+    );
+  }
+
   function getCandidateFieldNames(
     action:
       ActionElement,

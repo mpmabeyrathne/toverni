@@ -123,12 +123,159 @@ import type {
   
       saved:
         'update',
+
+      upload:
+        'upload',
+
+      uploaded:
+        'upload',
+
+      uploading:
+        'upload',
+
+      retry:
+        'retry',
+
+      retried:
+        'retry',
+
+      retrying:
+        'retry',
+
+      recover:
+        'retry',
+
+      recovered:
+        'retry',
+
+      recovery:
+        'retry',
+
+      clear:
+        'clear',
+
+      cleared:
+        'clear',
+
+      clearing:
+        'clear',
+
+      reset:
+        'reset',
+
+      resets:
+        'reset',
+
+      resetting:
+        'reset',
+
+      failed:
+        'fail',
+
+      fails:
+        'fail',
+
+      failure:
+        'fail',
+
+      succeeds:
+        'success',
+
+      succeeded:
+        'success',
+
+      successful:
+        'success',
+
+      sign:
+        'auth',
+
+      signed:
+        'auth',
+
+      signing:
+        'auth',
+
+      login:
+        'login',
+
+      logged:
+        'login',
+
+      logout:
+        'logout',
+
+      authenticate:
+        'login',
+
+      authenticated:
+        'login',
+
+      authentication:
+        'login',
+
+      search:
+        'search',
+
+      searched:
+        'search',
+
+      searching:
+        'search',
+
+      filter:
+        'filter',
+
+      filtered:
+        'filter',
+
+      filtering:
+        'filter',
+
+      sort:
+        'sort',
+
+      sorted:
+        'sort',
+
+      sorting:
+        'sort',
+
+      refresh:
+        'refresh',
+
+      refreshed:
+        'refresh',
+
+      refreshing:
+        'refresh',
+
+      page:
+        'page',
+
+      pages:
+        'page',
+
+      pagination:
+        'page',
+
+      paginate:
+        'page',
+
+      paginated:
+        'page',
+
+      paginating:
+        'page',
     };
   
   const TRANSACTION_TOKENS =
     new Set([
       'approve',
       'assign',
+      'auth',
+      'login',
+      'logout',
       'book',
       'cancel',
       'checkout',
@@ -146,6 +293,18 @@ import type {
       'submit',
       'update',
       'upload',
+      'retry',
+      'clear',
+      'reset',
+    ]);
+
+  const READ_QUERY_TOKENS =
+    new Set([
+      'search',
+      'filter',
+      'sort',
+      'refresh',
+      'page',
     ]);
   
   const STOP_WORDS =
@@ -274,11 +433,6 @@ import type {
       return [];
     }
   
-    const behaviorTokens =
-      getBehaviorTokens(
-        behavior,
-      );
-  
     const matches:
       string[] = [];
   
@@ -291,7 +445,7 @@ import type {
         ) => {
           if (
             requirementMatches(
-              behaviorTokens,
+              behavior,
               criterion,
             )
           ) {
@@ -311,7 +465,7 @@ import type {
         ) => {
           if (
             requirementMatches(
-              behaviorTokens,
+              behavior,
               capability,
             )
           ) {
@@ -333,41 +487,212 @@ import type {
   ): Set<string> {
     const text = [
       behavior.name,
-  
+
       ...behavior.steps.map(
         (step) =>
           step.action.target ??
           '',
       ),
-  
+
       ...behavior
         .outcome
         .addedSemanticText,
-  
+
       ...behavior
         .outcome
         .removedSemanticText,
     ].join(
       ' ',
     );
-  
+
     return tokenize(
       text,
     );
   }
-  
-  function requirementMatches(
-    behaviorTokens:
-      Set<string>,
-  
+
+  function getBehaviorTransactionTokens(
+    behavior:
+      BusinessBehaviorFlow,
+  ): Set<string> {
+    const text = [
+      behavior.name,
+
+      ...behavior.steps.map(
+        (step) =>
+          step.action.target ??
+          '',
+      ),
+    ].join(
+      ' ',
+    );
+
+    return new Set(
+      [
+        ...tokenize(
+          text,
+        ),
+      ].filter(
+        (token) =>
+          TRANSACTION_TOKENS.has(
+            token,
+          ),
+      ),
+    );
+  }
+
+  function getBehaviorReadQueryTokens(
+    behavior:
+      BusinessBehaviorFlow,
+  ): Set<string> {
+    const text = [
+      behavior.name,
+
+      ...behavior.steps.map(
+        (step) =>
+          step.action.target ??
+          '',
+      ),
+    ].join(
+      ' ',
+    );
+
+    return new Set(
+      [
+        ...tokenize(
+          text,
+        ),
+      ].filter(
+        (token) =>
+          READ_QUERY_TOKENS.has(
+            token,
+          ),
+      ),
+    );
+  }
+
+  function hasNegativeOutcome(
+    behavior:
+      BusinessBehaviorFlow,
+  ): boolean {
+    return behavior
+      .outcome
+      .addedSemanticText
+      .some(
+        (value) =>
+          /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized)\b/i
+            .test(
+              value,
+            ),
+      );
+  }
+
+  function isNegativeRequirement(
     requirement:
       string,
   ): boolean {
+    return /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized|must not|cannot|can't|prevented)\b/i
+      .test(
+        requirement,
+      );
+  }
+
+  function requirementMatches(
+    behavior:
+      BusinessBehaviorFlow,
+
+    requirement:
+      string,
+  ): boolean {
+    const behaviorTokens =
+      getBehaviorTokens(
+        behavior,
+      );
+
+    const behaviorTransactionTokens =
+      getBehaviorTransactionTokens(
+        behavior,
+      );
+
     const requirementTokens =
       tokenize(
         requirement,
       );
-  
+
+    const requirementTransactionTokens =
+      new Set(
+        [
+          ...requirementTokens,
+        ].filter(
+          (token) =>
+            TRANSACTION_TOKENS.has(
+              token,
+            ),
+        ),
+      );
+
+    const behaviorReadQueryTokens =
+      getBehaviorReadQueryTokens(
+        behavior,
+      );
+
+    const requirementReadQueryTokens =
+      new Set(
+        [
+          ...requirementTokens,
+        ].filter(
+          (token) =>
+            READ_QUERY_TOKENS.has(
+              token,
+            ),
+        ),
+      );
+
+    const sharedTransaction =
+      [
+        ...behaviorTransactionTokens,
+      ].some(
+        (token) =>
+          requirementTransactionTokens
+            .has(
+              token,
+            ),
+      );
+
+    const sharedReadQuery =
+      [
+        ...behaviorReadQueryTokens,
+      ].some(
+        (token) =>
+          requirementReadQueryTokens
+            .has(
+              token,
+            ),
+      );
+
+    if (
+      !sharedTransaction &&
+      !sharedReadQuery
+    ) {
+      return false;
+    }
+
+    const requirementIsNegative =
+      isNegativeRequirement(
+        requirement,
+      );
+
+    const behaviorIsNegative =
+      hasNegativeOutcome(
+        behavior,
+      );
+
+    if (
+      requirementIsNegative !==
+      behaviorIsNegative
+    ) {
+      return false;
+    }
+
     const commonTokens =
       [
         ...behaviorTokens,
@@ -377,19 +702,38 @@ import type {
             token,
           ),
       );
-  
-    if (
-      commonTokens.length <
-      2
-    ) {
-      return false;
-    }
-  
-    return commonTokens.some(
-      (token) =>
-        TRANSACTION_TOKENS.has(
-          token,
-        ),
+
+    const directionalAuthMatch =
+      (
+        behaviorTransactionTokens
+          .has(
+            'login',
+          ) &&
+        requirementTransactionTokens
+          .has(
+            'login',
+          )
+      ) ||
+      (
+        behaviorTransactionTokens
+          .has(
+            'logout',
+          ) &&
+        requirementTransactionTokens
+          .has(
+            'logout',
+          )
+      );
+
+    return (
+      directionalAuthMatch ||
+      commonTokens.length >=
+        2 ||
+      (
+        sharedReadQuery &&
+        commonTokens.length >=
+          1
+      )
     );
   }
   
@@ -397,9 +741,20 @@ import type {
     value:
       string,
   ): Set<string> {
-    const tokens =
+    const directionalValue =
       value
         .toLowerCase()
+        .replace(
+          /\b(?:sign|signed|signing)\s+out\b/g,
+          'logout',
+        )
+        .replace(
+          /\b(?:sign|signed|signing)\s+in\b/g,
+          'login',
+        );
+
+    const tokens =
+      directionalValue
         .replace(
           /[^a-z0-9]+/g,
           ' ',

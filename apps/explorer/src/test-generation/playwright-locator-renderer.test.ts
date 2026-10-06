@@ -38,6 +38,32 @@ import {
       );
   
       it(
+        'normalizes whitespace in role accessible names',
+        () => {
+          const result =
+            renderPlaywrightLocator({
+              by:
+                'role',
+
+              role:
+                'dialog',
+
+              name:
+                'Confirm order total $25\n\nConfirm OrderCancel',
+
+              exact:
+                true,
+            });
+
+          expect(
+            result,
+          ).toBe(
+            'page.getByRole("dialog", { name: "Confirm order total $25 Confirm OrderCancel", exact: true })',
+          );
+        },
+      );
+
+      it(
         'renders a test id locator',
         () => {
           const result =

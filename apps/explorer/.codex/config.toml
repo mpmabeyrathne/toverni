@@ -1,0 +1,7 @@
+[mcp_servers.playwright-test]
+command = "cmd"
+args = ["/c", "npx", "playwright", "run-test-mcp-server"]
+required = true
+default_tools_approval_mode = "approve"
+disabled_tools = ["browser_run_code_unsafe"]
+tool_timeout_sec = 180

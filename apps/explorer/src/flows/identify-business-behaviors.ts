@@ -38,8 +38,16 @@ const TRANSACTION_VERBS =
     'register',
     'remove',
     'reserve',
+    'retry',
+    'recover',
+    'reset',
+    'clear',
     'save',
     'send',
+    'sign',
+    'login',
+    'logout',
+    'authenticate',
     'submit',
     'update',
     'upload',
@@ -53,6 +61,26 @@ const MUTATING_HTTP_METHODS =
     'DELETE',
   ]);
 
+const READ_BEHAVIOR_TERMS =
+  new Set([
+    'search',
+    'filter',
+    'sort',
+    'refresh',
+    'page',
+    'next',
+    'previous',
+    'paginate',
+    'pagination',
+  ]);
+
+const REPLAY_SETUP_ACTION_TYPES =
+  new Set([
+    'fill',
+    'select',
+    'set-input-files',
+  ]);
+
 export interface IdentifyBusinessBehaviorsInput {
   states:
   ApplicationStateNode[];
@@ -62,6 +90,52 @@ export interface IdentifyBusinessBehaviorsInput {
 
   flows:
   ReconstructedBusinessFlow[];
+
+  initialStateId?:
+  string;
+}
+
+function stateIdsForTransitions(
+  transitionIds:
+    string[],
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string[] {
+  const transitions =
+    transitionIds
+      .map(
+        (transitionId) =>
+          transitionById.get(
+            transitionId,
+          ),
+      )
+      .filter(
+        (
+          transition,
+        ): transition is
+          ApplicationTransition =>
+          transition !==
+          undefined,
+      );
+
+  const first =
+    transitions[0];
+
+  if (!first) {
+    return [];
+  }
+
+  return [
+    first.fromStateId,
+    ...transitions.map(
+      (transition) =>
+        transition.toStateId,
+    ),
+  ];
 }
 
 export function identifyBusinessBehaviors(
@@ -144,9 +218,9 @@ export function identifyBusinessBehaviors(
         );
 
       const stateIds =
-        flow.stateIds.slice(
-          segmentStartIndex,
-          index + 2,
+        stateIdsForTransitions(
+          transitionIds,
+          transitionById,
         );
 
       const steps =
@@ -243,6 +317,8 @@ export function identifyBusinessBehaviors(
           compareBusinessBehaviorCandidates(
             behavior,
             existing,
+            transitionById,
+            input.initialStateId,
           ) < 0
             ? behavior
             : existing;
@@ -314,9 +390,14 @@ function getBoundaryEvidence(
 
   if (
     transition.action.type ===
-    'submit' ||
-    hasTransactionVerb(
-      transition.action.target,
+      'submit' ||
+    (
+      !REPLAY_SETUP_ACTION_TYPES.has(
+        transition.action.type,
+      ) &&
+      hasTransactionVerb(
+        transition.action.target,
+      )
     )
   ) {
     evidence.push({
@@ -330,6 +411,32 @@ function getBoundaryEvidence(
         transition.action.target
           ? `Observed transactional action "${transition.action.target}"`
           : `Observed transactional action type "${transition.action.type}"`,
+
+      networkEventIds: [],
+    });
+  }
+
+  if (
+    evidence.length ===
+      0 &&
+    hasReadBehaviorTerm(
+      transition.action.target,
+    ) &&
+    hasObservableReadOutcome(
+      transition,
+    )
+  ) {
+    evidence.push({
+      source:
+        'action',
+
+      transitionId:
+        transition.id,
+
+      detail:
+        transition.action.target
+          ? `Observed read/query interaction "${transition.action.target}" with a visible outcome`
+          : `Observed read/query interaction type "${transition.action.type}" with a visible outcome`,
 
       networkEventIds: [],
     });
@@ -376,6 +483,63 @@ function getBoundaryEvidence(
   }
 
   return evidence;
+}
+
+function hasReadBehaviorTerm(
+  value:
+    string | undefined,
+): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return normalize(
+    value,
+  )
+    .split(
+      ' ',
+    )
+    .filter(
+      Boolean,
+    )
+    .some(
+      (token) =>
+        READ_BEHAVIOR_TERMS.has(
+          token,
+        ),
+    );
+}
+
+function hasObservableReadOutcome(
+  transition:
+    ApplicationTransition,
+): boolean {
+  const outcome =
+    buildOutcome(
+      transition,
+    );
+
+  /*
+   * Read/query controls such as filter, sort,
+   * pagination and refresh should represent
+   * in-place data-state changes rather than
+   * ordinary page navigation.
+   */
+  if (
+    outcome.urlChanged ||
+    outcome.titleChanged
+  ) {
+    return false;
+  }
+
+  return (
+    outcome.addedSemanticText
+      .length >
+      0 ||
+    outcome.removedSemanticText
+      .length >
+      0
+  );
 }
 
 function getFreshNetworkEvents(
@@ -575,6 +739,39 @@ function createBusinessBoundaryKey(
       )
       .sort();
 
+  const outcome =
+    buildOutcome(
+      transition,
+    );
+
+  const negativeOutcome =
+    outcome
+      .addedSemanticText
+      .some(
+        (value) =>
+          /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized)\b/i
+            .test(
+              value,
+            ),
+      );
+
+  const outcomeSignature =
+    [
+      outcome.urlChanged
+        ? 'url-changed'
+        : 'url-stable',
+
+      outcome.titleChanged
+        ? 'title-changed'
+        : 'title-stable',
+
+      negativeOutcome
+        ? 'negative-outcome'
+        : 'non-negative-outcome',
+    ].join(
+      '|',
+    );
+
   return [
     transition.action.type,
 
@@ -585,8 +782,123 @@ function createBusinessBoundaryKey(
     mutationSignatures.join(
       '|',
     ),
+
+    outcomeSignature,
   ].join(
     '::',
+  );
+}
+
+function countReplaySetupTransitions(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): number {
+  const replayTransitionIds =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+
+      ...behavior
+        .transitionIds
+        .slice(
+          0,
+          -1,
+        ),
+    ];
+
+  return [
+    ...new Set(
+      replayTransitionIds,
+    ),
+  ]
+    .filter(
+      (transitionId) => {
+        const transition =
+          transitionById.get(
+            transitionId,
+          );
+
+        return (
+          transition !==
+            undefined &&
+          (
+            REPLAY_SETUP_ACTION_TYPES.has(
+              transition.action.type,
+            ) ||
+            hasReadBehaviorTerm(
+              transition.action.target,
+            )
+          )
+        );
+      },
+    )
+    .length;
+}
+
+function replayStartStateId(
+  behavior:
+    BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+): string {
+  const firstTransitionId =
+    [
+      ...behavior
+        .preconditionTransitionIds,
+      ...behavior
+        .transitionIds,
+    ][0];
+
+  if (!firstTransitionId) {
+    return behavior
+      .startStateId;
+  }
+
+  return transitionById
+    .get(
+      firstTransitionId,
+    )
+    ?.fromStateId ??
+    behavior.startStateId;
+}
+
+function businessOutcomeSignalCount(
+  behavior:
+    BusinessBehaviorFlow,
+): number {
+  return (
+    behavior
+      .outcome
+      .addedSemanticText
+      .length +
+    behavior
+      .outcome
+      .removedSemanticText
+      .length +
+    (
+      behavior
+        .outcome
+        .urlChanged
+        ? 1
+        : 0
+    ) +
+    (
+      behavior
+        .outcome
+        .titleChanged
+        ? 1
+        : 0
+    )
   );
 }
 
@@ -596,8 +908,70 @@ function compareBusinessBehaviorCandidates(
 
   second:
     BusinessBehaviorFlow,
+
+  transitionById:
+    Map<
+      string,
+      ApplicationTransition
+    >,
+
+  initialStateId?:
+    string,
 ): number {
+  const firstStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      first,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
+  const secondStartsAtInitial =
+    initialStateId !==
+      undefined &&
+    replayStartStateId(
+      second,
+      transitionById,
+    ) ===
+      initialStateId
+      ? 0
+      : 1;
+
+  const firstOutcomeSignals =
+    businessOutcomeSignalCount(
+      first,
+    );
+
+  const secondOutcomeSignals =
+    businessOutcomeSignalCount(
+      second,
+    );
+
+  const firstSetupCount =
+    countReplaySetupTransitions(
+      first,
+      transitionById,
+    );
+
+  const secondSetupCount =
+    countReplaySetupTransitions(
+      second,
+      transitionById,
+    );
+
   return (
+    firstStartsAtInitial -
+      secondStartsAtInitial ||
+
+    secondOutcomeSignals -
+      firstOutcomeSignals ||
+
+    secondSetupCount -
+      firstSetupCount ||
+
     first
       .preconditionTransitionIds
       .length -

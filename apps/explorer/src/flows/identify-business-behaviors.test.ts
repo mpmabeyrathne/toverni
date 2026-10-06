@@ -680,6 +680,862 @@ import {
           );
         },
       );
+
+      it(
+        'recognizes observable read-only data interactions as business boundaries',
+        () => {
+          const states = [
+            createState(
+              'grid-start',
+            ),
+            createState(
+              'grid-page-2',
+            ),
+          ];
+
+          const transition =
+            createTransition(
+              'next-page',
+              'grid-start',
+              'grid-page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              1,
+            );
+
+          transition.beforeObservation = {
+            ...transition.beforeObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Page 1',
+            ],
+          };
+
+          transition.afterObservation = {
+            ...transition.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Page 2',
+            ],
+          };
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions: [
+                transition,
+              ],
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions: [
+                transition,
+              ],
+              flows,
+            });
+
+          expect(
+            behaviors,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            behaviors[0],
+          ).toMatchObject({
+            name:
+              'Next Page',
+
+            transitionIds: [
+              'next-page',
+            ],
+          });
+        },
+      );
+
+
+      it(
+        'treats retry and clear actions as recovery business boundaries',
+        () => {
+          const states = [
+            createState(
+              'ready',
+            ),
+            createState(
+              'failed',
+            ),
+            createState(
+              'uploaded',
+            ),
+            createState(
+              'cleared',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              1,
+            ),
+
+            createTransition(
+              'retry',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              2,
+            ),
+
+            createTransition(
+              'clear',
+              'uploaded',
+              'cleared',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Clear',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors.map(
+              (behavior) =>
+                behavior.name,
+            ),
+          ).toEqual([
+            'Upload',
+            'Retry',
+            'Clear',
+          ]);
+        },
+      );
+
+
+      it(
+        'prefers duplicate read-query behaviors that preserve semantic setup',
+        () => {
+          const states = [
+            createState(
+              'grid',
+            ),
+            createState(
+              'page-2',
+            ),
+          ];
+
+          const sort =
+            createTransition(
+              'sort',
+              'grid',
+              'grid',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Sort Amount',
+              },
+              1,
+            );
+
+          sort.beforeObservation = {
+            ...sort.beforeObservation,
+
+            semanticText: [
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          sort.afterObservation = {
+            ...sort.afterObservation,
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const nextWithSort =
+            createTransition(
+              'next-with-sort',
+              'grid',
+              'page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              2,
+            );
+
+          nextWithSort.beforeObservation = {
+            ...nextWithSort.beforeObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          nextWithSort.afterObservation = {
+            ...nextWithSort.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Page 2',
+              'Dan Pending 20',
+              'Bob Pending 10',
+            ],
+          };
+
+          const nextDirect =
+            createTransition(
+              'next-direct',
+              'grid',
+              'page-2',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Next Page',
+              },
+              3,
+            );
+
+          nextDirect.beforeObservation = {
+            ...nextDirect.beforeObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          nextDirect.afterObservation = {
+            ...nextDirect.afterObservation,
+
+            url:
+              'http://example.test/grid',
+
+            title:
+              'Data Grid',
+
+            semanticText: [
+              'Page 2',
+              'Bob Pending 10',
+              'Dan Pending 20',
+            ],
+          };
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions: [
+                sort,
+                nextWithSort,
+                nextDirect,
+              ],
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions: [
+                sort,
+                nextWithSort,
+                nextDirect,
+              ],
+              flows,
+              initialStateId:
+                'grid',
+            });
+
+          const nextPage =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                  'Next Page',
+            );
+
+          expect(
+            nextPage,
+          ).toBeDefined();
+
+          expect(
+            [
+              ...(
+                nextPage
+                  ?.preconditionTransitionIds ??
+                []
+              ),
+              ...(
+                nextPage
+                  ?.transitionIds ??
+                []
+              ),
+            ],
+          ).toEqual(
+            expect.arrayContaining([
+              'sort',
+              'next-with-sort',
+            ]),
+          );
+        },
+      );
+
+
+      it(
+        'prefers duplicate business behavior candidates that preserve replay-safe setup',
+        () => {
+          const states = [
+            createState(
+              'start',
+            ),
+
+            createState(
+              'ready',
+            ),
+
+            createState(
+              'failed',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'start',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload-with-setup',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+
+            createTransition(
+              'upload-direct',
+              'start',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          const uploadBehavior =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Upload',
+            );
+
+          expect(
+            uploadBehavior,
+          ).toBeDefined();
+
+          expect(
+            uploadBehavior
+              ?.transitionIds,
+          ).toEqual([
+            'select-file',
+            'upload-with-setup',
+          ]);
+        },
+      );
+
+
+      it(
+        'keeps file selection as replay setup for the upload business behavior',
+        () => {
+          const states = [
+            createState(
+              'start',
+            ),
+            createState(
+              'ready',
+            ),
+            createState(
+              'failed',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'start',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors.map(
+              (behavior) =>
+                behavior.name,
+            ),
+          ).toEqual([
+            'Upload',
+          ]);
+
+          expect(
+            behaviors[0]
+              ?.transitionIds,
+          ).toEqual([
+            'select-file',
+            'upload',
+          ]);
+        },
+      );
+
+
+      it(
+        'prefers a duplicate behavior replay rooted at the persisted initial state',
+        () => {
+          const states = [
+            createState(
+              'initial',
+            ),
+
+            createState(
+              'ready',
+            ),
+
+            createState(
+              'failed',
+            ),
+
+            createState(
+              'uploaded',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'select-file',
+              'initial',
+              'ready',
+              {
+                type:
+                  'set-input-files',
+
+                target:
+                  'Upload file',
+
+                value:
+                  'toverni-test.txt',
+              },
+              1,
+            ),
+
+            createTransition(
+              'upload',
+              'ready',
+              'failed',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Upload',
+              },
+              2,
+            ),
+
+            createTransition(
+              'retry-from-full-path',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              3,
+            ),
+
+            createTransition(
+              'retry-direct',
+              'failed',
+              'uploaded',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Retry',
+              },
+              4,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+
+              initialStateId:
+                'initial',
+            });
+
+          const retryBehavior =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Retry',
+            );
+
+          expect(
+            retryBehavior,
+          ).toBeDefined();
+
+          expect(
+            retryBehavior
+              ?.preconditionTransitionIds,
+          ).toEqual([
+            'select-file',
+            'upload',
+          ]);
+        },
+      );
+
+
+      it(
+        'derives a valid two-state behavior path for transactional self-transitions',
+        () => {
+          const states = [
+            createState(
+              'ready',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'submit-self',
+              'ready',
+              'ready',
+              {
+                type:
+                  'submit',
+
+                target:
+                  'Save',
+              },
+              1,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+            });
+
+          expect(
+            behaviors,
+          ).toHaveLength(
+            1,
+          );
+
+          expect(
+            behaviors[0]
+              ?.stateIds,
+          ).toEqual([
+            'ready',
+            'ready',
+          ]);
+
+          expect(
+            behaviors[0]
+              ?.transitionIds,
+          ).toEqual([
+            'submit-self',
+          ]);
+        },
+      );
+
+
+      it(
+        'recognizes sign-in actions as business boundaries with form setup',
+        () => {
+          const states = [
+            createState(
+              'login-empty',
+            ),
+            createState(
+              'login-email',
+            ),
+            createState(
+              'login-ready',
+            ),
+            createState(
+              'login-error',
+            ),
+          ];
+
+          const transitions = [
+            createTransition(
+              'fill-email',
+              'login-empty',
+              'login-email',
+              {
+                type:
+                  'fill',
+
+                target:
+                  'Email',
+              },
+              1,
+            ),
+
+            createTransition(
+              'fill-password',
+              'login-email',
+              'login-ready',
+              {
+                type:
+                  'fill',
+
+                target:
+                  'Password',
+              },
+              2,
+            ),
+
+            createTransition(
+              'sign-in',
+              'login-ready',
+              'login-error',
+              {
+                type:
+                  'click',
+
+                target:
+                  'Sign In',
+              },
+              3,
+            ),
+          ];
+
+          const flows =
+            reconstructBusinessFlows({
+              states,
+              transitions,
+            });
+
+          const behaviors =
+            identifyBusinessBehaviors({
+              states,
+              transitions,
+              flows,
+              initialStateId:
+                'login-empty',
+            });
+
+          const signIn =
+            behaviors.find(
+              (behavior) =>
+                behavior.name ===
+                'Sign In',
+            );
+
+          expect(
+            signIn,
+          ).toBeDefined();
+
+          expect(
+            signIn
+              ?.transitionIds,
+          ).toContain(
+            'sign-in',
+          );
+
+          expect(
+            [
+              ...(
+                signIn
+                  ?.preconditionTransitionIds ??
+                []
+              ),
+              ...(
+                signIn
+                  ?.transitionIds ??
+                []
+              ),
+            ],
+          ).toEqual(
+            expect.arrayContaining([
+              'fill-email',
+              'fill-password',
+              'sign-in',
+            ]),
+          );
+        },
+      );
+
     },
   );
   

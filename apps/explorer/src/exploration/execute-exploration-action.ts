@@ -83,6 +83,25 @@ export async function executeExplorationAction(
     case 'contenteditable': {
       if (
         action.formExecution
+          ?.kind ===
+        'upload-file'
+      ) {
+        await session
+          .setInputFiles(
+            action.target,
+            action
+              .formExecution
+              .file,
+          );
+
+        return {
+          status:
+            'executed',
+        };
+      }
+
+      if (
+        action.formExecution
           ?.kind !==
         'fill'
       ) {

@@ -200,6 +200,126 @@ import {
       );
   
       it(
+        'links read-query business behaviors to matching requirements',
+        () => {
+          const transition =
+            createTransition(
+              'transition-search',
+              'grid-all',
+              'grid-filtered',
+              'Search customers',
+              [],
+              [],
+            );
+
+          const behavior =
+            createBehavior({
+              id:
+                'behavior-search',
+
+              name:
+                'Search customers',
+
+              transitionId:
+                transition.id,
+
+              fromStateId:
+                'grid-all',
+
+              toStateId:
+                'grid-filtered',
+            });
+
+          behavior.boundaryEvidence = [
+            {
+              source:
+                'action',
+
+              transitionId:
+                transition.id,
+
+              detail:
+                'Observed read/query interaction "Search customers" with a visible outcome',
+
+              networkEventIds:
+                [],
+            },
+          ];
+
+          behavior.outcome = {
+            stateId:
+              'grid-filtered',
+
+            urlChanged:
+              false,
+
+            titleChanged:
+              false,
+
+            addedSemanticText: [
+              'Dan Pending 20',
+            ],
+
+            removedSemanticText: [
+              'Bob Pending 10',
+            ],
+          };
+
+          const result =
+            groundBusinessBehaviors({
+              behaviors: [
+                behavior,
+              ],
+
+              transitions: [
+                transition,
+              ],
+
+              knowledge: {
+                requirements: {
+                  sourcePath:
+                    'requirements.md',
+
+                  acceptanceCriteria: [
+                    'Search filters rows by customer name.',
+                  ],
+
+                  userRoles: [],
+
+                  capabilities: [
+                    'Search table rows.',
+                  ],
+
+                  constraints: [],
+
+                  domainTerms: [
+                    'search',
+                    'customer',
+                    'rows',
+                  ],
+
+                  rawText:
+                    'Search filters rows by customer name.',
+                },
+
+                openApi:
+                  null,
+              },
+            });
+
+          expect(
+            result[0]
+              ?.requirementEvidenceIds,
+          ).toEqual(
+            expect.arrayContaining([
+              'REQ-1',
+              'CAP-1',
+            ]),
+          );
+        },
+      );
+
+      it(
         'matches deterministic transaction aliases such as add to create',
         () => {
           const transition =

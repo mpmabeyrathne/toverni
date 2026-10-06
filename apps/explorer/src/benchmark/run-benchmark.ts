@@ -165,17 +165,64 @@ function mapToverniScenarios(
     );
 }
 
+const allFixtureIds = [
+  'booking',
+  'todo',
+  'commerce',
+  'auth-rbac',
+  'checkout-form',
+  'data-grid',
+  'upload-retry',
+] as const;
+
+type BenchmarkFixtureId =
+  typeof allFixtureIds[
+    number
+  ];
+
+function resolveFixtureIds():
+  BenchmarkFixtureId[] {
+  const requested =
+    process.env
+      .BENCHMARK_FIXTURE
+      ?.trim();
+
+  if (!requested) {
+    return [
+      ...allFixtureIds,
+    ];
+  }
+
+  if (
+    !allFixtureIds.includes(
+      requested as
+        BenchmarkFixtureId,
+    )
+  ) {
+    throw new Error(
+      `Unknown BENCHMARK_FIXTURE "${requested}". Expected one of: ${allFixtureIds.join(', ')}`,
+    );
+  }
+
+  return [
+    requested as
+      BenchmarkFixtureId,
+  ];
+}
+
 async function main():
   Promise<void> {
-  const fixtureIds = [
-    'booking',
-    'todo',
-    'commerce',
-    'auth-rbac',
-    'checkout-form',
-    'data-grid',
-    'upload-retry',
-  ] as const;
+  const fixtureIds =
+    resolveFixtureIds();
+
+  if (
+    process.env
+      .BENCHMARK_FIXTURE
+  ) {
+    console.log(
+      `Benchmark fixture filter: ${fixtureIds.join(', ')}`,
+    );
+  }
 
   const modelConfiguration =
     getModelConfiguration();
@@ -239,6 +286,9 @@ async function main():
           headless:
             true,
 
+          allowDestructiveActions:
+            true,
+
           artifactsDirectory:
             join(
               process.cwd(),
@@ -276,6 +326,10 @@ async function main():
       // --------------------------------
 
       const skipGenericBaseline =
+        Boolean(
+          process.env
+            .BENCHMARK_FIXTURE,
+        ) &&
         process.env
           .BENCHMARK_SKIP_GENERIC_BASELINE ===
         'true';
@@ -306,12 +360,52 @@ async function main():
       // Shared support corpus
       // --------------------------------
 
+      const observedSupportCorpus =
+        [
+          ...explorerResult
+            .flow
+            .actions
+            .flatMap(
+              (action) => [
+                action.label ??
+                  '',
+                action.type,
+              ],
+            ),
+
+          ...explorerResult
+            .flow
+            .transitions
+            .flatMap(
+              (transition) => [
+                transition
+                  .actionTarget ??
+                  '',
+                ...transition
+                  .beforeObservation
+                  .semanticText,
+                ...transition
+                  .afterObservation
+                  .semanticText,
+              ],
+            ),
+        ]
+          .filter(
+            (value) =>
+              value.length >
+              0,
+          )
+          .join(
+            '\n',
+          );
+
       const supportCorpus =
         [
           fixture.requirements,
           fixture.openApi,
           explorerResult
             .initialPageContext,
+          observedSupportCorpus,
         ].join(
           '\n',
         );
