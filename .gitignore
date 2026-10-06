@@ -149,3 +149,6 @@ apps/explorer/seed.spec.ts
 apps/explorer/specs/competitive/
 apps/explorer/tests/competitive/
 apps/explorer/.codex/agents/
+
+# Toverni local free-mode state
+.toverni/
