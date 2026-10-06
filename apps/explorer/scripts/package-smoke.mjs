@@ -24,6 +24,7 @@ import {
 
 import {
   execFileSync,
+  execSync,
 } from 'node:child_process';
 
 const scriptDirectory =
@@ -48,11 +49,22 @@ const npmCommand =
 function quoteWindowsArgument(
   value,
 ) {
-  return `"${String(
-    value,
-  ).replaceAll(
+  const text =
+    String(
+      value,
+    );
+
+  if (
+    !/[\s"&|<>^]/.test(
+      text,
+    )
+  ) {
+    return text;
+  }
+
+  return `"${text.replaceAll(
     '"',
-    '\\"',
+    '""',
   )}"`;
 }
 
@@ -74,16 +86,15 @@ function runNpm(
         ' ',
       );
 
-    return execFileSync(
-      process.env.ComSpec ??
-        'cmd.exe',
-      [
-        '/d',
-        '/s',
-        '/c',
-        commandLine,
-      ],
-      options,
+    return execSync(
+      commandLine,
+      {
+        ...options,
+
+        shell:
+          process.env.ComSpec ??
+          'cmd.exe',
+      },
     );
   }
 
