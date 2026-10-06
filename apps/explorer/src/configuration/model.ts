@@ -14,6 +14,23 @@ import {
             (value) =>
               value === 'true',
           ),
+
+      MODEL_PROVIDER:
+        z.enum([
+          'ollama',
+        ])
+          .default(
+            'ollama',
+          ),
+
+      MODEL_RETRY_ATTEMPTS:
+        z.coerce
+          .number()
+          .int()
+          .positive()
+          .default(
+            2,
+          ),
   
       OLLAMA_BASE_URL:
         z.string()
@@ -42,6 +59,14 @@ import {
       MODEL_REASONING_ENABLED:
         process.env
           .MODEL_REASONING_ENABLED,
+
+      MODEL_PROVIDER:
+        process.env
+          .MODEL_PROVIDER,
+
+      MODEL_RETRY_ATTEMPTS:
+        process.env
+          .MODEL_RETRY_ATTEMPTS,
   
       OLLAMA_BASE_URL:
         process.env
