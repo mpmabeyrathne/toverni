@@ -68,15 +68,6 @@ Promise<void> {
     } =
       command;
 
-    if (
-      config.auth
-        ?.storageState
-    ) {
-      throw new CliInputError(
-        'Authenticated storage-state exploration is part of TOV-118 and is not active yet. Remove auth.storageState/--storage-state for browser-only generation.',
-      );
-    }
-
     applyModelEnvironment(
       config.model,
     );
@@ -118,6 +109,17 @@ Promise<void> {
         ? {
             outputDirectory:
               config.output,
+          }
+        : {}),
+
+      ...(config.auth
+        ?.storageState
+        ? {
+            auth: {
+              storageStatePath:
+                config.auth
+                  .storageState,
+            },
           }
         : {}),
 
