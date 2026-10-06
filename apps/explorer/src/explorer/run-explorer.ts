@@ -22,6 +22,11 @@ import {
 } from '../state/persisted-application-graph.js';
 
 import {
+    buildGenerationSummary,
+    type GenerationSummary,
+} from './generation-summary.js';
+
+import {
     buildEvidenceCatalog,
     GroundedScenarioGenerator,
 } from '../scenarios/index.js';
@@ -141,6 +146,9 @@ export interface RunExplorerResult {
 
     coverage:
     CoverageReport;
+
+    summary:
+    GenerationSummary;
 }
 
 export async function runExplorer(
@@ -1817,6 +1825,30 @@ export async function runExplorer(
             'Browser session closed',
         );
 
+        const summary =
+            buildGenerationSummary({
+                runId:
+                    run.id,
+
+                targetUrl:
+                    input.targetUrl,
+
+                flow,
+
+                coverage,
+
+                discoveredFlows:
+                    reconstructedFlows
+                        .length,
+
+                outputDirectory:
+                    generatedTestsDirectory,
+
+                stopReason:
+                    explorationResult
+                        .stopReason,
+            });
+
         return {
             applicationId:
                 application.id,
@@ -1838,6 +1870,8 @@ export async function runExplorer(
             flow,
 
             coverage,
+
+            summary,
         };
     } catch (
     error:
