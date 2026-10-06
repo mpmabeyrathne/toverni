@@ -470,6 +470,9 @@ import {
     private resolveTarget(
       target: BrowserTarget,
     ): Locator {
+      let locator:
+        Locator;
+
       switch (target.by) {
         case 'role': {
           const options = {
@@ -490,38 +493,60 @@ import {
               : {}),
           };
   
-          return this.page.getByRole(
-            target.role as PlaywrightRole,
-            options,
-          );
+          locator =
+            this.page.getByRole(
+              target.role as PlaywrightRole,
+              options,
+            );
+
+          break;
         }
   
         case 'label':
-          return this.page.getByLabel(
-            target.label,
-            this.buildExactOptions(
-              target.exact,
-            ),
-          );
+          locator =
+            this.page.getByLabel(
+              target.label,
+              this.buildExactOptions(
+                target.exact,
+              ),
+            );
+
+          break;
   
         case 'text':
-          return this.page.getByText(
-            target.text,
-            this.buildExactOptions(
-              target.exact,
-            ),
-          );
+          locator =
+            this.page.getByText(
+              target.text,
+              this.buildExactOptions(
+                target.exact,
+              ),
+            );
+
+          break;
   
         case 'testId':
-          return this.page.getByTestId(
-            target.value,
-          );
+          locator =
+            this.page.getByTestId(
+              target.value,
+            );
+
+          break;
   
         case 'css':
-          return this.page.locator(
-            target.selector,
-          );
+          locator =
+            this.page.locator(
+              target.selector,
+            );
+
+          break;
       }
+
+      return target.index ===
+        undefined
+        ? locator
+        : locator.nth(
+            target.index,
+          );
     }
   
     private buildExactOptions(
