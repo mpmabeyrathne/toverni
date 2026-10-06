@@ -242,7 +242,9 @@ export class PlaywrightPageObserver
             request.method(),
 
           url:
-            request.url(),
+            this.redactNetworkUrl(
+              request.url(),
+            ),
 
           resourceType:
             request.resourceType(),
@@ -287,7 +289,9 @@ export class PlaywrightPageObserver
             request.method(),
 
           url:
-            request.url(),
+            this.redactNetworkUrl(
+              request.url(),
+            ),
 
           resourceType:
             request.resourceType(),
