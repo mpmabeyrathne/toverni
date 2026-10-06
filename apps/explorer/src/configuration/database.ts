@@ -71,13 +71,13 @@ export type DatabaseConfiguration =
 
 export interface ResolveDatabaseConfigurationInput {
   databaseUrl?:
-    string;
+    string | undefined;
 
   dataDirectory?:
-    string;
+    string | undefined;
 
   migrationsDirectory?:
-    string;
+    string | undefined;
 
   cwd:
     string;
