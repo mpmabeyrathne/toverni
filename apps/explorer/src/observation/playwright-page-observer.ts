@@ -1220,19 +1220,60 @@ export class PlaywrightPageObserver
           },
         );
 
+    const occurrenceCounts =
+      new Map<string, number>();
+
     const actions =
       rawActions.map(
-        (action) => ({
-          ...action,
-
-          type:
+        (action) => {
+          const type =
             this.classifyActionType(
               action.tagName,
               action.role,
               action.inputType,
               action.contentEditable,
-            ),
-        }),
+            );
+
+          const locatorIdentity =
+            [
+              type,
+              action.role ??
+                '',
+              action.name ??
+                '',
+              action.text ??
+                '',
+              action.testId ??
+                '',
+            ].join(
+              '|',
+            );
+
+          const locatorIndex =
+            occurrenceCounts.get(
+              locatorIdentity,
+            ) ??
+            0;
+
+          occurrenceCounts.set(
+            locatorIdentity,
+            locatorIndex +
+              1,
+          );
+
+          return {
+            ...action,
+
+            type,
+
+            ...(locatorIndex >
+              0
+              ? {
+                  locatorIndex,
+                }
+              : {}),
+          };
+        },
       );
 
     return actionElementSchema
