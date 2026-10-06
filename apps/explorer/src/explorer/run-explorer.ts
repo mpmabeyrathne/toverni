@@ -29,7 +29,7 @@ import {
 } from '../scenarios/index.js';
 
 import {
-    getDatabaseUrl,
+    getDatabaseConfiguration,
 } from '../configuration/database.js';
 
 import {
@@ -189,8 +189,10 @@ export async function runExplorer(
         );
 
     let databaseConnection:
-        | ReturnType<
-            typeof createDatabase
+        | Awaited<
+            ReturnType<
+                typeof createDatabase
+            >
         >
         | null = null;
 
@@ -285,13 +287,33 @@ export async function runExplorer(
         // Database
         // --------------------------------
 
-        const databaseUrl =
-            getDatabaseUrl();
+        const databaseConfiguration =
+            getDatabaseConfiguration();
 
         databaseConnection =
-            createDatabase(
-                databaseUrl,
+            await createDatabase(
+                databaseConfiguration,
             );
+
+        logger.info(
+            {
+                storageMode:
+                    databaseConnection.kind,
+
+                ...(databaseConnection.kind ===
+                    'local'
+                    ? {
+                        dataDirectory:
+                            databaseConfiguration.kind ===
+                                'local'
+                                ? databaseConfiguration
+                                    .dataDirectory
+                                : null,
+                    }
+                    : {}),
+            },
+            'Persistence ready',
+        );
 
         const activeRepository =
             new ExplorationRepository(
