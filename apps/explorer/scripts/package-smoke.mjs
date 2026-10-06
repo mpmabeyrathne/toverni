@@ -45,6 +45,26 @@ const npmCommand =
     ? 'npm.cmd'
     : 'npm';
 
+function runNpm(
+  args,
+  options = {},
+) {
+  return runNpm(
+    args,
+    {
+      ...options,
+
+      ...(process.platform ===
+        'win32'
+        ? {
+            shell:
+              true,
+          }
+        : {}),
+    },
+  );
+}
+
 async function exists(
   path,
 ) {
@@ -154,8 +174,7 @@ try {
       ]),
   );
 
-  execFileSync(
-    npmCommand,
+  runNpm(
     [
       'pack',
       '--silent',
@@ -221,8 +240,7 @@ try {
     'utf8',
   );
 
-  execFileSync(
-    npmCommand,
+  runNpm(
     [
       'install',
       '--ignore-scripts',
