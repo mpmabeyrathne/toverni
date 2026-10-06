@@ -161,8 +161,11 @@ export async function runExplorer(
                 15_000,
 
             artifactsDirectory:
-                input.artifactsDirectory ??
-                'artifacts',
+                input.auth
+                    ?.storageStatePath
+                    ? input.artifactsDirectory
+                    : input.artifactsDirectory ??
+                        'artifacts',
 
             ...(input.auth
                 ?.storageStatePath
@@ -650,9 +653,35 @@ export async function runExplorer(
                     Observation,
             ): Promise<void> => {
                 logger.info(
-                    {
-                        observation,
-                    },
+                    input.auth
+                        ?.storageStatePath
+                        ? {
+                            url:
+                                observation.url,
+
+                            title:
+                                observation.title,
+
+                            actionCount:
+                                observation.actions
+                                    .length,
+
+                            networkEventCount:
+                                observation
+                                    .networkEvents
+                                    .length,
+
+                            consoleEventCount:
+                                observation
+                                    .consoleEvents
+                                    .length,
+
+                            authenticatedSession:
+                                true,
+                          }
+                        : {
+                            observation,
+                          },
                     'Page observation captured',
                 );
 
