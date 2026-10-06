@@ -45,24 +45,52 @@ const npmCommand =
     ? 'npm.cmd'
     : 'npm';
 
+function quoteWindowsArgument(
+  value,
+) {
+  return `"${String(
+    value,
+  ).replaceAll(
+    '"',
+    '\\"',
+  )}"`;
+}
+
 function runNpm(
   args,
   options = {},
 ) {
+  if (
+    process.platform ===
+      'win32'
+  ) {
+    const commandLine =
+      [
+        npmCommand,
+        ...args.map(
+          quoteWindowsArgument,
+        ),
+      ].join(
+        ' ',
+      );
+
+    return execFileSync(
+      process.env.ComSpec ??
+        'cmd.exe',
+      [
+        '/d',
+        '/s',
+        '/c',
+        commandLine,
+      ],
+      options,
+    );
+  }
+
   return execFileSync(
     npmCommand,
     args,
-    {
-      ...options,
-
-      ...(process.platform ===
-        'win32'
-        ? {
-            shell:
-              true,
-          }
-        : {}),
-    },
+    options,
   );
 }
 
