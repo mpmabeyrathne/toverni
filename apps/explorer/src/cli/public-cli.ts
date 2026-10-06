@@ -73,8 +73,18 @@ const publicConfigSchema =
 
     model:
       z.object({
+        provider:
+          z.enum([
+            'ollama',
+          ])
+            .optional(),
+
         reasoningEnabled:
           z.boolean()
+            .optional(),
+
+        retryAttempts:
+          positiveIntegerSchema
             .optional(),
 
         ollamaBaseUrl:
@@ -197,8 +207,14 @@ interface ParsedArguments {
   allowDestructiveActions?:
     boolean;
 
+  modelProvider?:
+    'ollama';
+
   modelReasoningEnabled?:
     boolean;
+
+  modelRetryAttempts?:
+    number;
 
   ollamaBaseUrl?:
     string;
@@ -478,6 +494,52 @@ function parseArguments(
       case '--deny-destructive-actions': {
         parsed.allowDestructiveActions =
           false;
+
+        break;
+      }
+
+      case '--model-provider': {
+        const value =
+          requireValue(
+            args,
+            index,
+            argument,
+          );
+
+        if (
+          value !==
+          'ollama'
+        ) {
+          throw new CliInputError(
+            '--model-provider currently supports only "ollama". Cloud/BYOK providers will use the same provider interface in production.',
+          );
+        }
+
+        parsed.modelProvider =
+          'ollama';
+
+        index +=
+          1;
+
+        break;
+      }
+
+      case '--model-retry-attempts': {
+        const value =
+          requireValue(
+            args,
+            index,
+            argument,
+          );
+
+        parsed.modelRetryAttempts =
+          parsePositiveInteger(
+            value,
+            argument,
+          );
+
+        index +=
+          1;
 
         break;
       }
@@ -913,7 +975,13 @@ function buildCliOverrides(
   const model =
     (
       parsed
+        .modelProvider !==
+        undefined ||
+      parsed
         .modelReasoningEnabled !==
+        undefined ||
+      parsed
+        .modelRetryAttempts !==
         undefined ||
       parsed
         .ollamaBaseUrl !==
@@ -927,12 +995,31 @@ function buildCliOverrides(
     )
       ? {
           ...(parsed
+            .modelProvider
+            ? {
+                provider:
+                  parsed
+                    .modelProvider,
+              }
+            : {}),
+
+          ...(parsed
             .modelReasoningEnabled !==
             undefined
             ? {
                 reasoningEnabled:
                   parsed
                     .modelReasoningEnabled,
+              }
+            : {}),
+
+          ...(parsed
+            .modelRetryAttempts !==
+            undefined
+            ? {
+                retryAttempts:
+                  parsed
+                    .modelRetryAttempts,
               }
             : {}),
 
@@ -1281,6 +1368,14 @@ export function applyModelEnvironment(
   }
 
   if (
+    config.provider
+  ) {
+    process.env
+      .MODEL_PROVIDER =
+      config.provider;
+  }
+
+  if (
     config.reasoningEnabled !==
     undefined
   ) {
@@ -1289,6 +1384,17 @@ export function applyModelEnvironment(
       config.reasoningEnabled
         ? 'true'
         : 'false';
+  }
+
+  if (
+    config.retryAttempts !==
+    undefined
+  ) {
+    process.env
+      .MODEL_RETRY_ATTEMPTS =
+      String(
+        config.retryAttempts,
+      );
   }
 
   if (
