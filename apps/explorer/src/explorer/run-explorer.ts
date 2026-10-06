@@ -4,6 +4,7 @@ import {
 
 import {
     createExecutableTestPlan,
+    resolvePlaywrightProjectOutput,
     runPlaywrightTest,
     writePlaywrightTest,
 } from '../test-generation/index.js';
@@ -18,10 +19,6 @@ import {
 import {
     mapPersistedApplicationGraph,
 } from '../state/persisted-application-graph.js';
-
-import {
-    join,
-} from 'node:path';
 
 import {
     buildEvidenceCatalog,
@@ -1045,14 +1042,55 @@ export async function runExplorer(
     // Executable Playwright generation
     // --------------------------------
   
+    const playwrightProjectOutput =
+      await resolvePlaywrightProjectOutput({
+        workingDirectory:
+          process.cwd(),
+
+        ...(input.outputDirectory
+          ? {
+              explicitOutputDirectory:
+                input.outputDirectory,
+            }
+          : {}),
+      });
+
     const generatedTestsDirectory =
-      input.outputDirectory ??
-      join(
-        process.cwd(),
-        'artifacts',
-        'generated-tests',
-        run.id,
+      playwrightProjectOutput
+        .outputDirectory;
+
+    logger.info(
+      {
+        outputDirectory:
+          generatedTestsDirectory,
+
+        projectDetected:
+          playwrightProjectOutput
+            .projectDetected,
+
+        configPath:
+          playwrightProjectOutput
+            .configPath,
+      },
+      'Resolved generated Playwright suite output',
+    );
+
+    if (
+      playwrightProjectOutput
+        .bootstrapCommand
+    ) {
+      logger.warn(
+        {
+          outputDirectory:
+            generatedTestsDirectory,
+
+          bootstrapCommand:
+            playwrightProjectOutput
+              .bootstrapCommand,
+        },
+        'Playwright project was not detected; generated specs are ready, but bootstrap Playwright before running them',
       );
+    }
   
     for (
       const storedScenario of
@@ -1287,7 +1325,8 @@ export async function runExplorer(
                 writtenTest.filePath,
   
               workingDirectory:
-                process.cwd(),
+                playwrightProjectOutput
+                  .workingDirectory,
 
               timeoutMs:
                 input.timeouts
