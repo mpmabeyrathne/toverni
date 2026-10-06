@@ -369,15 +369,26 @@ try {
           installDirectory,
       });
 
+  const expectedMigrationsDirectory =
+    resolve(
+      installedPackage,
+      'drizzle',
+    );
+
+  const actualMigrationsDirectory =
+    databaseConfiguration.kind ===
+      'local'
+      ? resolve(
+          databaseConfiguration
+            .migrationsDirectory,
+        )
+      : null;
+
   if (
     databaseConfiguration.kind !==
       'local' ||
-    databaseConfiguration
-      .migrationsDirectory !==
-      join(
-        installedPackage,
-        'drizzle',
-      )
+    actualMigrationsDirectory !==
+      expectedMigrationsDirectory
   ) {
     throw new Error(
       `Installed package did not resolve bundled migrations: ${JSON.stringify(databaseConfiguration)}`,
