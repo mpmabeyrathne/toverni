@@ -23,6 +23,12 @@ export const testPlanTargetSchema =
         exact:
           z.boolean()
             .optional(),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
+            .optional(),
       }),
 
       z.object({
@@ -37,6 +43,12 @@ export const testPlanTargetSchema =
 
         exact:
           z.boolean()
+            .optional(),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
             .optional(),
       }),
 
@@ -53,6 +65,12 @@ export const testPlanTargetSchema =
         exact:
           z.boolean()
             .optional(),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
+            .optional(),
       }),
 
       z.object({
@@ -64,6 +82,12 @@ export const testPlanTargetSchema =
         value:
           z.string()
             .min(1),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
+            .optional(),
       }),
 
       z.object({
@@ -75,6 +99,12 @@ export const testPlanTargetSchema =
         selector:
           z.string()
             .min(1),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
+            .optional(),
       }),
     ],
   );
