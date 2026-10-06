@@ -56,3 +56,15 @@ export {
 export type {
   BoundedModelProviderOptions,
 } from './bounded-model-provider.js';
+
+
+export {
+  createModelProviderRuntime,
+} from './model-provider-runtime.js';
+
+export type {
+  ModelPreflightResult,
+  ModelProviderKind,
+  ModelProviderRuntime,
+  ModelRuntimeConfiguration,
+} from './model-provider-runtime.js';
