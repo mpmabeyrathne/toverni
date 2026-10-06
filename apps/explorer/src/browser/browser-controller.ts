@@ -8,6 +8,8 @@ import type {
     timeoutMs?: number;
   
     artifactsDirectory?: string;
+
+    storageStatePath?: string;
   }
   
   export interface BrowserController {

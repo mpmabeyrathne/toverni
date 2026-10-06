@@ -1,4 +1,5 @@
 import {
+    assertAuthenticatedLanding,
     PlaywrightBrowserController,
 } from '../browser/index.js';
 
@@ -91,6 +92,10 @@ export interface RunExplorerInput {
 
     outputDirectory?: string;
 
+    auth?: {
+        storageStatePath?: string;
+    };
+
     resumeRunId?: string;
 
     explorationBudget?:
@@ -155,9 +160,30 @@ export async function runExplorer(
                     ?.actionMs ??
                 15_000,
 
-            artifactsDirectory:
-                input.artifactsDirectory ??
-                'artifacts',
+            ...(
+                input.auth
+                    ?.storageStatePath
+                    ? input.artifactsDirectory
+                        ? {
+                            artifactsDirectory:
+                                input.artifactsDirectory,
+                          }
+                        : {}
+                    : {
+                        artifactsDirectory:
+                            input.artifactsDirectory ??
+                            'artifacts',
+                      }
+            ),
+
+            ...(input.auth
+                ?.storageStatePath
+                ? {
+                    storageStatePath:
+                        input.auth
+                            .storageStatePath,
+                  }
+                : {}),
         });
 
     const stateModel =
@@ -583,13 +609,38 @@ export async function runExplorer(
             }
         }
 
+        const loadedTitle =
+            await session.getTitle();
+
+        if (
+            input.auth
+                ?.storageStatePath
+        ) {
+            assertAuthenticatedLanding({
+                requestedUrl:
+                    input.targetUrl,
+
+                actualUrl:
+                    session.getUrl(),
+
+                title:
+                    loadedTitle,
+            });
+        }
+
         logger.info(
             {
                 url:
                     session.getUrl(),
 
                 title:
-                    await session.getTitle(),
+                    loadedTitle,
+
+                authenticatedSession:
+                    Boolean(
+                        input.auth
+                            ?.storageStatePath,
+                    ),
             },
             'Target application loaded',
         );
@@ -611,9 +662,35 @@ export async function runExplorer(
                     Observation,
             ): Promise<void> => {
                 logger.info(
-                    {
-                        observation,
-                    },
+                    input.auth
+                        ?.storageStatePath
+                        ? {
+                            url:
+                                observation.url,
+
+                            title:
+                                observation.title,
+
+                            actionCount:
+                                observation.actions
+                                    .length,
+
+                            networkEventCount:
+                                observation
+                                    .networkEvents
+                                    .length,
+
+                            consoleEventCount:
+                                observation
+                                    .consoleEvents
+                                    .length,
+
+                            authenticatedSession:
+                                true,
+                          }
+                        : {
+                            observation,
+                          },
                     'Page observation captured',
                 );
 

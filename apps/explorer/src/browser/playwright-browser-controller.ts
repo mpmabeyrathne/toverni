@@ -48,6 +48,10 @@ import {
     private readonly artifactsDirectory:
       | string
       | undefined;
+
+    private readonly storageStatePath:
+      | string
+      | undefined;
   
     constructor(
       options: BrowserControllerOptions = {},
@@ -61,6 +65,9 @@ import {
   
       this.artifactsDirectory =
         options.artifactsDirectory;
+
+      this.storageStatePath =
+        options.storageStatePath;
     }
   
     async start(): Promise<void> {
@@ -96,7 +103,14 @@ import {
   
       try {
         const context =
-          await this.browser.newContext();
+          await this.browser.newContext({
+            ...(this.storageStatePath
+              ? {
+                  storageState:
+                    this.storageStatePath,
+                }
+              : {}),
+          });
   
         context.setDefaultTimeout(
           this.timeoutMs,
@@ -119,7 +133,9 @@ import {
           code: 'SESSION_CREATION_FAILED',
           operation: 'create-session',
           message:
-            'Failed to create browser session',
+            this.storageStatePath
+              ? `Failed to create authenticated browser session from storage state: ${this.storageStatePath}. Ensure the file exists and contains valid Playwright storageState JSON.`
+              : 'Failed to create browser session',
           cause: error,
         });
       }

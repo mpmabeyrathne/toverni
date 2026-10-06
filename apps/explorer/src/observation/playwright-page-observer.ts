@@ -55,6 +55,7 @@ export class PlaywrightPageObserver
       semanticText,
       ariaSnapshot,
       actions,
+      sensitiveValues,
     ] = await Promise.all([
       this.page.title(),
 
@@ -63,7 +64,37 @@ export class PlaywrightPageObserver
       this.captureAriaSnapshot(),
 
       this.captureActions(),
+
+      this.captureSensitiveValues(),
     ]);
+
+    const sanitizedAriaSnapshot =
+      this.redactKnownSensitiveValues(
+        ariaSnapshot,
+        sensitiveValues,
+      );
+
+    const sanitizedSemanticText =
+      semanticText.map(
+        (value) =>
+          this.redactKnownSensitiveValues(
+            value,
+            sensitiveValues,
+          ),
+      );
+
+    const sanitizedConsoleEvents =
+      this.consoleEvents.map(
+        (event) => ({
+          ...event,
+
+          text:
+            this.redactKnownSensitiveValues(
+              event.text,
+              sensitiveValues,
+            ),
+        }),
+      );
 
     const supportingArtifacts =
       await this.captureSupportingArtifacts();
@@ -76,15 +107,16 @@ export class PlaywrightPageObserver
 
       title,
 
-      semanticText,
+      semanticText:
+        sanitizedSemanticText,
 
-      ariaSnapshot,
+      ariaSnapshot:
+        sanitizedAriaSnapshot,
 
       actions,
 
-      consoleEvents: [
-        ...this.consoleEvents,
-      ],
+      consoleEvents:
+        sanitizedConsoleEvents,
 
       networkEvents: [
         ...this.networkEvents.values(),
@@ -92,6 +124,87 @@ export class PlaywrightPageObserver
 
       supportingArtifacts,
     });
+  }
+
+  private async captureSensitiveValues():
+    Promise<string[]> {
+    return this.page
+      .locator(
+        [
+          'input[type="password"]',
+          'input[type="hidden"]',
+          'input[name*="password" i]',
+          'input[name*="passcode" i]',
+          'input[name*="secret" i]',
+          'input[name*="token" i]',
+          'input[name*="api_key" i]',
+          'input[name*="api-key" i]',
+          'textarea[name*="password" i]',
+          'textarea[name*="passcode" i]',
+          'textarea[name*="secret" i]',
+          'textarea[name*="token" i]',
+          'textarea[name*="api_key" i]',
+          'textarea[name*="api-key" i]',
+        ].join(
+          ',',
+        ),
+      )
+      .evaluateAll(
+        (elements) =>
+          elements
+            .map(
+              (element) => {
+                if (
+                  element instanceof
+                    HTMLInputElement ||
+                  element instanceof
+                    HTMLTextAreaElement
+                ) {
+                  return element.value;
+                }
+
+                return '';
+              },
+            )
+            .filter(
+              (value) =>
+                value.length >
+                0,
+            ),
+      );
+  }
+
+  private redactKnownSensitiveValues(
+    value:
+      string,
+
+    sensitiveValues:
+      string[],
+  ): string {
+    return [
+      ...new Set(
+        sensitiveValues,
+      ),
+    ]
+      .sort(
+        (
+          left,
+          right,
+        ) =>
+          right.length -
+          left.length,
+      )
+      .reduce(
+        (
+          result,
+          sensitiveValue,
+        ) =>
+          result.replaceAll(
+            sensitiveValue,
+            '[REDACTED]',
+          ),
+        value,
+      );
   }
 
   private attachListeners(): void {
@@ -152,6 +265,41 @@ export class PlaywrightPageObserver
     });
   }
 
+  private redactNetworkUrl(
+    value:
+      string,
+  ): string {
+    try {
+      const url =
+        new URL(
+          value,
+        );
+
+      for (
+        const key of
+          [
+            ...url.searchParams.keys(),
+          ]
+      ) {
+        if (
+          /password|passcode|secret|token|api[_-]?key|authorization/i
+            .test(
+              key,
+            )
+        ) {
+          url.searchParams.set(
+            key,
+            '[REDACTED]',
+          );
+        }
+      }
+
+      return url.toString();
+    } catch {
+      return value;
+    }
+  }
+
   private handleRequest(
     request: Request,
   ): void {
@@ -169,7 +317,9 @@ export class PlaywrightPageObserver
           request.method(),
 
         url:
-          request.url(),
+          this.redactNetworkUrl(
+            request.url(),
+          ),
 
         resourceType:
           request.resourceType(),
@@ -205,7 +355,9 @@ export class PlaywrightPageObserver
             request.method(),
 
           url:
-            request.url(),
+            this.redactNetworkUrl(
+              request.url(),
+            ),
 
           resourceType:
             request.resourceType(),
@@ -250,7 +402,9 @@ export class PlaywrightPageObserver
             request.method(),
 
           url:
-            request.url(),
+            this.redactNetworkUrl(
+              request.url(),
+            ),
 
           resourceType:
             request.resourceType(),
@@ -462,6 +616,37 @@ export class PlaywrightPageObserver
                     ? element.type
                     : undefined;
 
+                const fieldName =
+                  (
+                    element.getAttribute(
+                      'name',
+                    ) ??
+                    element.getAttribute(
+                      'id',
+                    ) ??
+                    ''
+                  );
+
+                const autocomplete =
+                  element.getAttribute(
+                    'autocomplete',
+                  ) ??
+                  '';
+
+                const sensitiveField =
+                  inputType ===
+                    'password' ||
+                  inputType ===
+                    'hidden' ||
+                  /password|passcode|secret|token|api[_-]?key|authorization/i
+                    .test(
+                      fieldName,
+                    ) ||
+                  /current-password|new-password/i
+                    .test(
+                      autocomplete,
+                    );
+
                 const contentEditable =
                   htmlElement.isContentEditable;
                 // --------------------------------
@@ -624,7 +809,9 @@ export class PlaywrightPageObserver
                         'radio'
                         ? {
                           value:
-                            element.value,
+                            sensitiveField
+                              ? '[REDACTED]'
+                              : element.value,
                         }
                         : {}
                     ),
@@ -688,7 +875,9 @@ export class PlaywrightPageObserver
                     ),
 
                     value:
-                      element.value,
+                      sensitiveField
+                        ? '[REDACTED]'
+                        : element.value,
                   };
                 }
 

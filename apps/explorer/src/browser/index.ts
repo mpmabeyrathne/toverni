@@ -18,3 +18,11 @@ export type {
   export {
     PlaywrightBrowserController,
   } from './playwright-browser-controller.js';
+
+export {
+  assertAuthenticatedLanding,
+} from './auth-session.js';
+
+export type {
+  AuthenticatedLandingInput,
+} from './auth-session.js';

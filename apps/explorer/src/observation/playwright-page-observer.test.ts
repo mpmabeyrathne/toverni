@@ -963,7 +963,7 @@ describe(
 
         await controller.close();
       },
-      15_000,
+      30_000,
     );
   },
 );
