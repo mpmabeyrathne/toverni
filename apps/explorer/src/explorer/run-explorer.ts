@@ -70,7 +70,7 @@ import {
 
 import {
     BoundedModelProvider,
-    OllamaProvider,
+    createModelProviderRuntime,
     RecordingModelProvider,
 } from '../models/index.js';
 
@@ -466,8 +466,12 @@ export async function runExplorer(
         const modelConfiguration =
             getModelConfiguration();
 
-        const rawModelProvider =
-            new OllamaProvider({
+        const modelRuntime =
+            createModelProviderRuntime({
+                provider:
+                    modelConfiguration
+                        .MODEL_PROVIDER,
+
                 baseUrl:
                     modelConfiguration
                         .OLLAMA_BASE_URL,
@@ -481,6 +485,42 @@ export async function runExplorer(
                         .OLLAMA_COMPLEX_MODEL,
             });
 
+        if (
+            modelConfiguration
+                .MODEL_REASONING_ENABLED
+        ) {
+            const preflight =
+                await modelRuntime
+                    .preflight();
+
+            logger.info(
+                {
+                    provider:
+                        preflight.provider,
+
+                    local:
+                        preflight.local,
+
+                    cheapModel:
+                        modelConfiguration
+                            .OLLAMA_CHEAP_MODEL,
+
+                    complexModel:
+                        modelConfiguration
+                            .OLLAMA_COMPLEX_MODEL,
+
+                    requiresUserCredentials:
+                        modelRuntime
+                            .requiresUserCredentials,
+                },
+                'Model provider preflight passed',
+            );
+        }
+
+        const rawModelProvider =
+            modelRuntime
+                .provider;
+
         const boundedModelProvider =
             new BoundedModelProvider(
                 rawModelProvider,
@@ -490,7 +530,8 @@ export async function runExplorer(
                             .maxModelCalls,
 
                     retryAttempts:
-                        2,
+                        modelConfiguration
+                            .MODEL_RETRY_ATTEMPTS,
 
                     timeoutMs:
                         input.timeouts
