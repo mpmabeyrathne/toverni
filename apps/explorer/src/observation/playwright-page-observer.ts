@@ -512,6 +512,116 @@ export class PlaywrightPageObserver
       `)
         .evaluateAll(
           (elements) => {
+            const collectAccessibleText =
+              (
+                root:
+                  Element,
+              ): string | undefined => {
+                const parts:
+                  string[] = [];
+
+                const visit =
+                  (
+                    node:
+                      Node,
+                  ): void => {
+                    if (
+                      node.nodeType ===
+                      Node.TEXT_NODE
+                    ) {
+                      const value =
+                        node.textContent
+                          ?.replace(
+                            /\s+/g,
+                            ' ',
+                          )
+                          .trim();
+
+                      if (value) {
+                        parts.push(
+                          value,
+                        );
+                      }
+
+                      return;
+                    }
+
+                    if (
+                      !(node instanceof
+                        Element)
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      node.getAttribute(
+                        'aria-hidden',
+                      ) ===
+                      'true'
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      node instanceof
+                      HTMLImageElement
+                    ) {
+                      const alt =
+                        node.alt
+                          .trim();
+
+                      if (alt) {
+                        parts.push(
+                          alt,
+                        );
+                      }
+
+                      return;
+                    }
+
+                    if (
+                      node.tagName ===
+                        'SCRIPT' ||
+                      node.tagName ===
+                        'STYLE'
+                    ) {
+                      return;
+                    }
+
+                    for (
+                      const child of
+                        node.childNodes
+                    ) {
+                      visit(
+                        child,
+                      );
+                    }
+                  };
+
+                for (
+                  const child of
+                    root.childNodes
+                ) {
+                  visit(
+                    child,
+                  );
+                }
+
+                const value =
+                  parts
+                    .join(
+                      ' ',
+                    )
+                    .replace(
+                      /\s+/g,
+                      ' ',
+                    )
+                    .trim();
+
+                return value ||
+                  undefined;
+              };
+
             return elements.map(
               (element) => {
                 const htmlElement =
@@ -577,13 +687,9 @@ export class PlaywrightPageObserver
                   undefined;
 
                 const accessibleText =
-                  htmlElement.textContent
-                    ?.replace(
-                      /\s+/g,
-                      ' ',
-                    )
-                    .trim() ||
-                  undefined;
+                  collectAccessibleText(
+                    element,
+                  );
 
                 let labelText:
                   | string
