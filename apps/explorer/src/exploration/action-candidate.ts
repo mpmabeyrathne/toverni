@@ -50,6 +50,9 @@ import type {
       action.inputType ?? '',
   
       action.testId ?? '',
+
+      action.locatorIndex ??
+        0,
     ].join('|');
   }
   
@@ -61,6 +64,14 @@ import type {
         by: 'testId',
         value:
           action.testId,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -75,6 +86,14 @@ import type {
         name:
           action.name,
         exact: true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -88,6 +107,14 @@ import type {
         name:
           action.name,
         exact: true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -101,6 +128,14 @@ import type {
         name:
           action.name,
         exact: true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
 
@@ -121,6 +156,14 @@ import type {
     
         exact:
           true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -148,6 +191,14 @@ import type {
     
         exact:
           true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   
@@ -157,6 +208,14 @@ import type {
         text:
           action.text,
         exact: true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
       };
     }
   

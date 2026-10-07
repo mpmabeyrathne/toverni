@@ -110,6 +110,12 @@ export const actionElementSchema = z.object({
 
   testId: z.string().optional(),
 
+  locatorIndex:
+    z.number()
+      .int()
+      .nonnegative()
+      .optional(),
+
   disabled: z.boolean(),
 
   visible: z.boolean(),

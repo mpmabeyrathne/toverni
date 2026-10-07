@@ -10,6 +10,19 @@ import type {
     );
   }
 
+  function withIndex(
+    locator:
+      string,
+
+    index?:
+      number,
+  ): string {
+    return index ===
+      undefined
+      ? locator
+      : `${locator}.nth(${index})`;
+  }
+
   function normalizeAccessibleName(
     value: string,
   ): string {
@@ -61,58 +74,78 @@ import type {
               )} }`
             : '';
   
-        return [
-          'page.getByRole(',
-          quote(
-            target.role,
-          ),
-          optionBlock,
-          ')',
-        ].join('');
+        return withIndex(
+          [
+            'page.getByRole(',
+            quote(
+              target.role,
+            ),
+            optionBlock,
+            ')',
+          ].join(''),
+
+          target.index,
+        );
       }
   
       case 'label':
-        return [
-          'page.getByLabel(',
-          quote(
-            target.label,
-          ),
-          target.exact !==
-          undefined
-            ? `, { exact: ${target.exact} }`
-            : '',
-          ')',
-        ].join('');
+        return withIndex(
+          [
+            'page.getByLabel(',
+            quote(
+              target.label,
+            ),
+            target.exact !==
+            undefined
+              ? `, { exact: ${target.exact} }`
+              : '',
+            ')',
+          ].join(''),
+
+          target.index,
+        );
   
       case 'text':
-        return [
-          'page.getByText(',
-          quote(
-            target.text,
-          ),
-          target.exact !==
-          undefined
-            ? `, { exact: ${target.exact} }`
-            : '',
-          ')',
-        ].join('');
+        return withIndex(
+          [
+            'page.getByText(',
+            quote(
+              target.text,
+            ),
+            target.exact !==
+            undefined
+              ? `, { exact: ${target.exact} }`
+              : '',
+            ')',
+          ].join(''),
+
+          target.index,
+        );
   
       case 'testId':
-        return [
-          'page.getByTestId(',
-          quote(
-            target.value,
-          ),
-          ')',
-        ].join('');
+        return withIndex(
+          [
+            'page.getByTestId(',
+            quote(
+              target.value,
+            ),
+            ')',
+          ].join(''),
+
+          target.index,
+        );
   
       case 'css':
-        return [
-          'page.locator(',
-          quote(
-            target.selector,
-          ),
-          ')',
-        ].join('');
+        return withIndex(
+          [
+            'page.locator(',
+            quote(
+              target.selector,
+            ),
+            ')',
+          ].join(''),
+
+          target.index,
+        );
     }
   }
