@@ -152,3 +152,26 @@ apps/explorer/.codex/agents/
 
 # Toverni local free-mode state
 .toverni/
+
+# Local Playwright / MCP state
+.playwright-mcp/
+apps/explorer/.playwright-mcp/
+
+# Local benchmark / agent environments
+.venv-hercules/
+benchmark-logs/
+hercules-smoke/
+
+# Locally generated test/spec output
+specs/
+apps/explorer/specs/
+tests/toverni/
+apps/explorer/tests/toverni/
+
+# Local Ollama experiments
+Modelfile.cpu
+Modelfile.qwen3-4b-instruct-cpu
+Modelfile.qwen3-8b-cpu
+
+# Local installation metadata
+installation_id.txt
