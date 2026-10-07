@@ -13,6 +13,12 @@ export type BrowserTarget =
       index?: number;
     }
   | {
+      by: 'placeholder';
+      placeholder: string;
+      exact?: boolean;
+      index?: number;
+    }
+  | {
       by: 'text';
       text: string;
       exact?: boolean;
