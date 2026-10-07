@@ -105,6 +105,23 @@ import type {
           target.index,
         );
   
+      case 'placeholder':
+        return withIndex(
+          [
+            'page.getByPlaceholder(',
+            quote(
+              target.placeholder,
+            ),
+            target.exact !==
+            undefined
+              ? `, { exact: ${target.exact} }`
+              : '',
+            ')',
+          ].join(''),
+
+          target.index,
+        );
+  
       case 'text':
         return withIndex(
           [
