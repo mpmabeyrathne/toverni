@@ -21,6 +21,7 @@ import {
 import {
   applyModelEnvironment,
   CliInputError,
+  getPublicKnowledgeInput,
   parsePublicCli,
 } from './public-cli.js';
 
@@ -48,6 +49,14 @@ const originalEnvironment = {
   OLLAMA_COMPLEX_MODEL:
     process.env
       .OLLAMA_COMPLEX_MODEL,
+
+  REQUIREMENTS_PATH:
+    process.env
+      .REQUIREMENTS_PATH,
+
+  OPENAPI_PATH:
+    process.env
+      .OPENAPI_PATH,
 };
 
 afterEach(
@@ -222,6 +231,47 @@ describe(
             .MODEL_REASONING_ENABLED,
         ).toBe(
           'true',
+        );
+      },
+    );
+
+    it(
+      'keeps public browser-only runs isolated from environment knowledge paths',
+      async () => {
+        process.env.REQUIREMENTS_PATH =
+          '../../fixtures/knowledge/requirements.md';
+
+        process.env.OPENAPI_PATH =
+          '../../fixtures/knowledge/openapi.yaml';
+
+        const command =
+          await parsePublicCli(
+            [
+              'generate',
+              'http://localhost:3000',
+            ],
+            process.cwd(),
+          );
+
+        expect(
+          command.kind,
+        ).toBe(
+          'generate',
+        );
+
+        if (
+          command.kind !==
+          'generate'
+        ) {
+          return;
+        }
+
+        expect(
+          getPublicKnowledgeInput(
+            command.config,
+          ),
+        ).toEqual(
+          {},
         );
       },
     );
