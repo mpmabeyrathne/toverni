@@ -150,6 +150,35 @@ export type PublicGenerateConfig =
     typeof publicConfigSchema
   >;
 
+export interface PublicKnowledgeInput {
+  requirementsPath?:
+    string;
+
+  openApiPath?:
+    string;
+}
+
+export function getPublicKnowledgeInput(
+  config:
+    PublicGenerateConfig,
+): PublicKnowledgeInput {
+  return {
+    ...(config.requirements
+      ? {
+          requirementsPath:
+            config.requirements,
+        }
+      : {}),
+
+    ...(config.openapi
+      ? {
+          openApiPath:
+            config.openapi,
+        }
+      : {}),
+  };
+}
+
 export type PublicCliCommand =
   | {
       kind:
