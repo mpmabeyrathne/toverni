@@ -50,6 +50,15 @@ const server =
             </style>
           </head>
           <body>
+            <a
+              href="#home"
+              onclick="document.querySelector('#logo-status').textContent='logo clicked'"
+            >
+              <span>&lt;</span>
+              <span>PM</span>
+              <span>/&gt;</span>
+            </a>
+
             <div
               class="lab-card"
               role="button"
@@ -59,6 +68,10 @@ const server =
               Lab #01
               <span>Explore Architecture</span>
             </div>
+
+            <p id="logo-status">
+              logo not clicked
+            </p>
 
             <p id="status">
               not clicked
@@ -149,6 +162,57 @@ describe(
 
           const observation =
             await session.observe();
+
+          const logoAction =
+            observation.actions.find(
+              (candidate) =>
+                candidate.type ===
+                  'link' &&
+                candidate.href
+                  ?.endsWith(
+                    '#home',
+                  ),
+            );
+
+          expect(
+            logoAction,
+          ).toBeDefined();
+
+          expect(
+            logoAction?.name,
+          ).toBe(
+            '< PM />',
+          );
+
+          const logoTarget =
+            createBrowserTarget(
+              logoAction!,
+            );
+
+          expect(
+            renderPlaywrightLocator(
+              logoTarget!,
+            ),
+          ).toContain(
+            'name: "< PM />"',
+          );
+
+          await session.click(
+            logoTarget!,
+          );
+
+          const afterLogoClick =
+            await session.observe();
+
+          expect(
+            afterLogoClick
+              .semanticText
+              .join(
+                ' ',
+              ),
+          ).toContain(
+            'logo clicked',
+          );
 
           const action =
             observation.actions.find(
