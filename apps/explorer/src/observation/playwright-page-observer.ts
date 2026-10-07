@@ -576,6 +576,15 @@ export class PlaywrightPageObserver
                     ?.trim() ||
                   undefined;
 
+                const accessibleText =
+                  htmlElement.textContent
+                    ?.replace(
+                      /\s+/g,
+                      ' ',
+                    )
+                    .trim() ||
+                  undefined;
+
                 let labelText:
                   | string
                   | undefined;
@@ -599,7 +608,7 @@ export class PlaywrightPageObserver
                   ariaLabel ??
                   labelledByText ??
                   labelText ??
-                  text ??
+                  accessibleText ??
                   placeholder ??
                   title ??
                   undefined;
