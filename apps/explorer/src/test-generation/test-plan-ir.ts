@@ -55,6 +55,27 @@ export const testPlanTargetSchema =
       z.object({
         by:
           z.literal(
+            'placeholder',
+          ),
+
+        placeholder:
+          z.string()
+            .min(1),
+
+        exact:
+          z.boolean()
+            .optional(),
+
+        index:
+          z.number()
+            .int()
+            .nonnegative()
+            .optional(),
+      }),
+
+      z.object({
+        by:
+          z.literal(
             'text',
           ),
 
