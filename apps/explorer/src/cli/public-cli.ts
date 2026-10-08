@@ -115,6 +115,10 @@ const publicConfigSchema =
           positiveIntegerSchema
             .optional(),
 
+        maxScenarios:
+          positiveIntegerSchema
+            .optional(),
+
         maxModelCalls:
           positiveIntegerSchema
             .optional(),
@@ -263,6 +267,9 @@ interface ParsedArguments {
     string;
 
   maxActions?:
+    number;
+
+  maxScenarios?:
     number;
 
   maxModelCalls?:
@@ -660,6 +667,26 @@ function parseArguments(
           );
 
         parsed.maxActions =
+          parsePositiveInteger(
+            value,
+            argument,
+          );
+
+        index +=
+          1;
+
+        break;
+      }
+
+      case '--max-scenarios': {
+        const value =
+          requireValue(
+            args,
+            index,
+            argument,
+          );
+
+        parsed.maxScenarios =
           parsePositiveInteger(
             value,
             argument,
@@ -1125,6 +1152,8 @@ function buildCliOverrides(
     (
       parsed.maxActions !==
         undefined ||
+      parsed.maxScenarios !==
+        undefined ||
       parsed.maxModelCalls !==
         undefined
     )
@@ -1134,6 +1163,14 @@ function buildCliOverrides(
             ? {
                 maxActions:
                   parsed.maxActions,
+              }
+            : {}),
+
+          ...(parsed.maxScenarios !==
+            undefined
+            ? {
+                maxScenarios:
+                  parsed.maxScenarios,
               }
             : {}),
 
@@ -1532,6 +1569,7 @@ Model:
 
 Budgets/timeouts:
       --max-actions <n>
+      --max-scenarios <n>          Maximum scenarios selected for the generated suite (default: 20)
       --max-model-calls <n>
       --navigation-timeout-ms <n>
       --action-timeout-ms <n>
@@ -1556,6 +1594,8 @@ Config example:
   openapi: ./openapi.yaml
   output: ./tests/toverni
   headless: true
+  exploration:
+    maxScenarios: 20
   safety:
     allowDestructiveActions: false
   model:
