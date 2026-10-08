@@ -816,6 +816,9 @@ export async function runExplorationLoop(
           currentPersistedState =
             restoredPersistedState;
 
+          failures =
+            0;
+
           logger.info(
             {
               restoredUrl:
@@ -1186,6 +1189,9 @@ const decision =
 
       break;
     }
+
+    failures =
+      0;
 
     // ------------------------------
     // Record executed action
