@@ -1206,25 +1206,68 @@ export async function runExplorer(
 
           actions:
             currentFlow.actions.map(
-              (action) => ({
-                id:
-                  action.id,
+              (action) => {
+                const sourceState =
+                  currentFlow.states.find(
+                    (state) =>
+                      state.id ===
+                      action.stateId,
+                  );
 
-                label:
-                  action.label,
+                const observedAction =
+                  sourceState
+                    ?.observation
+                    .actions
+                    .find(
+                      (candidate) =>
+                        (
+                          candidate.name ??
+                          candidate.text ??
+                          candidate.testId ??
+                          `${candidate.type}:${candidate.tagName}`
+                        ) ===
+                        action.label,
+                    );
 
-                type:
-                  action.type,
+                return {
+                  id:
+                    action.id,
 
-                target:
-                  action.target,
+                  label:
+                    action.label,
 
-                blocked:
-                  action.blocked,
+                  type:
+                    action.type,
 
-                blockReasons:
-                  action.blockReasons,
-              }),
+                  target:
+                    action.target,
+
+                  ...(observedAction
+                    ?.href
+                    ? {
+                        href:
+                          observedAction.href,
+                      }
+                    : {}),
+
+                  ...(sourceState
+                    ?.observation
+                    .url
+                    ? {
+                        sourceUrl:
+                          sourceState
+                            .observation
+                            .url,
+                      }
+                    : {}),
+
+                  blocked:
+                    action.blocked,
+
+                  blockReasons:
+                    action.blockReasons,
+                };
+              },
             ),
 
           transitions:
