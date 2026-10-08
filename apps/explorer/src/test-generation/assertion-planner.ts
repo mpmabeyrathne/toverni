@@ -96,6 +96,15 @@ function observedTarget(
     ActionElement,
 ): ExecutableAssertion['target'] | null {
   if (
+    action.type ===
+      'link' &&
+    !action.href &&
+    !action.testId
+  ) {
+    return null;
+  }
+
+  if (
     action.testId
   ) {
     return {
@@ -634,6 +643,8 @@ export function buildEvidenceBackedAssertions(
 
       evidenceReferences,
     });
+
+    return assertions;
   }
 
   // --------------------------------
