@@ -1953,6 +1953,171 @@ export async function runExplorer(
             'Browser session closed',
         );
 
+        const targetOrigin =
+            new URL(
+                input.targetUrl,
+            ).origin;
+
+        const executedActionIds =
+            new Set(
+                flow.transitions
+                    .map(
+                        (transition) =>
+                            transition.actionId,
+                    )
+                    .filter(
+                        (
+                            actionId,
+                        ): actionId is string =>
+                            typeof actionId ===
+                                'string',
+                    ),
+            );
+
+        const routeCandidates =
+            flow.actions
+                .map(
+                    (action) => {
+                        const state =
+                            flow.states.find(
+                                (candidate) =>
+                                    candidate.id ===
+                                    action.stateId,
+                            );
+
+                        const observedAction =
+                            state
+                                ?.observation
+                                .actions
+                                .find(
+                                    (candidate) =>
+                                        (
+                                            candidate.name ??
+                                            candidate.text ??
+                                            candidate.testId ??
+                                            `${candidate.type}:${candidate.tagName}`
+                                        ) ===
+                                        action.label,
+                                );
+
+                        if (
+                            !state ||
+                            !observedAction
+                                ?.href
+                        ) {
+                            return null;
+                        }
+
+                        try {
+                            const sourceUrl =
+                                new URL(
+                                    state
+                                        .observation
+                                        .url,
+                                );
+
+                            const destinationUrl =
+                                new URL(
+                                    observedAction
+                                        .href,
+                                    sourceUrl,
+                                );
+
+                            const sameOrigin =
+                                destinationUrl.origin ===
+                                targetOrigin;
+
+                            const changesRoute =
+                                destinationUrl.pathname !==
+                                    sourceUrl.pathname ||
+                                destinationUrl.search !==
+                                    sourceUrl.search;
+
+                            if (
+                                !changesRoute
+                            ) {
+                                return null;
+                            }
+
+                            return {
+                                actionId:
+                                    action.id,
+
+                                label:
+                                    action.label,
+
+                                href:
+                                    destinationUrl.href,
+
+                                sameOrigin,
+
+                                blocked:
+                                    action.blocked,
+
+                                blockReasons:
+                                    action.blockReasons,
+                            };
+                        } catch {
+                            return null;
+                        }
+                    },
+                )
+                .filter(
+                    (
+                        candidate,
+                    ): candidate is NonNullable<
+                        typeof candidate
+                    > =>
+                        candidate !==
+                        null,
+                );
+
+        const coveredFlowNames =
+            [
+                ...new Set(
+                    groundedBusinessBehaviors
+                        .map(
+                            (behavior) =>
+                                behavior.name,
+                        ),
+                ),
+            ].sort();
+
+        const missedRouteFlows =
+            [
+                ...new Set(
+                    routeCandidates
+                        .filter(
+                            (candidate) =>
+                                candidate.sameOrigin &&
+                                !executedActionIds
+                                    .has(
+                                        candidate.actionId,
+                                    ),
+                        )
+                        .map(
+                            (candidate) =>
+                                `${candidate.label} → ${candidate.href}`,
+                        ),
+                ),
+            ].sort();
+
+        const blockedRouteFlows =
+            [
+                ...new Set(
+                    routeCandidates
+                        .filter(
+                            (candidate) =>
+                                !candidate.sameOrigin ||
+                                candidate.blocked,
+                        )
+                        .map(
+                            (candidate) =>
+                                `${candidate.label} → ${candidate.href}`,
+                        ),
+                ),
+            ].sort();
+
         const summary =
             buildGenerationSummary({
                 runId:
@@ -1968,6 +2133,17 @@ export async function runExplorer(
                 discoveredFlows:
                     reconstructedFlows
                         .length,
+
+                flowAudit: {
+                    covered:
+                        coveredFlowNames,
+
+                    missed:
+                        missedRouteFlows,
+
+                    blocked:
+                        blockedRouteFlows,
+                },
 
                 outputDirectory:
                     generatedTestsDirectory,
