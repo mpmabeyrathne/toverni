@@ -160,6 +160,16 @@ Promise<void> {
         : {}),
 
       ...(config.exploration
+        ?.maxScenarios !==
+      undefined
+        ? {
+            maxScenarios:
+              config.exploration
+                .maxScenarios,
+          }
+        : {}),
+
+      ...(config.exploration
         ? {
             explorationBudget: {
               ...(config.exploration
