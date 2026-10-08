@@ -512,116 +512,6 @@ export class PlaywrightPageObserver
       `)
         .evaluateAll(
           (elements) => {
-            const collectAccessibleText =
-              (
-                root:
-                  Element,
-              ): string | undefined => {
-                const parts:
-                  string[] = [];
-
-                const visit =
-                  (
-                    node:
-                      Node,
-                  ): void => {
-                    if (
-                      node.nodeType ===
-                      Node.TEXT_NODE
-                    ) {
-                      const value =
-                        node.textContent
-                          ?.replace(
-                            /\s+/g,
-                            ' ',
-                          )
-                          .trim();
-
-                      if (value) {
-                        parts.push(
-                          value,
-                        );
-                      }
-
-                      return;
-                    }
-
-                    if (
-                      !(node instanceof
-                        Element)
-                    ) {
-                      return;
-                    }
-
-                    if (
-                      node.getAttribute(
-                        'aria-hidden',
-                      ) ===
-                      'true'
-                    ) {
-                      return;
-                    }
-
-                    if (
-                      node instanceof
-                      HTMLImageElement
-                    ) {
-                      const alt =
-                        node.alt
-                          .trim();
-
-                      if (alt) {
-                        parts.push(
-                          alt,
-                        );
-                      }
-
-                      return;
-                    }
-
-                    if (
-                      node.tagName ===
-                        'SCRIPT' ||
-                      node.tagName ===
-                        'STYLE'
-                    ) {
-                      return;
-                    }
-
-                    for (
-                      const child of
-                        node.childNodes
-                    ) {
-                      visit(
-                        child,
-                      );
-                    }
-                  };
-
-                for (
-                  const child of
-                    root.childNodes
-                ) {
-                  visit(
-                    child,
-                  );
-                }
-
-                const value =
-                  parts
-                    .join(
-                      ' ',
-                    )
-                    .replace(
-                      /\s+/g,
-                      ' ',
-                    )
-                    .trim();
-
-                return value ||
-                  undefined;
-              };
-
             return elements.map(
               (element) => {
                 const htmlElement =
@@ -686,10 +576,109 @@ export class PlaywrightPageObserver
                     ?.trim() ||
                   undefined;
 
-                const accessibleText =
-                  collectAccessibleText(
-                    element,
+                const accessibleTextParts:
+                  string[] = [];
+
+                const pendingNodes:
+                  Node[] =
+                    Array.from(
+                      element.childNodes,
+                    )
+                      .reverse();
+
+                while (
+                  pendingNodes.length >
+                  0
+                ) {
+                  const node =
+                    pendingNodes.pop();
+
+                  if (!node) {
+                    continue;
+                  }
+
+                  if (
+                    node.nodeType ===
+                    Node.TEXT_NODE
+                  ) {
+                    const value =
+                      node.textContent
+                        ?.replace(
+                          /\s+/g,
+                          ' ',
+                        )
+                        .trim();
+
+                    if (value) {
+                      accessibleTextParts.push(
+                        value,
+                      );
+                    }
+
+                    continue;
+                  }
+
+                  if (
+                    !(node instanceof
+                      Element)
+                  ) {
+                    continue;
+                  }
+
+                  if (
+                    node.getAttribute(
+                      'aria-hidden',
+                    ) ===
+                    'true'
+                  ) {
+                    continue;
+                  }
+
+                  if (
+                    node instanceof
+                    HTMLImageElement
+                  ) {
+                    const alt =
+                      node.alt
+                        .trim();
+
+                    if (alt) {
+                      accessibleTextParts.push(
+                        alt,
+                      );
+                    }
+
+                    continue;
+                  }
+
+                  if (
+                    node.tagName ===
+                      'SCRIPT' ||
+                    node.tagName ===
+                      'STYLE'
+                  ) {
+                    continue;
+                  }
+
+                  pendingNodes.push(
+                    ...Array.from(
+                      node.childNodes,
+                    )
+                      .reverse(),
                   );
+                }
+
+                const accessibleText =
+                  accessibleTextParts
+                    .join(
+                      ' ',
+                    )
+                    .replace(
+                      /\s+/g,
+                      ' ',
+                    )
+                    .trim() ||
+                  undefined;
 
                 let labelText:
                   | string
