@@ -34,6 +34,12 @@ interface StoredAction {
   target:
     BrowserTarget | null;
 
+  href?:
+    string;
+
+  sourceUrl?:
+    string;
+
   blocked?: boolean;
 
   blockReasons?: string[];
@@ -2067,32 +2073,118 @@ export function createExecutableTestPlan(
           return [];
         }
 
-        return buildEvidenceBackedAssertions({
-          actionId:
-            step.actionId,
+        const observedAssertions =
+          buildEvidenceBackedAssertions({
+            actionId:
+              step.actionId,
 
-          actionEvidenceReference:
-            step.evidenceReference,
+            actionEvidenceReference:
+              step.evidenceReference,
 
-          actionLabel:
-            step.description,
+            actionLabel:
+              step.description,
 
-          ...(step.transitionId
-            ? {
-                transitionId:
-                  step.transitionId,
-              }
-            : {}),
+            ...(step.transitionId
+              ? {
+                  transitionId:
+                    step.transitionId,
+                }
+              : {}),
 
-          scenarioEvidenceReferences:
-            input.scenario
-              .evidenceReferences,
+            scenarioEvidenceReferences:
+              input.scenario
+                .evidenceReferences,
 
-          evidence:
-            input.evidence,
+            evidence:
+              input.evidence,
 
-          transitions,
-        });
+            transitions,
+          });
+
+        if (
+          observedAssertions.length >
+          0
+        ) {
+          return observedAssertions;
+        }
+
+        const action =
+          input.actions.find(
+            (candidate) =>
+              candidate.id ===
+              step.actionId,
+          );
+
+        if (
+          step.transitionId ||
+          action?.type !==
+            'link' ||
+          !action.href ||
+          !action.sourceUrl
+        ) {
+          return [];
+        }
+
+        try {
+          const source =
+            new URL(
+              action.sourceUrl,
+            );
+
+          const destination =
+            new URL(
+              action.href,
+              action.sourceUrl,
+            );
+
+          const isSameOrigin =
+            source.origin ===
+            destination.origin;
+
+          const changesRoute =
+            source.pathname !==
+              destination.pathname ||
+            source.search !==
+              destination.search;
+
+          if (
+            !isSameOrigin ||
+            !changesRoute
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              afterActionId:
+                action.id,
+
+              kind:
+                'url' as const,
+
+              description:
+                `Observed link navigates to ${destination.href}`,
+
+              target: {
+                kind:
+                  'page' as const,
+              },
+
+              matcher:
+                'url' as const,
+
+              expected:
+                destination.href,
+
+              evidenceReferences: [
+                step
+                  .evidenceReference,
+              ],
+            },
+          ];
+        } catch {
+          return [];
+        }
       },
     );
 
