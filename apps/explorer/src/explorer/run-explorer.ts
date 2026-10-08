@@ -2083,6 +2083,30 @@ export async function runExplorer(
                 ),
             ].sort();
 
+        // Audit successful destinations rather than only the exact action ID:
+        // the same route may be reached through another navigation action.
+        const reachedRouteUrls =
+            new Set(
+                flow.transitions
+                    .map((transition) =>
+                        flow.states.find(
+                            (state) => state.id === transition.toStateId,
+                        )?.latestUrl,
+                    )
+                    .filter((url): url is string => typeof url === 'string')
+                    .map((url) => {
+                        const parsed = new URL(url);
+                        parsed.hash = '';
+                        return parsed.href;
+                    }),
+            );
+
+        const wasRouteReached = (href: string): boolean => {
+            const parsed = new URL(href);
+            parsed.hash = '';
+            return reachedRouteUrls.has(parsed.href);
+        };
+
         const missedRouteFlows =
             [
                 ...new Set(
@@ -2090,10 +2114,9 @@ export async function runExplorer(
                         .filter(
                             (candidate) =>
                                 candidate.sameOrigin &&
-                                !executedActionIds
-                                    .has(
-                                        candidate.actionId,
-                                    ),
+                                !candidate.blocked &&
+                                !executedActionIds.has(candidate.actionId) &&
+                                !wasRouteReached(candidate.href),
                         )
                         .map(
                             (candidate) =>
