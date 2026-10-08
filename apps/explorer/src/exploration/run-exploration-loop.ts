@@ -468,6 +468,15 @@ export async function runExplorationLoop(
       ),
     ];
 
+  const persistedNetworkEventIds =
+    new Set<string>();
+
+  const persistedConsoleEventKeys =
+    new Set<string>();
+
+  const persistedArtifactKeys =
+    new Set<string>();
+
   input.planner
     .restoreExecutionHistory(
       completedExecutions,
@@ -558,6 +567,137 @@ export async function runExplorationLoop(
   const initialStateId =
     currentPersistedState.id;
 
+  const persistFreshObservationEvidence =
+    async (
+      stateId:
+        string,
+
+      observation:
+        Observation,
+    ): Promise<void> => {
+      const freshNetworkEvents =
+        observation
+          .networkEvents
+          .filter(
+            (event) =>
+              !persistedNetworkEventIds
+                .has(
+                  event.id,
+                ),
+          );
+
+      const freshConsoleEvents =
+        observation
+          .consoleEvents
+          .filter(
+            (event) => {
+              const key =
+                [
+                  event.timestamp,
+                  event.type,
+                  event.text,
+                ].join(
+                  '\u0000',
+                );
+
+              return !persistedConsoleEventKeys
+                .has(
+                  key,
+                );
+            },
+          );
+
+      const freshArtifacts =
+        observation
+          .supportingArtifacts
+          .filter(
+            (artifact) => {
+              const key =
+                [
+                  artifact.type,
+                  artifact.path,
+                ].join(
+                  '\u0000',
+                );
+
+              return !persistedArtifactKeys
+                .has(
+                  key,
+                );
+            },
+          );
+
+      if (
+        freshNetworkEvents.length ===
+          0 &&
+        freshConsoleEvents.length ===
+          0 &&
+        freshArtifacts.length ===
+          0
+      ) {
+        return;
+      }
+
+      await input.repository
+        .saveObservationEvidence(
+          input.runId,
+          stateId,
+          {
+            ...observation,
+
+            networkEvents:
+              freshNetworkEvents,
+
+            consoleEvents:
+              freshConsoleEvents,
+
+            supportingArtifacts:
+              freshArtifacts,
+          },
+        );
+
+      for (
+        const event of
+        freshNetworkEvents
+      ) {
+        persistedNetworkEventIds
+          .add(
+            event.id,
+          );
+      }
+
+      for (
+        const event of
+        freshConsoleEvents
+      ) {
+        persistedConsoleEventKeys
+          .add(
+            [
+              event.timestamp,
+              event.type,
+              event.text,
+            ].join(
+              '\u0000',
+            ),
+          );
+      }
+
+      for (
+        const artifact of
+        freshArtifacts
+      ) {
+        persistedArtifactKeys
+          .add(
+            [
+              artifact.type,
+              artifact.path,
+            ].join(
+              '\u0000',
+            ),
+          );
+      }
+    };
+
   // --------------------------------
   // Preserve raw observation evidence
   // --------------------------------
@@ -565,12 +705,10 @@ export async function runExplorationLoop(
   if (
     !input.checkpoint
   ) {
-    await input.repository
-      .saveObservationEvidence(
-        input.runId,
-        currentPersistedState.id,
-        currentObservation,
-      );
+    await persistFreshObservationEvidence(
+      currentPersistedState.id,
+      currentObservation,
+    );
   }
 
   await input.repository
@@ -610,7 +748,7 @@ export async function runExplorationLoop(
       initialObservation.url,
     ).origin;
 
-  const seenNetworkEventIds =
+  const seenApiNetworkEventIds =
     new Set<string>();
 
   const restoreFromFrontier =
@@ -663,12 +801,10 @@ export async function runExplorationLoop(
                   .state,
               );
 
-          await input.repository
-            .saveObservationEvidence(
-              input.runId,
-              restoredPersistedState.id,
-              restoredObservation,
-            );
+          await persistFreshObservationEvidence(
+            restoredPersistedState.id,
+            restoredObservation,
+          );
 
           currentObservation =
             restoredObservation;
@@ -779,7 +915,7 @@ export async function runExplorationLoop(
     getContextualApiOperationIds(
       currentObservation,
       input.knowledge,
-      seenNetworkEventIds,
+      seenApiNetworkEventIds,
     );
 
 const decision =
@@ -1181,12 +1317,10 @@ const decision =
     // observation evidence
     // ------------------------------
 
-    await input.repository
-      .saveObservationEvidence(
-        input.runId,
-        persistedToState.id,
-        nextObservation,
-      );
+    await persistFreshObservationEvidence(
+      persistedToState.id,
+      nextObservation,
+    );
 
     // ------------------------------
     // Persist transition
