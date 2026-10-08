@@ -942,6 +942,18 @@ export function buildEvidenceBackedAssertions(
   // --------------------------------
   // Semantic text deltas
   // --------------------------------
+  //
+  // Generic text is the least durable evidence.
+  // If a stronger control/state assertion was
+  // already derived, avoid adding arbitrary
+  // page-text deltas that may come from ads,
+  // recommendations, or randomized content.
+  if (
+    assertions.length >
+    0
+  ) {
+    return assertions;
+  }
 
   const beforeText =
     new Set(
