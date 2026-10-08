@@ -257,6 +257,92 @@ import {
         },
       );
       it(
+        'makes an observed same-origin route link runnable from stable href evidence',
+        () => {
+          const result =
+            createExecutableTestPlan({
+              scenario: {
+                id:
+                  'scenario-navigation-href',
+
+                title:
+                  'Navigation: A/B Testing',
+
+                evidenceReferences: [
+                  'ACTION-AB',
+                ],
+              },
+
+              evidence: [
+                {
+                  id:
+                    'ACTION-AB',
+
+                  type:
+                    'action',
+
+                  source:
+                    'action-ab',
+                },
+              ],
+
+              actions: [
+                {
+                  id:
+                    'action-ab',
+
+                  label:
+                    'A/B Testing',
+
+                  type:
+                    'link',
+
+                  target: {
+                    by:
+                      'role',
+
+                    role:
+                      'link',
+
+                    name:
+                      'A/B Testing',
+
+                    exact:
+                      true,
+                  },
+
+                  href:
+                    'https://example.com/abtest',
+
+                  sourceUrl:
+                    'https://example.com/',
+                },
+              ],
+            });
+
+          expect(
+            result.status,
+          ).toBe(
+            'ready',
+          );
+
+          expect(
+            result.assertions,
+          ).toEqual(
+            [
+              expect.objectContaining({
+                matcher:
+                  'url',
+
+                expected:
+                  'https://example.com/abtest',
+              }),
+            ],
+          );
+        },
+      );
+
+      it(
         'requires manual completion when referenced action is blocked',
         () => {
           const result =
