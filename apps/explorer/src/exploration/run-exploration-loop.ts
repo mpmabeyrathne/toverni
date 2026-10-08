@@ -77,6 +77,9 @@ export interface RunExplorationLoopInput {
   priorityTerms:
   string[];
 
+  targetOrigin?:
+  string;
+
   knowledge?:
   KnowledgeContext;
 
@@ -602,6 +605,7 @@ export async function runExplorationLoop(
     string | null = null;
 
   const targetOrigin =
+    input.targetOrigin ??
     new URL(
       initialObservation.url,
     ).origin;
