@@ -609,6 +609,38 @@ this.globalActionCounts.set(
     }
 
     if (
+      action.href &&
+      productContext
+        ?.targetOrigin
+    ) {
+      try {
+        const actionOrigin =
+          new URL(
+            action.href,
+            observation.url,
+          ).origin;
+
+        if (
+          actionOrigin !==
+          productContext
+            .targetOrigin
+        ) {
+          blockReasons.push(
+            `External navigation is outside the autonomous exploration origin (${actionOrigin})`,
+          );
+        } else {
+          reasons.push(
+            'Navigation remains inside the autonomous exploration origin',
+          );
+        }
+      } catch {
+        blockReasons.push(
+          'Navigation target could not be resolved safely',
+        );
+      }
+    }
+
+    if (
       sensitiveFormAction &&
       !sensitiveFormGrounded
     ) {
