@@ -1023,12 +1023,85 @@ export class ExplorationRepository {
           ),
       ]);
 
+    const runStateIds =
+      new Set(
+        [
+          ...actions.map(
+            (action) =>
+              action.stateId,
+          ),
+
+          ...storedTransitions
+            .flatMap(
+              (transition) => [
+                transition.fromStateId,
+                transition.toStateId,
+              ],
+            ),
+
+          ...decisions.map(
+            (decision) =>
+              decision.stateId,
+          ),
+
+          ...storedNetworkEvents
+            .map(
+              (event) =>
+                event.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+
+          ...storedConsoleEvents
+            .map(
+              (event) =>
+                event.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+
+          ...storedArtifacts
+            .map(
+              (artifact) =>
+                artifact.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+        ],
+      );
+
+    const scopedStates =
+      runId
+        ? states.filter(
+            (state) =>
+              runStateIds.has(
+                state.id,
+              ),
+          )
+        : states;
+
     return {
       application,
 
       runs,
 
-      states,
+      states:
+        scopedStates,
 
       actions,
 
