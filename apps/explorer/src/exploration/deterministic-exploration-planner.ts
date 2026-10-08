@@ -629,6 +629,49 @@ this.globalActionCounts.set(
             `External navigation is outside the autonomous exploration origin (${actionOrigin})`,
           );
         } else {
+          const actionUrl =
+            new URL(
+              action.href,
+              observation.url,
+            );
+
+          const currentUrl =
+            new URL(
+              observation.url,
+            );
+
+          if (
+            actionUrl.href ===
+            currentUrl.href
+          ) {
+            blockReasons.push(
+              'Navigation target is already the current page',
+            );
+          } else if (
+            actionUrl.origin ===
+              currentUrl.origin &&
+            actionUrl.pathname ===
+              currentUrl.pathname &&
+            actionUrl.search ===
+              currentUrl.search &&
+            actionUrl.hash !==
+              currentUrl.hash
+          ) {
+            score -=
+              40;
+
+            reasons.push(
+              'Same-document fragment navigation is deprioritized behind route exploration',
+            );
+          } else {
+            score +=
+              40;
+
+            reasons.push(
+              'Same-origin route navigation expands application coverage',
+            );
+          }
+
           reasons.push(
             'Navigation remains inside the autonomous exploration origin',
           );
