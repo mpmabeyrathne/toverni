@@ -227,7 +227,7 @@ describe(
 
 
     it(
-      'derives meaningful assertions from an observed transition delta',
+      'derives meaningful assertions from a same-page observed transition delta',
       () => {
         const result =
           buildEvidenceBackedAssertions({
@@ -334,9 +334,6 @@ describe(
 
                 afterObservation:
                   observation({
-                    url:
-                      'https://example.com/cart',
-
                     semanticText: [
                       'Mechanical Keyboard',
                     ],
@@ -396,7 +393,6 @@ describe(
           ),
         ).toEqual(
           expect.arrayContaining([
-            'url',
             'enabled',
             'value',
             'text',
