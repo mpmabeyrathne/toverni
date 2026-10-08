@@ -937,8 +937,10 @@ const decision =
             ),
           retryAttempts,
           () => {
-            failures +=
-              1;
+            // Retry attempts are not separate
+            // exploration failures. The
+            // candidate is counted once if
+            // all retries are exhausted.
           },
         );
     } catch (
@@ -947,6 +949,9 @@ const decision =
     ) {
       executionError =
         error;
+
+      failures +=
+        1;
     }
 
     if (
