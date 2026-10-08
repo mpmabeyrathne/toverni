@@ -48,6 +48,12 @@ export interface ExplorationExecutionCheckpoint {
   label: string;
 }
 
+export interface ExplorationFrontierCheckpoint {
+  stateId: string;
+
+  url: string;
+}
+
 export interface ExplorationCheckpoint {
   version:
     1;
@@ -73,6 +79,9 @@ export interface ExplorationCheckpoint {
   completedExecutions:
     ExplorationExecutionCheckpoint[];
 
+  frontier?:
+    ExplorationFrontierCheckpoint[];
+
   stopReason?:
     ExplorationStopReason | null;
 }
@@ -81,6 +90,9 @@ export interface ExplorationProductContext {
   priorityTerms?: string[];
 
   avoidTerms?: string[];
+
+  targetOrigin?:
+    string;
 }
 
 export type ExplorationFormExecution =
