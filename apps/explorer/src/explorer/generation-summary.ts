@@ -56,6 +56,17 @@ export interface GenerationSummary {
       number;
   };
 
+  flowAudit: {
+    covered:
+      string[];
+
+    missed:
+      string[];
+
+    blocked:
+      string[];
+  };
+
   safety: {
     blockedActions:
       number;
@@ -205,6 +216,17 @@ export interface BuildGenerationSummaryInput {
 
   discoveredFlows:
     number;
+
+  flowAudit?: {
+    covered:
+      string[];
+
+    missed:
+      string[];
+
+    blocked:
+      string[];
+  };
 
   outputDirectory:
     string;
@@ -485,6 +507,23 @@ export function buildGenerationSummary(
           .length,
     },
 
+    flowAudit: {
+      covered:
+        input.flowAudit
+          ?.covered ??
+        [],
+
+      missed:
+        input.flowAudit
+          ?.missed ??
+        [],
+
+      blocked:
+        input.flowAudit
+          ?.blocked ??
+        [],
+    },
+
     tests: {
       generated:
         generatedTests.length,
@@ -636,6 +675,35 @@ export function renderGenerationSummary(
     `Output: ${summary.output.directory}`,
     `Model: ${summary.model.calls} calls, ${summary.model.totalTokens} tokens, $${summary.model.estimatedCostUsd.toFixed(6)} estimated`,
   ];
+
+  if (
+    summary.flowAudit.covered.length >
+      0 ||
+    summary.flowAudit.missed.length >
+      0 ||
+    summary.flowAudit.blocked.length >
+      0
+  ) {
+    lines.push(
+      '',
+      'Flow audit:',
+      ...summary.flowAudit.covered
+        .map(
+          (flow) =>
+            `  ✓ covered: ${flow}`,
+        ),
+      ...summary.flowAudit.missed
+        .map(
+          (flow) =>
+            `  ○ missed: ${flow}`,
+        ),
+      ...summary.flowAudit.blocked
+        .map(
+          (flow) =>
+            `  ⛔ blocked: ${flow}`,
+        ),
+    );
+  }
 
   if (
     summary.output.files
