@@ -227,6 +227,142 @@ describe(
 
 
     it(
+      'does not add volatile semantic text when stronger same-page assertions exist',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-search',
+
+            actionEvidenceReference:
+              'ACTION-SEARCH',
+
+            actionLabel:
+              'Search',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-SEARCH',
+
+                type:
+                  'action',
+
+                source:
+                  'action-search',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-search',
+
+                actionId:
+                  'action-search',
+
+                actionTarget:
+                  'Search',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-08T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    semanticText: [
+                      'Calorie Tracker Application',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Search',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          value:
+                            '',
+                        },
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    semanticText: [
+                      'Discover more',
+                    ],
+
+                    actions: [
+                      {
+                        type:
+                          'input',
+
+                        tagName:
+                          'input',
+
+                        name:
+                          'Search',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+
+                        formField: {
+                          required:
+                            false,
+
+                          value:
+                            'mock exam questions',
+                        },
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.description
+                .includes(
+                  'Discover more',
+                ),
+          ),
+        ).toBe(false);
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.matcher ===
+                'value',
+          ),
+        ).toBe(true);
+      },
+    );
+
+
+    it(
       'derives meaningful assertions from a same-page observed transition delta',
       () => {
         const result =
