@@ -2682,6 +2682,136 @@ function setupWithObservation(
 
 
       it(
+        'blocks external navigation while keeping same-origin links eligible',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'link',
+
+                tagName:
+                  'a',
+
+                name:
+                  'Register',
+
+                text:
+                  'Register',
+
+                href:
+                  'https://example.com/register',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+
+              {
+                type:
+                  'link',
+
+                tagName:
+                  'a',
+
+                name:
+                  'External Docs',
+
+                text:
+                  'External Docs',
+
+                href:
+                  'https://docs.example.net/start',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const stateModel =
+            new ApplicationStateModel();
+
+          const state =
+            stateModel
+              .registerObservation(
+                observation,
+              )
+              .state;
+
+          const planner =
+            new DeterministicExplorationPlanner(
+              stateModel,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              productContext: {
+                targetOrigin:
+                  'https://example.com',
+              },
+            });
+
+          const register =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Register',
+              );
+
+          const external =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'External Docs',
+              );
+
+          expect(
+            register?.blocked,
+          ).toBe(false);
+
+          expect(
+            external?.blocked,
+          ).toBe(true);
+
+          expect(
+            external
+              ?.blockReasons
+              .some(
+                (reason) =>
+                  reason.includes(
+                    'outside the autonomous exploration origin',
+                  ),
+              ),
+          ).toBe(true);
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Register',
+          );
+        },
+      );
+
+
+      it(
         'treats sign out as reversible session navigation rather than destructive data mutation',
         () => {
           const observation:
