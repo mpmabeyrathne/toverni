@@ -109,6 +109,9 @@ export interface RunExplorerInput {
     allowDestructiveActions?:
         boolean;
 
+    maxScenarios?:
+        number;
+
     timeouts?: {
         navigationMs?: number;
         actionMs?: number;
@@ -1148,104 +1151,38 @@ export async function runExplorer(
           )
         : generatedScenarios;
 
-    const scenarios =
+    const scenarioCandidates =
+      browserSuiteCandidates.length >
+        0
+        ? browserSuiteCandidates
+        : generatedScenarios;
+
+    const createPlanForScenario =
       (
-        browserSuiteCandidates.length >
-          0
-          ? browserSuiteCandidates
-          : generatedScenarios
-      ).slice(
-        0,
-        8,
-      );
-  
-    const storedScenarios =
-      await activeRepository
-        .saveGeneratedScenarios(
-          run.id,
-          application.id,
-          scenarios,
-        );
-  
-    logger.info(
-      {
-        evidenceCount:
-          evidence.length,
-  
-        scenarioCount:
-          scenarios.length,
+        scenario: {
+          id?: string;
+          title: string;
+          evidenceReferences:
+            string[];
+        },
 
-        coverageGapCount:
-          scenarioCoverageGaps.length,
-
-        coverageGaps:
-          scenarioCoverageGaps.map(
-            (gap) => ({
-              targetId:
-                gap.targetId,
-
-              kind:
-                gap.kind,
-
-              status:
-                gap.status,
-            }),
-          ),
-  
-        scenarios:
-          scenarios.map(
-            (scenario) => ({
-              title:
-                scenario.title,
-  
-              type:
-                scenario.type,
-  
-              relevance:
-                scenario.relevance,
-  
-              risk:
-                scenario.risk,
-  
-              confidence:
-                scenario.confidence,
-  
-              evidenceReferences:
-                scenario
-                  .evidenceReferences,
-
-              rankingReasons:
-                scenario
-                  .rankingReasons,
-            }),
-          ),
-      },
-      'Grounded test scenarios generated',
-    );
-  
-    // --------------------------------
-    // Executable Playwright generation
-    // --------------------------------
-  
-
-    for (
-      const storedScenario of
-      storedScenarios
-    ) {
-      const plan =
+        provisionalId:
+          string,
+      ) =>
         createExecutableTestPlan({
           scenario: {
             id:
-              storedScenario.id,
-  
+              scenario.id ??
+              provisionalId,
+
             title:
-              storedScenario.title,
-  
+              scenario.title,
+
             evidenceReferences:
-              storedScenario
+              scenario
                 .evidenceReferences,
           },
-  
+
           initialStateId:
             explorationResult
               .initialStateId,
@@ -1255,10 +1192,10 @@ export async function runExplorer(
               (item) => ({
                 id:
                   item.id,
-  
+
                 type:
                   item.type,
-  
+
                 source:
                   item.source,
 
@@ -1266,25 +1203,25 @@ export async function runExplorer(
                   item.description,
               }),
             ),
-  
+
           actions:
             currentFlow.actions.map(
               (action) => ({
                 id:
                   action.id,
-  
+
                 label:
                   action.label,
-  
+
                 type:
                   action.type,
-  
+
                 target:
                   action.target,
-  
+
                 blocked:
                   action.blocked,
-  
+
                 blockReasons:
                   action.blockReasons,
               }),
@@ -1352,6 +1289,144 @@ export async function runExplorer(
                 }),
               ),
         });
+
+    const plannedCandidates =
+      scenarioCandidates.map(
+        (
+          scenario,
+          index,
+        ) => ({
+          scenario,
+
+          plan:
+            createPlanForScenario(
+              scenario,
+              `candidate-${index + 1}`,
+            ),
+        }),
+      );
+
+    const maxScenarios =
+      input.maxScenarios ??
+      20;
+
+    const runnableCandidates =
+      plannedCandidates.filter(
+        (candidate) =>
+          candidate.plan.status ===
+          'ready',
+      );
+
+    const manualCandidates =
+      plannedCandidates.filter(
+        (candidate) =>
+          candidate.plan.status ===
+          'manual_required',
+      );
+
+    const selectedCandidates = [
+      ...runnableCandidates,
+      ...manualCandidates,
+    ].slice(
+      0,
+      maxScenarios,
+    );
+
+    const scenarios =
+      selectedCandidates.map(
+        (candidate) =>
+          candidate.scenario,
+      );
+  
+    const storedScenarios =
+      await activeRepository
+        .saveGeneratedScenarios(
+          run.id,
+          application.id,
+          scenarios,
+        );
+  
+    logger.info(
+      {
+        evidenceCount:
+          evidence.length,
+
+        scenarioCandidateCount:
+          scenarioCandidates.length,
+
+        runnableCandidateCount:
+          runnableCandidates.length,
+
+        manualCandidateCount:
+          manualCandidates.length,
+  
+        scenarioCount:
+          scenarios.length,
+
+        maxScenarios,
+
+        coverageGapCount:
+          scenarioCoverageGaps.length,
+
+        coverageGaps:
+          scenarioCoverageGaps.map(
+            (gap) => ({
+              targetId:
+                gap.targetId,
+
+              kind:
+                gap.kind,
+
+              status:
+                gap.status,
+            }),
+          ),
+  
+        scenarios:
+          scenarios.map(
+            (scenario) => ({
+              title:
+                scenario.title,
+  
+              type:
+                scenario.type,
+  
+              relevance:
+                scenario.relevance,
+  
+              risk:
+                scenario.risk,
+  
+              confidence:
+                scenario.confidence,
+  
+              evidenceReferences:
+                scenario
+                  .evidenceReferences,
+
+              rankingReasons:
+                scenario
+                  .rankingReasons,
+            }),
+          ),
+      },
+      'Grounded test scenarios generated',
+    );
+  
+    // --------------------------------
+    // Executable Playwright generation
+    // --------------------------------
+  
+
+    for (
+      const storedScenario of
+      storedScenarios
+    ) {
+      const plan =
+        createPlanForScenario(
+          storedScenario,
+          storedScenario.id,
+        );
   
       // ------------------------------
       // Manual-required scenario
