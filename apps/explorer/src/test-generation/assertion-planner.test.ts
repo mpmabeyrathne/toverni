@@ -12,6 +12,7 @@ function observation(
   input: {
     url?: string;
     semanticText?: string[];
+    ariaSnapshot?: string;
     actions?: Array<{
       type: 'button' | 'input' | 'dialog' | 'link';
       tagName: string;
@@ -46,6 +47,7 @@ function observation(
       [],
 
     ariaSnapshot:
+      input.ariaSnapshot ??
       '',
 
     actions:
@@ -309,6 +311,15 @@ describe(
                     semanticText: [
                       'Discover more',
                     ],
+
+                    ariaSnapshot: [
+                      '- heading "Discover more"',
+                      '- heading "Discover more"',
+                      '- heading "Discover more"',
+                      '- heading "Discover more"',
+                    ].join(
+                      '\n',
+                    ),
 
                     actions: [
                       {
