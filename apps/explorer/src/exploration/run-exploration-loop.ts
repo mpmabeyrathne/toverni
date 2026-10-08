@@ -456,6 +456,15 @@ export async function runExplorationLoop(
       ),
     ];
 
+  const frontier =
+    [
+      ...(
+        input.checkpoint
+          ?.frontier ??
+        []
+      ),
+    ];
+
   input.planner
     .restoreExecutionHistory(
       completedExecutions,
@@ -584,14 +593,139 @@ export async function runExplorationLoop(
             .toISOString(),
 
         completedExecutions,
+
+        frontier,
       },
     );
 
   let stopReason:
     string | null = null;
 
-    const seenNetworkEventIds =
-  new Set<string>();
+  const targetOrigin =
+    new URL(
+      initialObservation.url,
+    ).origin;
+
+  const seenNetworkEventIds =
+    new Set<string>();
+
+  const restoreFromFrontier =
+    async (): Promise<boolean> => {
+      while (
+        frontier.length >
+        0
+      ) {
+        const next =
+          frontier.pop();
+
+        if (!next) {
+          return false;
+        }
+
+        try {
+          await input.session
+            .navigate(
+              next.url,
+            );
+
+          const restoredObservation =
+            await withRetry(
+              () =>
+                input.session
+                  .observe(),
+              retryAttempts,
+              () => {
+                failures +=
+                  1;
+              },
+            );
+
+          await input
+            .analyzeObservation?.(
+              restoredObservation,
+            );
+
+          const restoredStateResult =
+            input.stateModel
+              .registerObservation(
+                restoredObservation,
+              );
+
+          const restoredPersistedState =
+            await input.repository
+              .saveState(
+                input.applicationId,
+                restoredStateResult
+                  .state,
+              );
+
+          await input.repository
+            .saveObservationEvidence(
+              input.runId,
+              restoredPersistedState.id,
+              restoredObservation,
+            );
+
+          currentObservation =
+            restoredObservation;
+
+          currentState =
+            restoredStateResult
+              .state;
+
+          currentPersistedState =
+            restoredPersistedState;
+
+          logger.info(
+            {
+              restoredUrl:
+                restoredObservation.url,
+
+              requestedStateId:
+                next.stateId,
+
+              restoredStateId:
+                restoredStateResult
+                  .state.id,
+
+              remainingFrontierStates:
+                frontier.length,
+            },
+            'Restored exploration frontier state',
+          );
+
+          return true;
+        } catch (
+          error:
+            unknown
+        ) {
+          failures +=
+            1;
+
+          logger.warn(
+            {
+              frontierStateId:
+                next.stateId,
+
+              frontierUrl:
+                next.url,
+
+              error:
+                error instanceof
+                  Error
+                  ? error.message
+                  : String(
+                      error,
+                    ),
+            },
+            'Failed to restore exploration frontier state; trying next frontier entry',
+          );
+        }
+      }
+
+      return false;
+    };
+
   // --------------------------------
   // Multi-step exploration loop
   // --------------------------------
@@ -617,6 +751,17 @@ export async function runExplorationLoop(
     if (
       runtimeStop
     ) {
+      const stateLocalStop =
+        runtimeStop ===
+          'max-visits-per-state-reached';
+
+      if (
+        stateLocalStop &&
+        await restoreFromFrontier()
+      ) {
+        continue;
+      }
+
       stopReason =
         runtimeStop;
 
@@ -644,6 +789,8 @@ const decision =
     productContext: {
       priorityTerms:
         input.priorityTerms,
+
+      targetOrigin,
     },
 
     ...(input.knowledge
@@ -726,6 +873,19 @@ const decision =
       decision.shouldStop ||
       !decision.selected
     ) {
+      const resumableStop =
+        decision.stopReason ===
+          'no-eligible-actions' ||
+        decision.stopReason ===
+          'max-actions-per-state-reached';
+
+      if (
+        resumableStop &&
+        await restoreFromFrontier()
+      ) {
+        continue;
+      }
+
       stopReason =
         decision.stopReason ??
         'no-selected-action';
@@ -863,6 +1023,8 @@ const decision =
                 .toISOString(),
 
             completedExecutions,
+
+            frontier,
           },
         );
 
@@ -1062,6 +1224,41 @@ const decision =
         selected.label,
     });
 
+    if (
+      currentObservation.url !==
+        nextObservation.url
+    ) {
+      const hasRemainingSourceActions =
+        decision
+          .rankedCandidates
+          .some(
+            (candidate) =>
+              !candidate.blocked &&
+              candidate.signature !==
+                selected.signature,
+          );
+
+      const alreadyQueued =
+        frontier.some(
+          (item) =>
+            item.stateId ===
+              currentState.id,
+        );
+
+      if (
+        hasRemainingSourceActions &&
+        !alreadyQueued
+      ) {
+        frontier.push({
+          stateId:
+            currentState.id,
+
+          url:
+            currentObservation.url,
+        });
+      }
+    }
+
     await input.repository
       .saveRunCheckpoint(
         input.runId,
@@ -1085,6 +1282,8 @@ const decision =
               .toISOString(),
 
           completedExecutions,
+
+          frontier,
         },
       );
 
@@ -1129,6 +1328,8 @@ const decision =
             .toISOString(),
 
         completedExecutions,
+
+        frontier,
 
         stopReason:
           (
