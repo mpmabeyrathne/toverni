@@ -2072,14 +2072,18 @@ export async function runExplorer(
                         null,
                 );
 
+        // Only label a flow covered when the coverage evaluator says so.
+        // Grounded behaviors alone do not guarantee executable test coverage.
         const coveredFlowNames =
             [
                 ...new Set(
-                    groundedBusinessBehaviors
-                        .map(
-                            (behavior) =>
-                                behavior.name,
-                        ),
+                    coverage.entries
+                        .filter(
+                            (entry) =>
+                                entry.target.kind === 'flow' &&
+                                entry.status === 'covered',
+                        )
+                        .map((entry) => entry.target.label),
                 ),
             ].sort();
 
