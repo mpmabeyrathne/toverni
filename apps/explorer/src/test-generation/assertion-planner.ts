@@ -387,6 +387,58 @@ function uniqueSemanticText(
   ];
 }
 
+function isAmbiguousSemanticText(
+  value:
+    string,
+
+  observation:
+    PageObservation,
+): boolean {
+  const normalizedValue =
+    value
+      .trim()
+      .toLowerCase();
+
+  if (!normalizedValue) {
+    return true;
+  }
+
+  const semanticOccurrences =
+    observation
+      .semanticText
+      .filter(
+        (candidate) =>
+          candidate
+            .trim()
+            .toLowerCase() ===
+          normalizedValue,
+      )
+      .length;
+
+  if (
+    semanticOccurrences >
+    1
+  ) {
+    return true;
+  }
+
+  const normalizedAria =
+    observation
+      .ariaSnapshot
+      .toLowerCase();
+
+  const ariaOccurrences =
+    normalizedAria
+      .split(
+        normalizedValue,
+      )
+      .length -
+    1;
+
+  return ariaOccurrences >
+    1;
+}
+
 function semanticTextTarget(
   value:
     string,
@@ -943,18 +995,11 @@ export function buildEvidenceBackedAssertions(
   // Semantic text deltas
   // --------------------------------
   //
-  // Generic text is the least durable evidence.
-  // If a stronger control/state assertion was
-  // already derived, avoid adding arbitrary
-  // page-text deltas that may come from ads,
-  // recommendations, or randomized content.
-  if (
-    assertions.length >
-    0
-  ) {
-    return assertions;
-  }
-
+  // Semantic text can represent a meaningful
+  // business outcome, but an exact-text
+  // assertion is unsafe when the observation
+  // itself contains multiple matching
+  // accessible occurrences.
   const beforeText =
     new Set(
       uniqueSemanticText(
@@ -995,6 +1040,10 @@ export function buildEvidenceBackedAssertions(
         !isActionChromeAggregate(
           value,
           after.actions,
+        ) &&
+        !isAmbiguousSemanticText(
+          value,
+          after,
         ),
     );
 
@@ -1027,6 +1076,10 @@ export function buildEvidenceBackedAssertions(
         !isActionChromeAggregate(
           value,
           before.actions,
+        ) &&
+        !isAmbiguousSemanticText(
+          value,
+          before,
         ),
     );
 
