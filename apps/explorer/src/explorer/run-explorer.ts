@@ -829,6 +829,11 @@ export async function runExplorer(
                         []),
                 ],
 
+                targetOrigin:
+                    new URL(
+                        input.targetUrl,
+                    ).origin,
+
                 knowledge,
 
                 analyzeObservation,
