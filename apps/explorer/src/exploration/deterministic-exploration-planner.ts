@@ -865,15 +865,28 @@ this.globalActionCounts.set(
       action.type === 'button' &&
       /^(?:log\s*in|sign\s*in|login)$/i.test(label.trim());
 
+    const hasFormSubmit = observation.actions.some((item) =>
+      item.visible && !item.disabled && item.type === 'button' &&
+      /\b(?:log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(
+        item.name ?? item.text ?? ''
+      )
+    );
+    const unfilledGroundedField = Boolean(formExecution) &&
+      this.isUnfilledFormSetup(action) &&
+      (action.type === 'input' || action.type === 'textarea' || action.type === 'select');
+
     if (authenticationSubmit) {
       score += 130;
       reasons.push('Primary authentication action is prioritized over site navigation');
-    } else if (authenticationPage && formExecution &&
-      (action.type === 'input' || action.type === 'textarea')) {
+    } else if (authenticationPage && unfilledGroundedField) {
       // Fill safe, evidence-backed login fields before submitting.
       // Blocked sensitive fields remain blocked regardless of score.
       score += 180;
       reasons.push('Grounded authentication form setup is prioritized before login submission and navigation');
+    }
+    else if (hasFormSubmit && unfilledGroundedField) {
+      score += 105;
+      reasons.push('Grounded form setup is prioritized before generic navigation');
     }
 
     const contextResult =
