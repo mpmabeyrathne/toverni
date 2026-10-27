@@ -787,11 +787,28 @@ export async function runExplorationLoop(
               restoredObservation,
             );
 
+          // Never continue a saved frontier action against a different
+          // origin or a different structural state. URL-only restoration
+          // cannot recreate modal, form, or other transient UI state.
+          if (new URL(restoredObservation.url).origin !== targetOrigin) {
+            logger.warn({ requestedStateId: next.stateId, restoredUrl: restoredObservation.url },
+              'Discarded frontier restoration outside the target origin');
+            continue;
+          }
+
           const restoredStateResult =
             input.stateModel
               .registerObservation(
                 restoredObservation,
               );
+
+          if (restoredStateResult.state.id !== next.stateId) {
+            logger.warn({ requestedStateId: next.stateId,
+              restoredStateId: restoredStateResult.state.id,
+              restoredUrl: restoredObservation.url },
+              'Discarded frontier restoration with mismatched structural state');
+            continue;
+          }
 
           const restoredPersistedState =
             await input.repository
@@ -1217,6 +1234,17 @@ const decision =
             1;
         },
       );
+
+    // A link can redirect or execute JavaScript navigation even when
+    // its original href passed the planner's same-origin check.
+    // Never register or explore an off-origin destination.
+    if (new URL(nextObservation.url).origin !== targetOrigin) {
+      logger.warn({ targetOrigin, destinationUrl: nextObservation.url,
+        action: selected.label },
+        'Exploration left the target origin; stopping before external discovery');
+      stopReason = 'external-origin-navigation';
+      break;
+    }
 
     await input.analyzeObservation?.(
       nextObservation,
