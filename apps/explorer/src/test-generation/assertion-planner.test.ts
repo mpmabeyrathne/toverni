@@ -1086,6 +1086,38 @@ describe(
     );
 
 
+    it('does not infer disappeared controls when page content remains but action capture is empty', () => {
+      const result = buildEvidenceBackedAssertions({
+        actionId: 'action-login',
+        actionEvidenceReference: 'ACTION-LOGIN',
+        actionLabel: 'Login',
+        evidence: [{ id: 'ACTION-LOGIN', type: 'action', source: 'action-login' }],
+        transitions: [{
+          id: 'transition-login',
+          actionId: 'action-login',
+          actionTarget: 'Login',
+          explorationBlocked: false,
+          occurredAt: '2026-10-27T00:00:00.000Z',
+          beforeObservation: observation({
+            semanticText: ['Login page', 'Username', 'Password'],
+            actions: [{ type: 'button', tagName: 'button',
+              name: 'Login', visible: true, disabled: false }],
+          }),
+          afterObservation: observation({
+            semanticText: ['Login page', 'Username', 'Password', 'Your username is invalid!'],
+            actions: [],
+          }),
+        }],
+      });
+      expect(result.some(assertion =>
+        assertion.kind === 'count' && assertion.expected === 0
+      )).toBe(false);
+      expect(result.some(assertion =>
+        assertion.kind === 'text' &&
+        assertion.description.includes('Your username is invalid!')
+      )).toBe(true);
+    });
+
     it(
       'emits a zero-count assertion when an observed control is removed from the DOM',
       () => {
