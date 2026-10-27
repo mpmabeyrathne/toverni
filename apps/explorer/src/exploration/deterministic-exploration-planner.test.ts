@@ -2743,6 +2743,7 @@ function setupWithObservation(
         const decision = planner.plan({ state, observation,
           productContext: { targetOrigin: 'https://example.com' } });
         expect(decision.functionalTree?.stateId).toBe(state.id);
+        expect(decision.selected?.label).toBe('Username');
         const branches = decision.functionalTree!.branches;
         expect(branches.find(b => b.kind === 'form-setup')?.candidateIds).toHaveLength(1);
         expect(branches.find(b => b.kind === 'submission')?.candidateIds).toHaveLength(1);
