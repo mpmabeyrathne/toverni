@@ -1104,10 +1104,7 @@ export async function runExplorer(
         // Grounded scenario generation
         // --------------------------------
 
-        if (
-            modelConfiguration
-                .MODEL_REASONING_ENABLED
-        ) {
+        {
   
     const scenarioGenerator =
       new GroundedScenarioGenerator(
@@ -1123,6 +1120,9 @@ export async function runExplorer(
 
           businessBehaviors:
             groundedBusinessBehaviors,
+        }, {
+          skipModel:
+            !modelConfiguration.MODEL_REASONING_ENABLED,
         });
   
     const hasAcceptanceCriteria =
