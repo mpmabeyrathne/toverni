@@ -15,6 +15,32 @@ import {
 describe(
     'GroundedScenarioGenerator',
     () => {
+        it('generates deterministic scenarios with model reasoning disabled', async () => {
+            let modelCalled = false;
+            const provider: ModelProvider = {
+                name: 'disabled-model',
+                async analyzeState() { throw new Error('Not used'); },
+                async rankActions() { throw new Error('Not used'); },
+                async generateScenarios() {
+                    modelCalled = true;
+                    throw new Error('Model must not run');
+                },
+            };
+            const generator = new GroundedScenarioGenerator(provider);
+            const result = await generator.generate({
+                evidence: [{
+                    id: 'ACTION-NAV',
+                    type: 'action',
+                    description: 'link: Visit pricing',
+                    source: 'action-pricing',
+                }],
+            }, { skipModel: true });
+            expect(modelCalled).toBe(false);
+            expect(result.some((scenario) =>
+                scenario.title === 'Navigation: Visit pricing'
+            )).toBe(true);
+        });
+
         it(
             'rejects scenarios that reference unknown evidence',
             async () => {
