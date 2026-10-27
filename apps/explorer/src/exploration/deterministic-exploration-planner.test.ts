@@ -2724,6 +2724,33 @@ function setupWithObservation(
         expect(decision.selected?.formExecution?.kind).toBe('fill');
       });
 
+      it('organizes exploration candidates into inspectable functional branches', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          actions: [
+            { type: 'input', tagName: 'input', name: 'Username',
+              inputType: 'text', formField: { htmlName: 'username',
+                inputType: 'text', value: '', required: true },
+              visible: true, disabled: false },
+            { type: 'button', tagName: 'button', name: 'Login',
+              text: 'Login', visible: true, disabled: false },
+            { type: 'link', tagName: 'a', name: 'About',
+              href: 'https://example.com/about', visible: true, disabled: false },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.functionalTree?.stateId).toBe(state.id);
+        const branches = decision.functionalTree!.branches;
+        expect(branches.find(b => b.kind === 'form-setup')?.candidateIds).toHaveLength(1);
+        expect(branches.find(b => b.kind === 'submission')?.candidateIds).toHaveLength(1);
+        expect(branches.find(b => b.kind === 'navigation')?.candidateIds).toHaveLength(1);
+        const all = branches.flatMap(b => b.candidateIds);
+        expect(new Set(all).size).toBe(all.length);
+      });
+
       it('prioritizes login submission over generic navigation', () => {
         const observation: PageObservation = {
           ...createObservation(),
