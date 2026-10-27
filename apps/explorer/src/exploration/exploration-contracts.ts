@@ -195,7 +195,26 @@ export type ExplorationStopReason =
   | 'max-duration-reached'
   | 'no-eligible-actions';
 
+export type FunctionalBranchKind =
+  | 'validation'
+  | 'form-setup'
+  | 'submission'
+  | 'navigation'
+  | 'other';
+
+export interface FunctionalExplorationBranch {
+  kind: FunctionalBranchKind;
+  candidateIds: string[];
+  eligibleCandidateIds: string[];
+}
+
+export interface FunctionalExplorationTree {
+  stateId: string;
+  branches: FunctionalExplorationBranch[];
+}
+
 export interface ExplorationDecision {
+  functionalTree?: FunctionalExplorationTree;
   decidedAt: string;
 
   stateId: string;
