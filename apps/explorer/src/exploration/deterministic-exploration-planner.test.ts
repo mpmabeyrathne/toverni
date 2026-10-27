@@ -2703,6 +2703,27 @@ function setupWithObservation(
         expect(decision.selected?.formExecution?.kind).toBe('fill');
       });
 
+      it('prioritizes grounded form fields over generic links on other form pages', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/contact',
+          actions: [
+            { type: 'link', tagName: 'a', name: 'About', text: 'About',
+              href: 'https://example.com/about', disabled: false, visible: true },
+            { type: 'input', tagName: 'input', name: 'Email', inputType: 'email',
+              formField: { htmlName: 'email', inputType: 'email', required: true, value: '' },
+              disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Submit', text: 'Submit',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.selected?.label).toBe('Email');
+        expect(decision.selected?.formExecution?.kind).toBe('fill');
+      });
+
       it('prioritizes login submission over generic navigation', () => {
         const observation: PageObservation = {
           ...createObservation(),
