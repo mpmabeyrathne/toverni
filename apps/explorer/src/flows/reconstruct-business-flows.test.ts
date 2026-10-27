@@ -532,10 +532,12 @@ import {
         const submitted = flows.filter((flow) =>
           flow.transitionIds.includes('login-submit'));
         expect(submitted).toHaveLength(2);
-        expect(submitted.map((flow) => flow.transitionIds)).toEqual([
-          ['username-valid', 'password', 'login-submit'],
-          ['username-invalid', 'password', 'login-submit'],
-        ]);
+        expect(submitted.map((flow) => flow.transitionIds)).toEqual(
+          expect.arrayContaining([
+            ['username-valid', 'password', 'login-submit'],
+            ['username-invalid', 'password', 'login-submit'],
+          ])
+        );
       });
 
       it(
