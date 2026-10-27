@@ -28,6 +28,8 @@ import type {
   ExplorationProductContext,
   PlanExplorationInput,
   ExplorationFormExecution,
+  type FunctionalExplorationTree,
+  type FunctionalBranchKind,
 } from './exploration-contracts.js';
 
 const DEFAULT_BUDGET:
@@ -305,6 +307,38 @@ export class DeterministicExplorationPlanner {
             first.score,
         );
 
+    // An inspectable functional tree complements (but does not replace)
+    // the observed state graph. Preserve existing candidate selection.
+    const branchOrder: FunctionalBranchKind[] = [
+      'validation', 'form-setup', 'submission', 'navigation', 'other',
+    ];
+    const functionalTree: FunctionalExplorationTree = {
+      stateId: input.state.id,
+      branches: branchOrder.map((kind) => {
+        const members = candidates.filter((candidate) => {
+          const label = candidate.label;
+          const type = candidate.action.type;
+          if (kind === 'validation') {
+            return validationProbeLabels.has(this.normalize(label));
+          }
+          if (kind === 'form-setup') {
+            return ['input', 'textarea', 'select', 'checkbox', 'radio',
+              'combobox', 'contenteditable'].includes(type);
+          }
+          if (kind === 'submission') {
+            return type === 'button' &&
+              /\b(?:login|log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(label);
+          }
+          if (kind === 'navigation') {
+            return type === 'link';
+          }
+          return false;
+        });
+        return { kind, candidateIds: members.map((item) => item.id),
+          eligibleCandidateIds: members.filter((item) => !item.blocked).map((item) => item.id) };
+      }),
+    };
+
     const selected =
       candidates.find(
         (candidate) =>
@@ -339,6 +373,8 @@ export class DeterministicExplorationPlanner {
         input.state.id,
 
       selected,
+
+      functionalTree,
 
       rankedCandidates:
         candidates,
