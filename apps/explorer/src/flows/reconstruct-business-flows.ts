@@ -359,16 +359,24 @@ import {
       usedTransitionIds:
         Set<string>,
     ): void => {
+      // A field may have several observed candidate values. Once one
+      // has been selected along a path, never replay another alternative
+      // for that same field (which would overwrite the chosen value).
+      const selectedSetupTargets = new Set(
+        pathTransitions
+          .filter(isReplaySetupSelfTransition)
+          .map((transition) =>
+            JSON.stringify([transition.action.type, transition.action.target]))
+      );
       const availableTransitions =
         (
-          outgoing.get(
-            currentStateId,
-          ) ?? []
-        ).filter(
-          (transition) =>
-            !usedTransitionIds.has(
-              transition.id,
-            ),
+          outgoing.get(currentStateId) ?? []
+        ).filter((transition) =>
+          !usedTransitionIds.has(transition.id) &&
+          (!isReplaySetupSelfTransition(transition) ||
+            !selectedSetupTargets.has(JSON.stringify([
+              transition.action.type, transition.action.target,
+            ])))
         );
 
       const nextSetupTransition =
