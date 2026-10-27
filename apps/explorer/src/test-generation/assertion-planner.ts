@@ -814,7 +814,13 @@ export function buildEvidenceBackedAssertions(
     // Keep affirmative outcome assertions (such as error text).
     if (
       after.actions.length === 0 &&
-      afterItems.length === 0
+      afterItems.length === 0 &&
+      // If the surrounding page text remains, losing every control
+      // is more likely an incomplete snapshot than a real DOM removal.
+      // Preserve legitimate removal assertions on emptied pages.
+      after.semanticText.some((text) =>
+        before.semanticText.includes(text)
+      )
     ) {
       continue;
     }
