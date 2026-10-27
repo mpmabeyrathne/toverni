@@ -2681,6 +2681,24 @@ function setupWithObservation(
       );
 
 
+      it('prioritizes login submission over generic navigation', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          title: 'Login',
+          actions: [
+            { type: 'link', tagName: 'a', name: 'About', text: 'About',
+              href: 'https://example.com/about', disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Login', text: 'Login',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.selected?.label).toBe('Login');
+      });
+
       it(
         'blocks external navigation while keeping same-origin links eligible',
         () => {
