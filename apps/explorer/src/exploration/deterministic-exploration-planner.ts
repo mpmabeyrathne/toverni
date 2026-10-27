@@ -28,8 +28,8 @@ import type {
   ExplorationProductContext,
   PlanExplorationInput,
   ExplorationFormExecution,
-  type FunctionalExplorationTree,
-  type FunctionalBranchKind,
+  FunctionalExplorationTree,
+  FunctionalBranchKind,
 } from './exploration-contracts.js';
 
 const DEFAULT_BUDGET:
