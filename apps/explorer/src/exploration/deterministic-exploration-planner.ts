@@ -322,6 +322,7 @@ export class DeterministicExplorationPlanner {
             return validationProbeLabels.has(this.normalize(label));
           }
           if (kind === 'form-setup') {
+            if (validationProbeLabels.has(this.normalize(label))) return false;
             return ['input', 'textarea', 'select', 'checkbox', 'radio',
               'combobox', 'contenteditable'].includes(type);
           }
@@ -332,7 +333,10 @@ export class DeterministicExplorationPlanner {
           if (kind === 'navigation') {
             return type === 'link';
           }
-          return false;
+          return kind === 'other' &&
+            !validationProbeLabels.has(this.normalize(label)) &&
+            !['input', 'textarea', 'select', 'checkbox', 'radio', 'combobox', 'contenteditable', 'link'].includes(type) &&
+            !(type === 'button' && /\b(?:login|log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(label));
         });
         return { kind, candidateIds: members.map((item) => item.id),
           eligibleCandidateIds: members.filter((item) => !item.blocked).map((item) => item.id) };
@@ -354,6 +358,8 @@ export class DeterministicExplorationPlanner {
           input.state.id,
 
         selected: null,
+
+        functionalTree,
 
         rankedCandidates:
           candidates,
