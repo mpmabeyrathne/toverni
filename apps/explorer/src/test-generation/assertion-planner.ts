@@ -809,6 +809,16 @@ export function buildEvidenceBackedAssertions(
       continue;
     }
 
+    // An empty post-action control snapshot may be a transient
+    // observer gap, not proof that every control disappeared.
+    // Keep affirmative outcome assertions (such as error text).
+    if (
+      after.actions.length === 0 &&
+      afterItems.length === 0
+    ) {
+      continue;
+    }
+
     if (
       beforeItems.length !==
         afterItems.length &&
