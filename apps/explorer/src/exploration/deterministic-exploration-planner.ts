@@ -870,8 +870,10 @@ this.globalActionCounts.set(
       reasons.push('Primary authentication action is prioritized over site navigation');
     } else if (authenticationPage && formExecution &&
       (action.type === 'input' || action.type === 'textarea')) {
-      score += 85;
-      reasons.push('Grounded authentication form setup is prioritized over navigation');
+      // Fill safe, evidence-backed login fields before submitting.
+      // Blocked sensitive fields remain blocked regardless of score.
+      score += 180;
+      reasons.push('Grounded authentication form setup is prioritized before login submission and navigation');
     }
 
     const contextResult =
