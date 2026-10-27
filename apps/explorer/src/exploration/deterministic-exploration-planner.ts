@@ -343,11 +343,20 @@ export class DeterministicExplorationPlanner {
       }),
     };
 
+    // Follow actionable functional branches before generic navigation.
+    // Preserve the established score order within each branch and let
+    // explicit requirement probes take precedence over autofill.
+    const firstEligibleIn = (kind: FunctionalBranchKind) => {
+      const ids = new Set(functionalTree.branches.find((branch) =>
+        branch.kind === kind)?.eligibleCandidateIds ?? []);
+      return candidates.find((candidate) => ids.has(candidate.id));
+    };
     const selected =
-      candidates.find(
-        (candidate) =>
-          !candidate.blocked,
-      ) ?? null;
+      firstEligibleIn('validation') ??
+      firstEligibleIn('form-setup') ??
+      firstEligibleIn('submission') ??
+      candidates.find((candidate) => !candidate.blocked) ??
+      null;
 
     if (!selected) {
       return this.recordDecision({
