@@ -14,7 +14,6 @@ import {
   PlaywrightBrowserController,
 } from '../browser/index.js';
 
-
 import {
   createActionSignature,
   createBrowserTarget,
@@ -45,19 +44,42 @@ const server =
         <!doctype html>
         <html>
           <body>
-            <button disabled>
-              Complete Todo
-            </button>
+            <header>
+              <nav aria-label="Primary">
+                <a
+                  href="#header-product"
+                  onclick="document.querySelector('#status').textContent='clicked header'"
+                >
+                  Product
+                </a>
+              </nav>
 
-            <button
-              onclick="document.querySelector('#status').textContent='clicked second'"
-            >
-              Complete Todo
-            </button>
+              <nav
+                aria-label="Mobile"
+                style="display:none"
+              >
+                <a href="#mobile-product">
+                  Product
+                </a>
+              </nav>
+            </header>
 
-            <p id="status">
-              not clicked
-            </p>
+            <main>
+              <p id="status">
+                not clicked
+              </p>
+            </main>
+
+            <footer>
+              <nav aria-label="Footer">
+                <a
+                  href="#footer-product"
+                  onclick="document.querySelector('#status').textContent='clicked footer'"
+                >
+                  Product
+                </a>
+              </nav>
+            </footer>
           </body>
         </html>
       `);
@@ -125,7 +147,7 @@ describe(
   'duplicate locator regression',
   () => {
     it(
-      'keeps repeated controls distinct and clicks the intended occurrence',
+      'indexes every visible duplicate without letting hidden copies shift Playwright nth targets',
       async () => {
         const controller =
           new PlaywrightBrowserController({
@@ -147,85 +169,111 @@ describe(
           const initialObservation =
             await session.observe();
 
-          const completeActions =
+          const productActions =
             initialObservation
               .actions
               .filter(
                 (action) =>
                   action.name ===
-                  'Complete Todo',
+                  'Product',
               );
 
           expect(
-            completeActions,
+            productActions,
+          ).toHaveLength(
+            3,
+          );
+
+          const visibleProductActions =
+            productActions.filter(
+              (action) =>
+                action.visible,
+            );
+
+          const hiddenProductActions =
+            productActions.filter(
+              (action) =>
+                !action.visible,
+            );
+
+          expect(
+            visibleProductActions,
           ).toHaveLength(
             2,
           );
 
-          const first =
-            completeActions[0]!;
+          expect(
+            hiddenProductActions,
+          ).toHaveLength(
+            1,
+          );
 
-          const second =
-            completeActions[1]!;
+          const headerAction =
+            visibleProductActions[0]!;
+
+          const footerAction =
+            visibleProductActions[1]!;
 
           expect(
-            first.locatorIndex,
-          ).toBeUndefined();
+            headerAction.locatorIndex,
+          ).toBe(
+            0,
+          );
 
           expect(
-            second.locatorIndex,
+            footerAction.locatorIndex,
           ).toBe(
             1,
           );
 
           expect(
+            hiddenProductActions[0]!
+              .locatorIndex,
+          ).toBeUndefined();
+
+          expect(
             createActionSignature(
-              first,
+              headerAction,
             ),
           ).not.toBe(
             createActionSignature(
-              second,
+              footerAction,
             ),
           );
 
-          const target =
+          const headerTarget =
             createBrowserTarget(
-              second,
+              headerAction,
+            );
+
+          const footerTarget =
+            createBrowserTarget(
+              footerAction,
             );
 
           expect(
-            target,
-          ).toEqual({
-            by:
-              'role',
-
-            role:
-              'button',
-
-            name:
-              'Complete Todo',
-
-            exact:
-              true,
-
-            index:
-              1,
-          });
-
-          expect(
-            target &&
+            headerTarget &&
               renderPlaywrightLocator(
-                target,
+                headerTarget,
               ),
           ).toBe(
-            'page.getByRole("button", { name: "Complete Todo", exact: true }).nth(1)',
+            'page.getByRole("link", { name: "Product", exact: true }).nth(0)',
+          );
+
+          expect(
+            footerTarget &&
+              renderPlaywrightLocator(
+                footerTarget,
+              ),
+          ).toBe(
+            'page.getByRole("link", { name: "Product", exact: true }).nth(1)',
           );
 
           await session.click(
-            target!,
+            headerTarget!,
           );
 
-          const observation =
+          let observation =
             await session.observe();
 
           expect(
@@ -235,7 +283,24 @@ describe(
                 ' ',
               ),
           ).toContain(
-            'clicked second',
+            'clicked header',
+          );
+
+          await session.click(
+            footerTarget!,
+          );
+
+          observation =
+            await session.observe();
+
+          expect(
+            observation
+              .semanticText
+              .join(
+                ' ',
+              ),
+          ).toContain(
+            'clicked footer',
           );
 
           await session.close();

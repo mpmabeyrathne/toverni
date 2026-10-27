@@ -130,6 +130,31 @@ function toBrowserTarget(
           : {}),
       };
 
+    case 'placeholder':
+      return {
+        by:
+          'placeholder',
+
+        placeholder:
+          target.placeholder,
+
+        ...(target.exact !==
+          undefined
+          ? {
+              exact:
+                target.exact,
+            }
+          : {}),
+
+        ...(target.index !==
+          undefined
+          ? {
+              index:
+                target.index,
+            }
+          : {}),
+      };
+
     case 'text':
       return {
         by:

@@ -13,11 +13,13 @@ function observation(
     url?: string;
     semanticText?: string[];
     actions?: Array<{
-      type: 'button' | 'input' | 'dialog';
+      type: 'button' | 'input' | 'dialog' | 'link';
       tagName: string;
       role?: string;
       name?: string;
       text?: string;
+      href?: string;
+      testId?: string;
       disabled: boolean;
       visible: boolean;
       formField?: {
@@ -225,7 +227,7 @@ describe(
 
 
     it(
-      'derives meaningful assertions from an observed transition delta',
+      'derives meaningful assertions from a same-page observed transition delta',
       () => {
         const result =
           buildEvidenceBackedAssertions({
@@ -332,9 +334,6 @@ describe(
 
                 afterObservation:
                   observation({
-                    url:
-                      'https://example.com/cart',
-
                     semanticText: [
                       'Mechanical Keyboard',
                     ],
@@ -394,7 +393,6 @@ describe(
           ),
         ).toEqual(
           expect.arrayContaining([
-            'url',
             'enabled',
             'value',
             'text',
@@ -1283,6 +1281,345 @@ describe(
       },
     );
 
+
+    it(
+      'uses only the URL assertion when navigation changes the page',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-pmp',
+
+            actionEvidenceReference:
+              'ACTION-PMP',
+
+            actionLabel:
+              'PMP Practice',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-PMP',
+
+                type:
+                  'action',
+
+                source:
+                  'action-pmp',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-pmp',
+
+                actionId:
+                  'action-pmp',
+
+                actionTarget:
+                  'PMP Practice',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-08T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    url:
+                      'https://practice.expandtesting.com/',
+
+                    semanticText: [
+                      'A demo with separate UI and API layers',
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    url:
+                      'https://pmp.expandtesting.com/',
+
+                    semanticText: [
+                      'AC + BAC – EV — if BAC remains the same',
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toHaveLength(
+          1,
+        );
+
+        expect(
+          result[0],
+        ).toMatchObject({
+          kind:
+            'url',
+
+          matcher:
+            'url',
+
+          expected:
+            'https://pmp.expandtesting.com/',
+        });
+      },
+    );
+
+    it(
+      'does not assert count or visibility for transient custom role links without href',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-search',
+
+            actionEvidenceReference:
+              'ACTION-SEARCH',
+
+            actionLabel:
+              'Search',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-SEARCH',
+
+                type:
+                  'action',
+
+                source:
+                  'action-search',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-search',
+
+                actionId:
+                  'action-search',
+
+                actionTarget:
+                  'Search',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-08T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'link',
+
+                        tagName:
+                          'div',
+
+                        role:
+                          'link',
+
+                        name:
+                          'API development resources',
+
+                        text:
+                          'API development resources',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+
+                afterObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'link',
+
+                        tagName:
+                          'div',
+
+                        role:
+                          'link',
+
+                        name:
+                          'API development resources',
+
+                        text:
+                          'API development resources',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'link',
+
+                        tagName:
+                          'div',
+
+                        role:
+                          'link',
+
+                        name:
+                          'API development resources',
+
+                        text:
+                          'API development resources',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+
+                      {
+                        type:
+                          'link',
+
+                        tagName:
+                          'div',
+
+                        role:
+                          'link',
+
+                        name:
+                          'API development resources',
+
+                        text:
+                          'API development resources',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result,
+        ).toEqual(
+          [],
+        );
+      },
+    );
+
+    it(
+      'still permits assertions for native links with href',
+      () => {
+        const result =
+          buildEvidenceBackedAssertions({
+            actionId:
+              'action-filter',
+
+            actionEvidenceReference:
+              'ACTION-FILTER',
+
+            actionLabel:
+              'Filter',
+
+            evidence: [
+              {
+                id:
+                  'ACTION-FILTER',
+
+                type:
+                  'action',
+
+                source:
+                  'action-filter',
+              },
+            ],
+
+            transitions: [
+              {
+                id:
+                  'transition-filter',
+
+                actionId:
+                  'action-filter',
+
+                actionTarget:
+                  'Filter',
+
+                explorationBlocked:
+                  false,
+
+                occurredAt:
+                  '2026-10-08T00:00:00.000Z',
+
+                beforeObservation:
+                  observation({
+                    actions: [],
+                  }),
+
+                afterObservation:
+                  observation({
+                    actions: [
+                      {
+                        type:
+                          'link',
+
+                        tagName:
+                          'a',
+
+                        name:
+                          'Results',
+
+                        text:
+                          'Results',
+
+                        href:
+                          'https://example.com/results',
+
+                        disabled:
+                          false,
+
+                        visible:
+                          true,
+                      },
+                    ],
+                  }),
+              },
+            ],
+          });
+
+        expect(
+          result.some(
+            (assertion) =>
+              assertion.matcher ===
+                'visible' &&
+              assertion.target.kind ===
+                'locator',
+          ),
+        ).toBe(
+          true,
+        );
+      },
+    );
 
     it(
       'ignores semantic text composed only of visible action labels',

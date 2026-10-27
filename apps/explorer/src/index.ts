@@ -12,6 +12,7 @@ import {
   applyModelEnvironment,
   CliInputError,
   getPublicCliHelp,
+  getPublicKnowledgeInput,
   parsePublicCli,
 } from './cli/public-cli.js';
 
@@ -110,26 +111,10 @@ Promise<void> {
       targetUrl:
         config.target!,
 
-      ...(config.requirements ||
-      config.openapi
-        ? {
-            knowledgeInput: {
-              ...(config.requirements
-                ? {
-                    requirementsPath:
-                      config.requirements,
-                  }
-                : {}),
-
-              ...(config.openapi
-                ? {
-                    openApiPath:
-                      config.openapi,
-                  }
-                : {}),
-            },
-          }
-        : {}),
+      knowledgeInput:
+        getPublicKnowledgeInput(
+          config,
+        ),
 
       ...(config.headless !==
       undefined

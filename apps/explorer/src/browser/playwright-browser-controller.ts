@@ -513,6 +513,17 @@ import {
 
           break;
   
+        case 'placeholder':
+          locator =
+            this.page.getByPlaceholder(
+              target.placeholder,
+              this.buildExactOptions(
+                target.exact,
+              ),
+            );
+
+          break;
+  
         case 'text':
           locator =
             this.page.getByText(

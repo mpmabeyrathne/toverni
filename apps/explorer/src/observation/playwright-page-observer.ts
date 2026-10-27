@@ -576,6 +576,110 @@ export class PlaywrightPageObserver
                     ?.trim() ||
                   undefined;
 
+                const accessibleTextParts:
+                  string[] = [];
+
+                const pendingNodes:
+                  Node[] =
+                    Array.from(
+                      element.childNodes,
+                    )
+                      .reverse();
+
+                while (
+                  pendingNodes.length >
+                  0
+                ) {
+                  const node =
+                    pendingNodes.pop();
+
+                  if (!node) {
+                    continue;
+                  }
+
+                  if (
+                    node.nodeType ===
+                    Node.TEXT_NODE
+                  ) {
+                    const value =
+                      node.textContent
+                        ?.replace(
+                          /\s+/g,
+                          ' ',
+                        )
+                        .trim();
+
+                    if (value) {
+                      accessibleTextParts.push(
+                        value,
+                      );
+                    }
+
+                    continue;
+                  }
+
+                  if (
+                    !(node instanceof
+                      Element)
+                  ) {
+                    continue;
+                  }
+
+                  if (
+                    node.getAttribute(
+                      'aria-hidden',
+                    ) ===
+                    'true'
+                  ) {
+                    continue;
+                  }
+
+                  if (
+                    node instanceof
+                    HTMLImageElement
+                  ) {
+                    const alt =
+                      node.alt
+                        .trim();
+
+                    if (alt) {
+                      accessibleTextParts.push(
+                        alt,
+                      );
+                    }
+
+                    continue;
+                  }
+
+                  if (
+                    node.tagName ===
+                      'SCRIPT' ||
+                    node.tagName ===
+                      'STYLE'
+                  ) {
+                    continue;
+                  }
+
+                  pendingNodes.push(
+                    ...Array.from(
+                      node.childNodes,
+                    )
+                      .reverse(),
+                  );
+                }
+
+                const accessibleText =
+                  accessibleTextParts
+                    .join(
+                      ' ',
+                    )
+                    .replace(
+                      /\s+/g,
+                      ' ',
+                    )
+                    .trim() ||
+                  undefined;
+
                 let labelText:
                   | string
                   | undefined;
@@ -599,7 +703,7 @@ export class PlaywrightPageObserver
                   ariaLabel ??
                   labelledByText ??
                   labelText ??
-                  text ??
+                  accessibleText ??
                   placeholder ??
                   title ??
                   undefined;
@@ -1220,43 +1324,118 @@ export class PlaywrightPageObserver
           },
         );
 
-    const occurrenceCounts =
-      new Map<string, number>();
-
-    const actions =
+    const classifiedActions =
       rawActions.map(
-        (action) => {
-          const type =
+        (action) => ({
+          ...action,
+
+          type:
             this.classifyActionType(
               action.tagName,
               action.role,
               action.inputType,
               action.contentEditable,
+            ),
+        }),
+      );
+
+    const locatorIdentityFor =
+      (
+        action: {
+          type:
+            ActionElement['type'];
+
+          role?:
+            string;
+
+          name?:
+            string;
+
+          text?:
+            string;
+
+          testId?:
+            string;
+        },
+      ): string =>
+        [
+          action.type,
+          action.role ??
+            '',
+          action.name ??
+            '',
+          action.text ??
+            '',
+          action.testId ??
+            '',
+        ].join(
+          '|',
+        );
+
+    const visibleTotals =
+      new Map<string, number>();
+
+    for (
+      const action of
+        classifiedActions
+    ) {
+      if (!action.visible) {
+        continue;
+      }
+
+      const identity =
+        locatorIdentityFor(
+          action,
+        );
+
+      visibleTotals.set(
+        identity,
+        (
+          visibleTotals.get(
+            identity,
+          ) ??
+          0
+        ) +
+          1,
+      );
+    }
+
+    const visibleOccurrenceCounts =
+      new Map<string, number>();
+
+    const actions =
+      classifiedActions.map(
+        (action) => {
+          if (!action.visible) {
+            return action;
+          }
+
+          const identity =
+            locatorIdentityFor(
+              action,
             );
 
-          const locatorIdentity =
-            [
-              type,
-              action.role ??
-                '',
-              action.name ??
-                '',
-              action.text ??
-                '',
-              action.testId ??
-                '',
-            ].join(
-              '|',
-            );
-
-          const locatorIndex =
-            occurrenceCounts.get(
-              locatorIdentity,
+          const totalVisibleMatches =
+            visibleTotals.get(
+              identity,
             ) ??
             0;
 
-          occurrenceCounts.set(
-            locatorIdentity,
+          if (
+            totalVisibleMatches <=
+            1
+          ) {
+            return action;
+          }
+
+          const locatorIndex =
+            visibleOccurrenceCounts.get(
+              identity,
+            ) ??
+            0;
+
+          visibleOccurrenceCounts.set(
+            identity,
             locatorIndex +
               1,
           );
@@ -1264,14 +1443,7 @@ export class PlaywrightPageObserver
           return {
             ...action,
 
-            type,
-
-            ...(locatorIndex >
-              0
-              ? {
-                  locatorIndex,
-                }
-              : {}),
+            locatorIndex,
           };
         },
       );

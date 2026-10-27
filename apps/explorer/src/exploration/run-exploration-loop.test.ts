@@ -1315,6 +1315,291 @@ describe(
           );
 
           it(
+            'skips a failed browser action and continues with another eligible action',
+            async () => {
+              const initialObservation:
+                Observation = {
+                capturedAt:
+                  '2026-10-08T00:00:00.000Z',
+
+                url:
+                  'http://example.test/',
+
+                title:
+                  'Recoverable Action Failure',
+
+                semanticText: [
+                  'Unstable',
+                  'Working',
+                ],
+
+                ariaSnapshot: [
+                  '- main:',
+                  '  - button "Unstable"',
+                  '  - button "Working"',
+                ].join('\n'),
+
+                actions: [
+                  {
+                    type:
+                      'button',
+
+                    tagName:
+                      'button',
+
+                    name:
+                      'Unstable',
+
+                    text:
+                      'Unstable',
+
+                    disabled:
+                      false,
+
+                    visible:
+                      true,
+                  },
+
+                  {
+                    type:
+                      'button',
+
+                    tagName:
+                      'button',
+
+                    name:
+                      'Working',
+
+                    text:
+                      'Working',
+
+                    disabled:
+                      false,
+
+                    visible:
+                      true,
+                  },
+                ],
+
+                consoleEvents: [],
+
+                networkEvents: [],
+
+                supportingArtifacts: [],
+              };
+
+              const completedObservation:
+                Observation = {
+                ...initialObservation,
+
+                capturedAt:
+                  '2026-10-08T00:00:01.000Z',
+
+                semanticText: [
+                  'Done',
+                ],
+
+                ariaSnapshot:
+                  '- main:\n  - text: Done',
+
+                actions: [],
+              };
+
+              const observe =
+                vi.fn()
+                  .mockResolvedValueOnce(
+                    initialObservation,
+                  )
+                  .mockResolvedValueOnce(
+                    completedObservation,
+                  );
+
+              const click =
+                vi.fn(
+                  async (
+                    target,
+                  ) => {
+                    if (
+                      'name' in target &&
+                      target.name ===
+                        'Unstable'
+                    ) {
+                      throw new Error(
+                        'element is not stable',
+                      );
+                    }
+                  },
+                );
+
+              const session = {
+                observe,
+                click,
+              } as unknown as
+                BrowserSession;
+
+              const stateModel =
+                new ApplicationStateModel();
+
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                  TEST_BUDGET,
+                );
+
+              const saveTransition =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+
+              const repository = {
+                saveState:
+                  vi.fn(
+                    async (
+                      _applicationId:
+                        string,
+
+                      state: {
+                        id:
+                          string;
+                      },
+                    ) => ({
+                      id:
+                        state.id,
+                    }),
+                  ),
+
+                saveObservationEvidence:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+
+                saveDecision:
+                  vi.fn(
+                    async (
+                      _runId:
+                        string,
+
+                      _stateId:
+                        string,
+
+                      decision: {
+                        selected:
+                          unknown | null;
+                      },
+                    ) => ({
+                      decision: {
+                        id:
+                          'decision',
+                      },
+
+                      selectedActionId:
+                        decision.selected
+                          ? 'action'
+                          : null,
+                    }),
+                  ),
+
+                saveTransition,
+
+                saveRunCheckpoint:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+
+              const result =
+                await runExplorationLoop({
+                  session,
+
+                  stateModel,
+
+                  planner,
+
+                  repository,
+
+                  applicationId:
+                    'application-1',
+
+                  runId:
+                    'run-recoverable-failure',
+
+                  priorityTerms: [],
+
+                  budget:
+                    TEST_BUDGET,
+
+                  retryAttempts:
+                    1,
+                });
+
+              expect(
+                click,
+              ).toHaveBeenCalledTimes(
+                2,
+              );
+
+              expect(
+                click,
+              ).toHaveBeenNthCalledWith(
+                1,
+                {
+                  by:
+                    'role',
+
+                  role:
+                    'button',
+
+                  name:
+                    'Unstable',
+
+                  exact:
+                    true,
+                },
+              );
+
+              expect(
+                click,
+              ).toHaveBeenNthCalledWith(
+                2,
+                {
+                  by:
+                    'role',
+
+                  role:
+                    'button',
+
+                  name:
+                    'Working',
+
+                  exact:
+                    true,
+                },
+              );
+
+              expect(
+                saveTransition,
+              ).toHaveBeenCalledTimes(
+                1,
+              );
+
+              expect(
+                result.stopReason,
+              ).toBe(
+                'no-eligible-actions',
+              );
+            },
+          );
+
+          it(
             'resumes from checkpoint without re-executing a completed action',
             async () => {
               const observation =

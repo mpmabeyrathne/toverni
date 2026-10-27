@@ -740,38 +740,142 @@ const decision =
     // Execute selected action
     // ------------------------------
 
-    const executionResult =
-      await withRetry(
-        () =>
-          executeExplorationAction(
-            input.session,
-            {
-              type:
-                selected.action.type,
+    let executionResult:
+      Awaited<
+        ReturnType<
+          typeof executeExplorationAction
+        >
+      > |
+      null = null;
 
-              label:
-                selected.label,
+    let executionError:
+      unknown;
 
-              target:
-                selected.target,
+    try {
+      executionResult =
+        await withRetry(
+          () =>
+            executeExplorationAction(
+              input.session,
+              {
+                type:
+                  selected.action.type,
 
-              formExecution:
-                selected.formExecution,
-            },
-          ),
-        retryAttempts,
-        () => {
-          failures +=
-            1;
-        },
-      );
+                label:
+                  selected.label,
+
+                target:
+                  selected.target,
+
+                formExecution:
+                  selected.formExecution,
+              },
+            ),
+          retryAttempts,
+          () => {
+            failures +=
+              1;
+          },
+        );
+    } catch (
+      error:
+        unknown
+    ) {
+      executionError =
+        error;
+    }
 
     if (
-      executionResult.status !==
+      executionError !==
+      undefined
+    ) {
+      input.planner
+        .recordActionExecution(
+          selected,
+        );
+
+      completedExecutions.push({
+        stateId:
+          selected.stateId,
+
+        signature:
+          selected.signature,
+
+        actionType:
+          selected.action.type,
+
+        label:
+          selected.label,
+      });
+
+      logger.warn(
+        {
+          stateId:
+            selected.stateId,
+
+          action:
+            selected.label,
+
+          target:
+            selected.target,
+
+          failures,
+
+          error:
+            executionError instanceof
+              Error
+              ? {
+                  name:
+                    executionError
+                      .name,
+
+                  message:
+                    executionError
+                      .message,
+                }
+              : String(
+                  executionError,
+                ),
+        },
+        'Browser action failed after retries; skipping candidate and continuing exploration',
+      );
+
+      await input.repository
+        .saveRunCheckpoint(
+          input.runId,
+          {
+            version:
+              1,
+
+            currentUrl:
+              currentObservation.url,
+
+            depth,
+
+            failures,
+
+            modelCalls,
+
+            startedAt,
+
+            updatedAt:
+              new Date()
+                .toISOString(),
+
+            completedExecutions,
+          },
+        );
+
+      continue;
+    }
+
+    if (
+      executionResult?.status !==
       'executed'
     ) {
       stopReason =
-        executionResult.reason;
+        executionResult?.reason ??
+        'no-selected-action';
 
       break;
     }

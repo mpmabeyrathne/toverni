@@ -172,6 +172,38 @@ import type {
         action.type ===
           'input' ||
         action.type ===
+          'textarea'
+      ) &&
+      action.name &&
+      action.formField
+        ?.placeholder ===
+        action.name
+    ) {
+      return {
+        by:
+          'placeholder',
+
+        placeholder:
+          action.name,
+
+        exact:
+          true,
+
+        ...(action.locatorIndex !==
+          undefined
+          ? {
+              index:
+                action.locatorIndex,
+            }
+          : {}),
+      };
+    }
+
+    if (
+      (
+        action.type ===
+          'input' ||
+        action.type ===
           'select' ||
         action.type ===
           'textarea' ||
