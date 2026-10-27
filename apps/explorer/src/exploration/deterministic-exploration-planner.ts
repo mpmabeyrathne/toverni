@@ -860,10 +860,10 @@ this.globalActionCounts.set(
     // generic header/footer navigation. Do not make blocked inputs
     // eligible: sensitive fields still require explicit trusted values.
     const pagePath = new URL(observation.url).pathname.toLowerCase();
-    const authenticationPage = /\\/(?:login|sign-in|signin)\\/?$/.test(pagePath);
+    const authenticationPage = /\/(?:login|sign-in|signin)\/?$/.test(pagePath);
     const authenticationSubmit = authenticationPage &&
       action.type === 'button' &&
-      /^(?:log\\s*in|sign\\s*in|login)$/i.test(label.trim());
+      /^(?:log\s*in|sign\s*in|login)$/i.test(label.trim());
 
     if (authenticationSubmit) {
       score += 130;
