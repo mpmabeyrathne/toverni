@@ -856,6 +856,24 @@ this.globalActionCounts.set(
       );
     }
 
+    // The entry page's primary function should be explored before
+    // generic header/footer navigation. Do not make blocked inputs
+    // eligible: sensitive fields still require explicit trusted values.
+    const pagePath = new URL(observation.url).pathname.toLowerCase();
+    const authenticationPage = /\\/(?:login|sign-in|signin)\\/?$/.test(pagePath);
+    const authenticationSubmit = authenticationPage &&
+      action.type === 'button' &&
+      /^(?:log\\s*in|sign\\s*in|login)$/i.test(label.trim());
+
+    if (authenticationSubmit) {
+      score += 130;
+      reasons.push('Primary authentication action is prioritized over site navigation');
+    } else if (authenticationPage && formExecution &&
+      (action.type === 'input' || action.type === 'textarea')) {
+      score += 85;
+      reasons.push('Grounded authentication form setup is prioritized over navigation');
+    }
+
     const contextResult =
       this.scoreProductContext(
         label,
