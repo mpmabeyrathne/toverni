@@ -884,7 +884,7 @@ this.globalActionCounts.set(
       score += 180;
       reasons.push('Grounded authentication form setup is prioritized before login submission and navigation');
     }
-    else if (hasFormSubmit && unfilledGroundedField) {
+    else if (hasFormSubmit && unfilledGroundedField && validationProbeLabels.size === 0) {
       score += 105;
       reasons.push('Grounded form setup is prioritized before generic navigation');
     }
