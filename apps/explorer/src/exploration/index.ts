@@ -45,5 +45,5 @@ export {
 export { executeBrowserScenario, executeBrowserScenarios } from './execute-browser-scenarios.js';
 export type { BrowserScenario, BrowserScenarioResult } from './execute-browser-scenarios.js';
 
-export { planWorkflowBranch, executeWorkflowBranches, verifiedWorkflowPaths } from './workflow-branch-scheduler.js';
+export { discoverWorkflowBranches, planWorkflowBranch, executeWorkflowBranches, verifiedWorkflowPaths } from './workflow-branch-scheduler.js';
 export type { WorkflowBranch, WorkflowDataset, WorkflowEdge, WorkflowResult, WorkflowPlan, WorkflowStatus } from './workflow-branch-scheduler.js';
