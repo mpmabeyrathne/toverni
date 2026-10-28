@@ -917,6 +917,10 @@ export async function runExplorer(
             const { planGraphReexploration } =
                 await import('../exploration/graph-reexploration-planner.js');
             const reexplorationPlan = planGraphReexploration(integrity);
+            const { findObservedWorkflowPaths } =
+                await import('../exploration/observed-workflow-paths.js');
+            const observedPaths = findObservedWorkflowPaths(
+                artifacts.functionalTree, artifacts.stateGraph);
             await mkdir(exportDirectory, { recursive: true });
             await Promise.all([
                 writeFile(join(exportDirectory, 'functional-tree.json'),
@@ -927,6 +931,8 @@ export async function runExplorer(
                     JSON.stringify(integrity, null, 2), 'utf8'),
                 writeFile(join(exportDirectory, 'reexploration-plan.json'),
                     JSON.stringify(reexplorationPlan, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'observed-workflow-paths.json'),
+                    JSON.stringify(observedPaths, null, 2), 'utf8'),
             ]);
             if (!integrity.valid) {
                 logger.warn({ issueCount: integrity.issues.length },
