@@ -2114,7 +2114,7 @@ describe(
             const session = { observe, fill } as unknown as BrowserSession;
             const stateModel = new ApplicationStateModel();
             const planner = new DeterministicExplorationPlanner(stateModel, TEST_BUDGET);
-            const saveTransition = vi.fn(async () => {});
+            const saveTransition = vi.fn(async (_transition: unknown) => {});
             const repository = {
               saveState: vi.fn(async (_id: string, state: { id: string }) =>
                 ({ id: state.id })),
