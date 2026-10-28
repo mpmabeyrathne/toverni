@@ -910,13 +910,25 @@ export async function runExplorer(
             const exportDirectory = input.outputDirectory ??
                 'artifacts/exploration';
             const artifacts = buildExplorationArtifacts(graphStates, graphTransitions);
+            const { validateExplorationModels } =
+                await import('../exploration/workflow-model-validation.js');
+            const integrity = validateExplorationModels(
+                artifacts.functionalTree, artifacts.stateGraph);
             await mkdir(exportDirectory, { recursive: true });
             await Promise.all([
                 writeFile(join(exportDirectory, 'functional-tree.json'),
                     JSON.stringify(artifacts.functionalTree, null, 2), 'utf8'),
                 writeFile(join(exportDirectory, 'state-graph.json'),
                     JSON.stringify(artifacts.stateGraph, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'exploration-integrity.json'),
+                    JSON.stringify(integrity, null, 2), 'utf8'),
             ]);
+            if (!integrity.valid) {
+                logger.warn({ issueCount: integrity.issues.length },
+                    'Exploration structural integrity checks failed');
+            }
+            logger.info({ unresolvedBranches: integrity.reexploration.length },
+                'Graph-guided re-exploration gaps identified');
         }
 
         const reconstructedFlows =
