@@ -23,8 +23,8 @@ describe('isolated browser scenarios', () => {
         close,
       } as unknown as BrowserSession;
     };
-    const target = { kind: 'role', role: 'textbox', name: 'Username' } as BrowserTarget;
-    const submitTarget = { kind: 'role', role: 'button', name: 'Login' } as BrowserTarget;
+    const target = { by: 'role', role: 'textbox', name: 'Username' } as BrowserTarget;
+    const submitTarget = { by: 'role', role: 'button', name: 'Login' } as BrowserTarget;
     const results = await executeBrowserScenarios(openSession, [
       { name: 'invalid username', startUrl: 'https://example.com/login',
         fields: [{ target, value: 'wrongUser' }], submitTarget,
