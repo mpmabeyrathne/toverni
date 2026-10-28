@@ -22,17 +22,18 @@ export function buildWorkflowExecutionGraph(results: WorkflowResult[]): Workflow
     scenarios: results.map((result) => {
       const steps = result.observedSteps ?? [];
       const prefix = result.branchId + ':' + result.datasetId;
-      const states = steps.map((step, index) => ({
+      const observedStates = steps.map((step, index) => ({
         id: prefix + ':state-' + (index + 1), url: step.url,
         ...(step.observedAt ? { observedAt: step.observedAt } : {}),
       }));
+      const states = [{ id: prefix + ':start', url: result.finalUrl ?? steps[0]?.url ?? '' }, ...observedStates];
       return {
         branchId: result.branchId, datasetId: result.datasetId,
         verified: result.verified, status: result.status,
         states,
         transitions: steps.map((step, index) => ({
-          fromStateId: index === 0 ? prefix + ':start' : states[index - 1]!.id,
-          toStateId: states[index]!.id,
+          fromStateId: states[index]!.id,
+          toStateId: states[index + 1]!.id,
           action: step.action, label: step.label, datasetId: result.datasetId,
         })),
       };
