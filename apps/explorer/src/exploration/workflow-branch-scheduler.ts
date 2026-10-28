@@ -48,10 +48,14 @@ const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, 
 export function discoverWorkflowBranches(
   observation: PageObservation,
 ): WorkflowBranch[] {
+  const loginPage = /\/(?:login|sign-in|signin)\/?$/i.test(new URL(observation.url).pathname);
   const requiredFields = observation.actions.filter((action) =>
     ['input', 'textarea', 'contenteditable'].includes(action.type) &&
-    action.visible && !action.disabled && action.formField?.required)
-    .map(getActionLabel);
+    action.visible && !action.disabled &&
+    (action.formField?.required === true ||
+      (loginPage && ['username', 'email', 'password'].includes(
+        normalize(getActionLabel(action)))))
+  ).map(getActionLabel);
   return observation.actions
     .filter((action) => action.type === 'button' && action.visible &&
       !action.disabled && /\b(?:login|log\s*in|sign\s*in|submit|register|save|continue)\b/i
