@@ -1,3 +1,4 @@
+import type { ApprovedFormFixture } from '../forms/approved-form-fixtures.js';
 import {
     assertAuthenticatedLanding,
     PlaywrightBrowserController,
@@ -84,6 +85,7 @@ import {
 } from '../state/index.js';
 
 export interface RunExplorerInput {
+    approvedFixture?: ApprovedFormFixture;
     targetUrl: string;
 
     knowledgeInput?: {
@@ -807,6 +809,7 @@ export async function runExplorer(
 
         const explorationResult =
             await runExplorationLoop({
+                approvedFixture: input.approvedFixture,
                 session,
 
                 stateModel,
