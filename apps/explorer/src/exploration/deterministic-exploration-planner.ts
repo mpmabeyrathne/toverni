@@ -915,9 +915,29 @@ this.globalActionCounts.set(
         item.name ?? item.text ?? ''
       )
     );
-    const unfilledGroundedField = Boolean(formExecution) &&
+    const unfilledGroundedField = Boolean(formExecution || fixtureApproved) &&
       this.isUnfilledFormSetup(action) &&
       (action.type === 'input' || action.type === 'textarea' || action.type === 'select');
+
+    // For explicitly approved authentication fixtures, complete all visible
+    // required fields before submitting. Do not mistake a public demo
+    // username fill for a complete login when Password is still empty.
+    const pendingApprovedFields = authenticationPage &&
+      (approvedFixtureFields?.size ?? 0) > 0 &&
+      observation.actions.some((field) =>
+        ['input', 'textarea'].includes(field.type) &&
+        field.visible && !field.disabled &&
+        (approvedFixtureFields?.has(getActionLabel(field).toLowerCase().trim()) ?? false) &&
+        this.isUnfilledFormSetup(field)
+      );
+
+    if (authenticationSubmit && pendingApprovedFields) {
+      blockReasons.push('Complete approved authentication fields before Login submission');
+    }
+    if (authenticationPage && fixtureApproved && unfilledGroundedField) {
+      score += 220;
+      reasons.push('Approved authentication fixture field must be filled before submission');
+    }
 
     if (authenticationSubmit) {
       score += 130;
