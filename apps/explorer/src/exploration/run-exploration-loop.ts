@@ -1,3 +1,5 @@
+import { resolveApprovedFormValue, type ApprovedFormFixture } from '../forms/approved-form-fixtures.js';
+
 import type {
   BrowserSession,
 } from '../browser/index.js';
@@ -56,6 +58,7 @@ type LoopRepository =
   >;
 
 export interface RunExplorationLoopInput {
+  approvedFixture?: ApprovedFormFixture;
   session:
   BrowserSession;
 
@@ -960,6 +963,10 @@ const decision =
         }
       : {}),
 
+    ...(input.approvedFixture && new URL(currentObservation.url).origin === new URL(input.approvedFixture.origin).origin
+      ? { approvedFixtureFields: new Set(Object.keys(input.approvedFixture.fields).map((label) => label.toLowerCase().trim())) }
+      : {}),
+
     ...(apiOperationIds.length >
     0
       ? {
@@ -1088,7 +1095,14 @@ const decision =
                   selected.target,
 
                 formExecution:
-                  selected.formExecution,
+                  (() => {
+                    const fixtureValue = resolveApprovedFormValue(
+                      input.approvedFixture, currentObservation.url, selected.label);
+                    return fixtureValue !== undefined &&
+                      ['input', 'textarea', 'contenteditable'].includes(selected.action.type)
+                        ? { kind: 'fill' as const, value: fixtureValue, evidence: [] }
+                        : selected.formExecution;
+                  })(),
               },
             ),
           retryAttempts,
