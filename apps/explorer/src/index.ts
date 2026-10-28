@@ -28,6 +28,8 @@ import {
   runExplorer,
 } from './explorer/run-explorer.js';
 
+import { loadApprovedFormFixture } from './forms/approved-form-fixtures.js';
+
 import {
   renderGenerationSummary,
   writeGenerationSummaryJson,
@@ -106,8 +108,28 @@ Promise<void> {
       config.model,
     );
 
+    // Operator opt-in: map field labels to environment variable names.
+    // Neither this configuration nor the generated decisions contain passwords.
+    const fixtureOrigin = process.env.TOVERNI_APPROVED_FIXTURE_ORIGIN;
+    const fixtureFields = process.env.TOVERNI_APPROVED_FIXTURE_FIELDS;
+    if (Boolean(fixtureOrigin) !== Boolean(fixtureFields)) {
+      throw new CliInputError('Set both TOVERNI_APPROVED_FIXTURE_ORIGIN and TOVERNI_APPROVED_FIXTURE_FIELDS');
+    }
+    let approvedFixture;
+    if (fixtureOrigin && fixtureFields) {
+      let mapping: unknown;
+      try { mapping = JSON.parse(fixtureFields); }
+      catch { throw new CliInputError('TOVERNI_APPROVED_FIXTURE_FIELDS must be a JSON mapping'); }
+      if (!mapping || Array.isArray(mapping) || typeof mapping !== 'object' ||
+        !Object.entries(mapping).every(([key, value]) => key.length > 0 && typeof value === 'string')) {
+        throw new CliInputError('Approved fixture mapping must contain field labels and environment variable names');
+      }
+      approvedFixture = loadApprovedFormFixture(fixtureOrigin, mapping as Record<string, string>);
+    }
+
     const result =
       await runExplorer({
+      ...(approvedFixture ? { approvedFixture } : {}),
       targetUrl:
         config.target!,
 
