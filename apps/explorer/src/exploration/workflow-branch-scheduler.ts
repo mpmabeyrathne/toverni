@@ -35,6 +35,7 @@ export interface WorkflowResult {
   trace: WorkflowEdge[];
   finalUrl?: string;
   verified: boolean;
+  observedSteps?: Array<{ action: 'fill' | 'submit'; label: string; url: string; observedAt: string }>;
 }
 export interface WorkflowPlan {
   branch: WorkflowBranch;
@@ -99,6 +100,7 @@ export async function executeWorkflowBranches(
   for (const branch of branches) {
     for (const dataset of branch.datasets) {
       const trace: WorkflowEdge[] = [];
+      const observedSteps: NonNullable<WorkflowResult['observedSteps']> = [];
       let session: BrowserSession | undefined;
       try {
         if (!dataset.expectedUrl && !dataset.expectedText) {
@@ -143,6 +145,12 @@ export async function executeWorkflowBranches(
               : approvedValue;
           if (!value) throw Error('Approved fixture unavailable for field: ' + label);
           await session.fill(target, value);
+          const stepObservation = await session.observe();
+          if (new URL(stepObservation.url).origin !== origin) {
+            throw Error('Field interaction left approved origin');
+          }
+          observedSteps.push({ action: 'fill', label, url: stepObservation.url,
+            observedAt: stepObservation.capturedAt });
           const next = 'filled:' + normalize(label);
           trace.push({ branchId: branch.id, datasetId: dataset.id,
             from: state, to: next, action: 'fill', label });
@@ -155,6 +163,8 @@ export async function executeWorkflowBranches(
         await session.click(submitTarget);
         const after = await session.observe();
         if (new URL(after.url).origin !== origin) throw Error('Submission left approved origin');
+        observedSteps.push({ action: 'submit', label: branch.submitLabel,
+          url: after.url, observedAt: after.capturedAt });
         trace.push({ branchId: branch.id, datasetId: dataset.id, from: state,
           to: 'observed-outcome', action: 'submit', label: branch.submitLabel });
         const verified = (!dataset.expectedUrl || after.url === dataset.expectedUrl) &&
@@ -163,7 +173,7 @@ export async function executeWorkflowBranches(
         results.push({ branchId: branch.id, datasetId: dataset.id,
           status: verified ? 'completed' : 'failed',
           ...(!verified ? { reason: 'Observed outcome did not match expectations' } : {}),
-          finalUrl: after.url, trace, verified });
+          finalUrl: after.url, trace, observedSteps, verified });
       } catch {
         // Browser errors and tool details can contain typed input values.
         results.push({ branchId: branch.id, datasetId: dataset.id,
