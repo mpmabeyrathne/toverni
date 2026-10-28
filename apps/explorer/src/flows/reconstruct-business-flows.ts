@@ -359,16 +359,24 @@ import {
       usedTransitionIds:
         Set<string>,
     ): void => {
+      // A field may have several observed candidate values. Once one
+      // has been selected along a path, never replay another alternative
+      // for that same field (which would overwrite the chosen value).
+      const selectedSetupTargets = new Set(
+        pathTransitions
+          .filter(isReplaySetupSelfTransition)
+          .map((transition) =>
+            JSON.stringify([transition.action.type, transition.action.target]))
+      );
       const availableTransitions =
         (
-          outgoing.get(
-            currentStateId,
-          ) ?? []
-        ).filter(
-          (transition) =>
-            !usedTransitionIds.has(
-              transition.id,
-            ),
+          outgoing.get(currentStateId) ?? []
+        ).filter((transition) =>
+          !usedTransitionIds.has(transition.id) &&
+          (!isReplaySetupSelfTransition(transition) ||
+            !selectedSetupTargets.has(JSON.stringify([
+              transition.action.type, transition.action.target,
+            ])))
         );
 
       const nextSetupTransition =
@@ -376,16 +384,18 @@ import {
           isReplaySetupSelfTransition,
         );
 
-      // Replay-safe form setup transitions
-      // are observed preparation on the same
-      // canonical state. Preserve them before
-      // later actions instead of terminating
-      // the path as a cycle.
+      // Preserve setup order, but branch on alternative values for
+      // the same field. Two observed fills of Username must yield
+      // separate paths, not a single path that overwrites its value.
+      // Other fields remain eligible after the chosen alternative.
       const nextTransitions =
         nextSetupTransition
-          ? [
-              nextSetupTransition,
-            ]
+          ? availableTransitions.filter(
+              (transition) =>
+                isReplaySetupSelfTransition(transition) &&
+                transition.action.type === nextSetupTransition.action.type &&
+                transition.action.target === nextSetupTransition.action.target
+            )
           : availableTransitions;
   
       if (

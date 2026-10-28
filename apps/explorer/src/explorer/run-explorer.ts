@@ -1,3 +1,4 @@
+import type { ApprovedFormFixture } from '../forms/approved-form-fixtures.js';
 import {
     assertAuthenticatedLanding,
     PlaywrightBrowserController,
@@ -84,6 +85,7 @@ import {
 } from '../state/index.js';
 
 export interface RunExplorerInput {
+    approvedFixture?: ApprovedFormFixture;
     targetUrl: string;
 
     knowledgeInput?: {
@@ -108,6 +110,9 @@ export interface RunExplorerInput {
 
     allowDestructiveActions?:
         boolean;
+
+    maxScenarios?:
+        number;
 
     timeouts?: {
         navigationMs?: number;
@@ -804,6 +809,7 @@ export async function runExplorer(
 
         const explorationResult =
             await runExplorationLoop({
+                ...(input.approvedFixture ? { approvedFixture: input.approvedFixture } : {}),
                 session,
 
                 stateModel,
@@ -828,6 +834,11 @@ export async function runExplorer(
                         ?.domainTerms ??
                         []),
                 ],
+
+                targetOrigin:
+                    new URL(
+                        input.targetUrl,
+                    ).origin,
 
                 knowledge,
 
@@ -888,6 +899,48 @@ export async function runExplorer(
             mapPersistedApplicationGraph(
                 currentFlow,
             );
+
+        // Inspectable benchmark artifacts are based on the persisted graph.
+        // Candidate workflows remain explicitly unverified.
+        {
+            const { buildExplorationArtifacts } =
+                await import('../exploration/exploration-artifacts.js');
+            const { mkdir, writeFile } = await import('node:fs/promises');
+            const { join } = await import('node:path');
+            const exportDirectory = input.outputDirectory ??
+                'artifacts/exploration';
+            const artifacts = buildExplorationArtifacts(graphStates, graphTransitions);
+            const { validateExplorationModels } =
+                await import('../exploration/workflow-model-validation.js');
+            const integrity = validateExplorationModels(
+                artifacts.functionalTree, artifacts.stateGraph);
+            const { planGraphReexploration } =
+                await import('../exploration/graph-reexploration-planner.js');
+            const reexplorationPlan = planGraphReexploration(integrity);
+            const { findObservedWorkflowPaths } =
+                await import('../exploration/observed-workflow-paths.js');
+            const observedPaths = findObservedWorkflowPaths(
+                artifacts.functionalTree, artifacts.stateGraph);
+            await mkdir(exportDirectory, { recursive: true });
+            await Promise.all([
+                writeFile(join(exportDirectory, 'functional-tree.json'),
+                    JSON.stringify(artifacts.functionalTree, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'state-graph.json'),
+                    JSON.stringify(artifacts.stateGraph, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'exploration-integrity.json'),
+                    JSON.stringify(integrity, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'reexploration-plan.json'),
+                    JSON.stringify(reexplorationPlan, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'observed-workflow-paths.json'),
+                    JSON.stringify(observedPaths, null, 2), 'utf8'),
+            ]);
+            if (!integrity.valid) {
+                logger.warn({ issueCount: integrity.issues.length },
+                    'Exploration structural integrity checks failed');
+            }
+            logger.info({ unresolvedBranches: integrity.reexploration.length },
+                'Graph-guided re-exploration gaps identified');
+        }
 
         const reconstructedFlows =
             reconstructBusinessFlows({
@@ -1059,6 +1112,46 @@ export async function runExplorer(
             playwrightProjectOutput
                 .outputDirectory;
 
+        // Isolated verified-workflow pipeline. It runs only when the
+        // operator supplies explicit expected outcomes and approved fixtures.
+        // No scenario or credential is inferred from a successful click.
+        if (input.approvedFixture && process.env.TOVERNI_WORKFLOW_DATASETS) {
+            const { runVerifiedWorkflowPipeline } =
+                await import('../exploration/verified-workflow-pipeline.js');
+            try {
+                const workflowResult = await runVerifiedWorkflowPipeline({
+                    initialObservation: explorationResult.initialObservation,
+                    fixture: input.approvedFixture,
+                    openSession: () => browser.createSession(),
+                    outputDirectory: generatedTestsDirectory,
+                    datasetsJson: process.env.TOVERNI_WORKFLOW_DATASETS,
+                    fieldEnvJson: process.env.TOVERNI_APPROVED_FIXTURE_FIELDS ?? '{}',
+                });
+                const { writeFile } = await import('node:fs/promises');
+                const { join } = await import('node:path');
+                await writeFile(join(generatedTestsDirectory, 'verified-workflow-diagnostics.json'),
+                    JSON.stringify({ status: 'executed', ...workflowResult }, null, 2));
+                logger.info({
+                    discoveredBranches: workflowResult.discoveredBranches,
+                    completed: workflowResult.completed,
+                    blocked: workflowResult.blocked,
+                    failed: workflowResult.failed,
+                    generatedSpecs: workflowResult.generatedSpecs,
+                }, 'Verified workflow pipeline completed');
+            } catch {
+                // Error details may contain user-supplied fixture values.
+                // Continue ordinary exploration generation independently.
+                const { mkdir, writeFile } = await import('node:fs/promises');
+                const { join } = await import('node:path');
+                await mkdir(generatedTestsDirectory, { recursive: true });
+                await writeFile(join(generatedTestsDirectory, 'verified-workflow-diagnostics.json'),
+                    JSON.stringify({ status: 'error', reason: 'Workflow pipeline did not complete; inspect input configuration and browser logs' }, null, 2));
+                logger.warn('Verified workflow pipeline failed; ordinary scenario generation will continue');
+            }
+        }
+
+
+
         logger.info(
             {
                 outputDirectory:
@@ -1096,10 +1189,7 @@ export async function runExplorer(
         // Grounded scenario generation
         // --------------------------------
 
-        if (
-            modelConfiguration
-                .MODEL_REASONING_ENABLED
-        ) {
+        {
   
     const scenarioGenerator =
       new GroundedScenarioGenerator(
@@ -1115,6 +1205,9 @@ export async function runExplorer(
 
           businessBehaviors:
             groundedBusinessBehaviors,
+        }, {
+          skipModel:
+            !modelConfiguration.MODEL_REASONING_ENABLED,
         });
   
     const hasAcceptanceCriteria =
@@ -1143,104 +1236,38 @@ export async function runExplorer(
           )
         : generatedScenarios;
 
-    const scenarios =
+    const scenarioCandidates =
+      browserSuiteCandidates.length >
+        0
+        ? browserSuiteCandidates
+        : generatedScenarios;
+
+    const createPlanForScenario =
       (
-        browserSuiteCandidates.length >
-          0
-          ? browserSuiteCandidates
-          : generatedScenarios
-      ).slice(
-        0,
-        8,
-      );
-  
-    const storedScenarios =
-      await activeRepository
-        .saveGeneratedScenarios(
-          run.id,
-          application.id,
-          scenarios,
-        );
-  
-    logger.info(
-      {
-        evidenceCount:
-          evidence.length,
-  
-        scenarioCount:
-          scenarios.length,
+        scenario: {
+          id?: string;
+          title: string;
+          evidenceReferences:
+            string[];
+        },
 
-        coverageGapCount:
-          scenarioCoverageGaps.length,
-
-        coverageGaps:
-          scenarioCoverageGaps.map(
-            (gap) => ({
-              targetId:
-                gap.targetId,
-
-              kind:
-                gap.kind,
-
-              status:
-                gap.status,
-            }),
-          ),
-  
-        scenarios:
-          scenarios.map(
-            (scenario) => ({
-              title:
-                scenario.title,
-  
-              type:
-                scenario.type,
-  
-              relevance:
-                scenario.relevance,
-  
-              risk:
-                scenario.risk,
-  
-              confidence:
-                scenario.confidence,
-  
-              evidenceReferences:
-                scenario
-                  .evidenceReferences,
-
-              rankingReasons:
-                scenario
-                  .rankingReasons,
-            }),
-          ),
-      },
-      'Grounded test scenarios generated',
-    );
-  
-    // --------------------------------
-    // Executable Playwright generation
-    // --------------------------------
-  
-
-    for (
-      const storedScenario of
-      storedScenarios
-    ) {
-      const plan =
+        provisionalId:
+          string,
+      ) =>
         createExecutableTestPlan({
           scenario: {
             id:
-              storedScenario.id,
-  
+              scenario.id ??
+              provisionalId,
+
             title:
-              storedScenario.title,
-  
+              scenario.title,
+
             evidenceReferences:
-              storedScenario
+              scenario
                 .evidenceReferences,
           },
-  
+
           initialStateId:
             explorationResult
               .initialStateId,
@@ -1250,10 +1277,10 @@ export async function runExplorer(
               (item) => ({
                 id:
                   item.id,
-  
+
                 type:
                   item.type,
-  
+
                 source:
                   item.source,
 
@@ -1261,28 +1288,71 @@ export async function runExplorer(
                   item.description,
               }),
             ),
-  
+
           actions:
             currentFlow.actions.map(
-              (action) => ({
-                id:
-                  action.id,
-  
-                label:
-                  action.label,
-  
-                type:
-                  action.type,
-  
-                target:
-                  action.target,
-  
-                blocked:
-                  action.blocked,
-  
-                blockReasons:
-                  action.blockReasons,
-              }),
+              (action) => {
+                const sourceState =
+                  currentFlow.states.find(
+                    (state) =>
+                      state.id ===
+                      action.stateId,
+                  );
+
+                const observedAction =
+                  sourceState
+                    ?.observation
+                    .actions
+                    .find(
+                      (candidate) =>
+                        (
+                          candidate.name ??
+                          candidate.text ??
+                          candidate.testId ??
+                          `${candidate.type}:${candidate.tagName}`
+                        ) ===
+                        action.label,
+                    );
+
+                return {
+                  id:
+                    action.id,
+
+                  label:
+                    action.label,
+
+                  type:
+                    action.type,
+
+                  target:
+                    action.target,
+
+                  ...(observedAction
+                    ?.href
+                    ? {
+                        href:
+                          observedAction.href,
+                      }
+                    : {}),
+
+                  ...(sourceState
+                    ?.observation
+                    .url
+                    ? {
+                        sourceUrl:
+                          sourceState
+                            .observation
+                            .url,
+                      }
+                    : {}),
+
+                  blocked:
+                    action.blocked,
+
+                  blockReasons:
+                    action.blockReasons,
+                };
+              },
             ),
 
           transitions:
@@ -1347,6 +1417,144 @@ export async function runExplorer(
                 }),
               ),
         });
+
+    const plannedCandidates =
+      scenarioCandidates.map(
+        (
+          scenario,
+          index,
+        ) => ({
+          scenario,
+
+          plan:
+            createPlanForScenario(
+              scenario,
+              `candidate-${index + 1}`,
+            ),
+        }),
+      );
+
+    const maxScenarios =
+      input.maxScenarios ??
+      20;
+
+    const runnableCandidates =
+      plannedCandidates.filter(
+        (candidate) =>
+          candidate.plan.status ===
+          'ready',
+      );
+
+    const manualCandidates =
+      plannedCandidates.filter(
+        (candidate) =>
+          candidate.plan.status ===
+          'manual_required',
+      );
+
+    const selectedCandidates = [
+      ...runnableCandidates,
+      ...manualCandidates,
+    ].slice(
+      0,
+      maxScenarios,
+    );
+
+    const scenarios =
+      selectedCandidates.map(
+        (candidate) =>
+          candidate.scenario,
+      );
+  
+    const storedScenarios =
+      await activeRepository
+        .saveGeneratedScenarios(
+          run.id,
+          application.id,
+          scenarios,
+        );
+  
+    logger.info(
+      {
+        evidenceCount:
+          evidence.length,
+
+        scenarioCandidateCount:
+          scenarioCandidates.length,
+
+        runnableCandidateCount:
+          runnableCandidates.length,
+
+        manualCandidateCount:
+          manualCandidates.length,
+  
+        scenarioCount:
+          scenarios.length,
+
+        maxScenarios,
+
+        coverageGapCount:
+          scenarioCoverageGaps.length,
+
+        coverageGaps:
+          scenarioCoverageGaps.map(
+            (gap) => ({
+              targetId:
+                gap.targetId,
+
+              kind:
+                gap.kind,
+
+              status:
+                gap.status,
+            }),
+          ),
+  
+        scenarios:
+          scenarios.map(
+            (scenario) => ({
+              title:
+                scenario.title,
+  
+              type:
+                scenario.type,
+  
+              relevance:
+                scenario.relevance,
+  
+              risk:
+                scenario.risk,
+  
+              confidence:
+                scenario.confidence,
+  
+              evidenceReferences:
+                scenario
+                  .evidenceReferences,
+
+              rankingReasons:
+                scenario
+                  .rankingReasons,
+            }),
+          ),
+      },
+      'Grounded test scenarios generated',
+    );
+  
+    // --------------------------------
+    // Executable Playwright generation
+    // --------------------------------
+  
+
+    for (
+      const storedScenario of
+      storedScenarios
+    ) {
+      const plan =
+        createPlanForScenario(
+          storedScenario,
+          storedScenario.id,
+        );
   
       // ------------------------------
       // Manual-required scenario
@@ -1830,6 +2038,198 @@ export async function runExplorer(
             'Browser session closed',
         );
 
+        const targetOrigin =
+            new URL(
+                input.targetUrl,
+            ).origin;
+
+        const executedActionIds =
+            new Set(
+                flow.transitions
+                    .map(
+                        (transition) =>
+                            transition.actionId,
+                    )
+                    .filter(
+                        (
+                            actionId,
+                        ): actionId is string =>
+                            typeof actionId ===
+                                'string',
+                    ),
+            );
+
+        const routeCandidates =
+            flow.actions
+                .map(
+                    (action) => {
+                        const state =
+                            flow.states.find(
+                                (candidate) =>
+                                    candidate.id ===
+                                    action.stateId,
+                            );
+
+                        const observedAction =
+                            state
+                                ?.observation
+                                .actions
+                                .find(
+                                    (candidate) =>
+                                        (
+                                            candidate.name ??
+                                            candidate.text ??
+                                            candidate.testId ??
+                                            `${candidate.type}:${candidate.tagName}`
+                                        ) ===
+                                        action.label,
+                                );
+
+                        if (
+                            !state ||
+                            !observedAction
+                                ?.href
+                        ) {
+                            return null;
+                        }
+
+                        try {
+                            const sourceUrl =
+                                new URL(
+                                    state
+                                        .observation
+                                        .url,
+                                );
+
+                            const destinationUrl =
+                                new URL(
+                                    observedAction
+                                        .href,
+                                    sourceUrl,
+                                );
+
+                            const sameOrigin =
+                                destinationUrl.origin ===
+                                targetOrigin;
+
+                            const changesRoute =
+                                destinationUrl.pathname !==
+                                    sourceUrl.pathname ||
+                                destinationUrl.search !==
+                                    sourceUrl.search;
+
+                            if (
+                                !changesRoute
+                            ) {
+                                return null;
+                            }
+
+                            return {
+                                actionId:
+                                    action.id,
+
+                                label:
+                                    action.label,
+
+                                href:
+                                    destinationUrl.href,
+
+                                sameOrigin,
+
+                                blocked:
+                                    action.blocked,
+
+                                blockReasons:
+                                    action.blockReasons,
+                            };
+                        } catch {
+                            return null;
+                        }
+                    },
+                )
+                .filter(
+                    (
+                        candidate,
+                    ): candidate is NonNullable<
+                        typeof candidate
+                    > =>
+                        candidate !==
+                        null,
+                );
+
+        // Only label a flow covered when the coverage evaluator says so.
+        // Grounded behaviors alone do not guarantee executable test coverage.
+        const coveredFlowNames =
+            [
+                ...new Set(
+                    coverage.entries
+                        .filter(
+                            (entry) =>
+                                entry.target.kind === 'flow' &&
+                                entry.status === 'covered',
+                        )
+                        .map((entry) => entry.target.label),
+                ),
+            ].sort();
+
+        // Audit successful destinations rather than only the exact action ID:
+        // the same route may be reached through another navigation action.
+        const reachedRouteUrls =
+            new Set(
+                flow.transitions
+                    .map((transition) =>
+                        flow.states.find(
+                            (state) => state.id === transition.toStateId,
+                        )?.latestUrl,
+                    )
+                    .filter((url): url is string => typeof url === 'string')
+                    .map((url) => {
+                        const parsed = new URL(url);
+                        parsed.hash = '';
+                        return parsed.href;
+                    }),
+            );
+
+        const wasRouteReached = (href: string): boolean => {
+            const parsed = new URL(href);
+            parsed.hash = '';
+            return reachedRouteUrls.has(parsed.href);
+        };
+
+        const missedRouteFlows =
+            [
+                ...new Set(
+                    routeCandidates
+                        .filter(
+                            (candidate) =>
+                                candidate.sameOrigin &&
+                                !candidate.blocked &&
+                                !executedActionIds.has(candidate.actionId) &&
+                                !wasRouteReached(candidate.href),
+                        )
+                        .map(
+                            (candidate) =>
+                                `${candidate.label} → ${candidate.href}`,
+                        ),
+                ),
+            ].sort();
+
+        const blockedRouteFlows =
+            [
+                ...new Set(
+                    routeCandidates
+                        .filter(
+                            (candidate) =>
+                                !candidate.sameOrigin ||
+                                candidate.blocked,
+                        )
+                        .map(
+                            (candidate) =>
+                                `${candidate.label} → ${candidate.href}`,
+                        ),
+                ),
+            ].sort();
+
         const summary =
             buildGenerationSummary({
                 runId:
@@ -1845,6 +2245,17 @@ export async function runExplorer(
                 discoveredFlows:
                     reconstructedFlows
                         .length,
+
+                flowAudit: {
+                    covered:
+                        coveredFlowNames,
+
+                    missed:
+                        missedRouteFlows,
+
+                    blocked:
+                        blockedRouteFlows,
+                },
 
                 outputDirectory:
                     generatedTestsDirectory,

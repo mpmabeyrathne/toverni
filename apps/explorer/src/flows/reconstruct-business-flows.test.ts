@@ -516,6 +516,30 @@ import {
       );
 
 
+      it('reconstructs alternative field values as separate replayable submit paths', () => {
+        const states = [createState('login'), createState('rejected')];
+        const transitions = [
+          createTransition('username-valid', 'login', 'login',
+            { type: 'fill', target: 'Username', value: 'practice' }, 1),
+          createTransition('username-invalid', 'login', 'login',
+            { type: 'fill', target: 'Username', value: 'wrongUser' }, 2),
+          createTransition('password', 'login', 'login',
+            { type: 'fill', target: 'Password', value: 'approved-fixture' }, 3),
+          createTransition('login-submit', 'login', 'rejected',
+            { type: 'click', target: 'Login' }, 4),
+        ];
+        const flows = reconstructBusinessFlows({ states, transitions });
+        const submitted = flows.filter((flow) =>
+          flow.transitionIds.includes('login-submit'));
+        expect(submitted).toHaveLength(2);
+        expect(submitted.map((flow) => flow.transitionIds)).toEqual(
+          expect.arrayContaining([
+            ['username-valid', 'password', 'login-submit'],
+            ['username-invalid', 'password', 'login-submit'],
+          ])
+        );
+      });
+
       it(
         'preserves replay-safe file setup before a later upload action',
         () => {

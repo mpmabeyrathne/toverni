@@ -2119,6 +2119,9 @@ import type {
     async generate(
       input:
         GenerateGroundedScenariosInput,
+      options?: {
+        skipModel?: boolean;
+      },
     ): Promise<
       GroundedScenario[]
     > {
@@ -2253,6 +2256,7 @@ import type {
         GroundedScenarioCandidate[] =
           [];
 
+      if (!options?.skipModel) {
       try {
         const result =
           await this.provider
@@ -2299,6 +2303,7 @@ import type {
         // remain valid evidence-grounded input
         // when a local model emits malformed
         // structured output.
+      }
       }
   
       const groundedModelScenarios =

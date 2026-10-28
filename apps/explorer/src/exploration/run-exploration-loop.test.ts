@@ -1783,6 +1783,361 @@ describe(
           );
 
           it(
+            'restores a source route and explores remaining actions after a dead end',
+            async () => {
+              const home:
+                Observation = {
+                capturedAt:
+                  '2026-10-08T01:00:00.000Z',
+
+                url:
+                  'http://example.test/',
+
+                title:
+                  'Home',
+
+                semanticText: [
+                  'Home',
+                  'First',
+                  'Second',
+                ],
+
+                ariaSnapshot: [
+                  '- main:',
+                  '  - link "First"',
+                  '  - link "Second"',
+                ].join(
+                  '\n',
+                ),
+
+                actions: [
+                  {
+                    type:
+                      'link',
+
+                    tagName:
+                      'a',
+
+                    name:
+                      'First',
+
+                    text:
+                      'First',
+
+                    href:
+                      'http://example.test/first',
+
+                    disabled:
+                      false,
+
+                    visible:
+                      true,
+                  },
+
+                  {
+                    type:
+                      'link',
+
+                    tagName:
+                      'a',
+
+                    name:
+                      'Second',
+
+                    text:
+                      'Second',
+
+                    href:
+                      'http://example.test/second',
+
+                    disabled:
+                      false,
+
+                    visible:
+                      true,
+                  },
+                ],
+
+                consoleEvents: [],
+
+                networkEvents: [],
+
+                supportingArtifacts: [],
+              };
+
+              const first:
+                Observation = {
+                ...home,
+
+                capturedAt:
+                  '2026-10-08T01:00:01.000Z',
+
+                url:
+                  'http://example.test/first',
+
+                title:
+                  'First',
+
+                semanticText: [
+                  'First destination',
+                ],
+
+                ariaSnapshot:
+                  '- main:\n  - text: First destination',
+
+                actions: [],
+              };
+
+              const second:
+                Observation = {
+                ...first,
+
+                capturedAt:
+                  '2026-10-08T01:00:02.000Z',
+
+                url:
+                  'http://example.test/second',
+
+                title:
+                  'Second',
+
+                semanticText: [
+                  'Second destination',
+                ],
+
+                ariaSnapshot:
+                  '- main:\n  - text: Second destination',
+              };
+
+              const observations = [
+                home,
+                first,
+                home,
+                second,
+              ];
+
+              const observe =
+                vi.fn(
+                  async () => {
+                    const next =
+                      observations.shift();
+
+                    if (!next) {
+                      return second;
+                    }
+
+                    return next;
+                  },
+                );
+
+              const navigate =
+                vi.fn(
+                  async (
+                    _url:
+                      string,
+                  ) => {
+                    // Observation sequence
+                    // models route restoration.
+                  },
+                );
+
+              const click =
+                vi.fn(
+                  async () => {
+                    // Observation sequence
+                    // models clicked navigation.
+                  },
+                );
+
+              const session = {
+                observe,
+                navigate,
+                click,
+              } as unknown as
+                BrowserSession;
+
+              const stateModel =
+                new ApplicationStateModel();
+
+              const planner =
+                new DeterministicExplorationPlanner(
+                  stateModel,
+                  TEST_BUDGET,
+                );
+
+              const saveTransition =
+                vi.fn(
+                  async () => {
+                    // No-op.
+                  },
+                );
+
+              const repository = {
+                saveState:
+                  vi.fn(
+                    async (
+                      _applicationId:
+                        string,
+
+                      state: {
+                        id:
+                          string;
+                      },
+                    ) => ({
+                      id:
+                        state.id,
+                    }),
+                  ),
+
+                saveObservationEvidence:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+
+                saveDecision:
+                  vi.fn(
+                    async (
+                      _runId:
+                        string,
+
+                      _stateId:
+                        string,
+
+                      decision: {
+                        selected:
+                          unknown | null;
+                      },
+                    ) => ({
+                      decision: {
+                        id:
+                          'decision',
+                      },
+
+                      selectedActionId:
+                        decision.selected
+                          ? 'action'
+                          : null,
+                    }),
+                  ),
+
+                saveTransition,
+
+                saveRunCheckpoint:
+                  vi.fn(
+                    async () => {
+                      // No-op.
+                    },
+                  ),
+              } as unknown as
+                RunExplorationLoopInput[
+                  'repository'
+                ];
+
+              const result =
+                await runExplorationLoop({
+                  session,
+
+                  stateModel,
+
+                  planner,
+
+                  repository,
+
+                  applicationId:
+                    'application-1',
+
+                  runId:
+                    'run-frontier',
+
+                  priorityTerms: [],
+
+                  budget:
+                    TEST_BUDGET,
+
+                  retryAttempts:
+                    1,
+                });
+
+              expect(
+                click,
+              ).toHaveBeenCalledTimes(
+                2,
+              );
+
+              expect(
+                navigate,
+              ).toHaveBeenCalledWith(
+                'http://example.test/',
+              );
+
+              expect(
+                saveTransition,
+              ).toHaveBeenCalledTimes(
+                2,
+              );
+
+              expect(
+                result.executedActions,
+              ).toBe(
+                2,
+              );
+
+              expect(
+                result.stopReason,
+              ).toBe(
+                'no-eligible-actions',
+              );
+            },
+          );
+
+          it('records approved runtime fixture fills without exposing their value', async () => {
+            const initial: Observation = {
+              ...createObservation({ semanticText: ['Login'], actionName: 'Unused' }),
+              url: 'https://example.test/login',
+              actions: [{
+                type: 'input', tagName: 'input', name: 'Username',
+                inputType: 'text', disabled: false, visible: true,
+                formField: { inputType: 'text', required: true, value: '' },
+              }],
+            };
+            const filled: Observation = {
+              ...initial,
+              semanticText: ['Login', 'Username entered'],
+              actions: [],
+            };
+            const observe = vi.fn()
+              .mockResolvedValueOnce(initial)
+              .mockResolvedValue(filled);
+            const fill = vi.fn(async () => {});
+            const session = { observe, fill } as unknown as BrowserSession;
+            const stateModel = new ApplicationStateModel();
+            const planner = new DeterministicExplorationPlanner(stateModel, TEST_BUDGET);
+            const saveTransition = vi.fn(async (_transition: unknown) => {});
+            const repository = {
+              saveState: vi.fn(async (_id: string, state: { id: string }) =>
+                ({ id: state.id })),
+              saveObservationEvidence: vi.fn(async () => {}),
+              saveDecision: vi.fn(async () => ({ selectedActionId: 'action-1' })),
+              saveTransition,
+              saveRunCheckpoint: vi.fn(async () => {}),
+            } as unknown as RunExplorationLoopInput['repository'];
+            await runExplorationLoop({
+              session, stateModel, planner, repository,
+              applicationId: 'app', runId: 'fixture-run', priorityTerms: [],
+              approvedFixture: { origin: 'https://example.test',
+                fields: { Username: 'private-demo-fixture' } },
+              budget: { ...TEST_BUDGET, maxActions: 1 },
+            });
+            expect(fill).toHaveBeenCalledTimes(1);
+            expect(fill.mock.calls[0]).toBeDefined();
+            const saved = saveTransition.mock.calls.map(call => call[0]);
+            expect(JSON.stringify(saved)).not.toContain('private-demo-fixture');
+            expect(JSON.stringify(saved)).toContain('"type":"fill"');
+          });
+
+          it(
             'stops with an explainable runtime budget reason',
             async () => {
               const observation =

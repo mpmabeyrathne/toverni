@@ -1,3 +1,5 @@
+import { resolveApprovedFormValue, type ApprovedFormFixture } from '../forms/approved-form-fixtures.js';
+
 import type {
   BrowserSession,
 } from '../browser/index.js';
@@ -56,6 +58,7 @@ type LoopRepository =
   >;
 
 export interface RunExplorationLoopInput {
+  approvedFixture?: ApprovedFormFixture;
   session:
   BrowserSession;
 
@@ -76,6 +79,9 @@ export interface RunExplorationLoopInput {
 
   priorityTerms:
   string[];
+
+  targetOrigin?:
+  string;
 
   knowledge?:
   KnowledgeContext;
@@ -236,7 +242,13 @@ function createTransitionAction(
         };
       }
 
-      break;
+      // Approved fixture values are injected only at execution time and
+      // deliberately absent from persisted candidate formExecution.
+      // Preserve the observed fill action without persisting the secret.
+      return {
+        type: 'fill',
+        target,
+      };
 
     case 'select':
       if (
@@ -456,6 +468,24 @@ export async function runExplorationLoop(
       ),
     ];
 
+  const frontier =
+    [
+      ...(
+        input.checkpoint
+          ?.frontier ??
+        []
+      ),
+    ];
+
+  const persistedNetworkEventIds =
+    new Set<string>();
+
+  const persistedConsoleEventKeys =
+    new Set<string>();
+
+  const persistedArtifactKeys =
+    new Set<string>();
+
   input.planner
     .restoreExecutionHistory(
       completedExecutions,
@@ -546,6 +576,137 @@ export async function runExplorationLoop(
   const initialStateId =
     currentPersistedState.id;
 
+  const persistFreshObservationEvidence =
+    async (
+      stateId:
+        string,
+
+      observation:
+        Observation,
+    ): Promise<void> => {
+      const freshNetworkEvents =
+        observation
+          .networkEvents
+          .filter(
+            (event) =>
+              !persistedNetworkEventIds
+                .has(
+                  event.id,
+                ),
+          );
+
+      const freshConsoleEvents =
+        observation
+          .consoleEvents
+          .filter(
+            (event) => {
+              const key =
+                [
+                  event.timestamp,
+                  event.type,
+                  event.text,
+                ].join(
+                  '\u0000',
+                );
+
+              return !persistedConsoleEventKeys
+                .has(
+                  key,
+                );
+            },
+          );
+
+      const freshArtifacts =
+        observation
+          .supportingArtifacts
+          .filter(
+            (artifact) => {
+              const key =
+                [
+                  artifact.type,
+                  artifact.path,
+                ].join(
+                  '\u0000',
+                );
+
+              return !persistedArtifactKeys
+                .has(
+                  key,
+                );
+            },
+          );
+
+      if (
+        freshNetworkEvents.length ===
+          0 &&
+        freshConsoleEvents.length ===
+          0 &&
+        freshArtifacts.length ===
+          0
+      ) {
+        return;
+      }
+
+      await input.repository
+        .saveObservationEvidence(
+          input.runId,
+          stateId,
+          {
+            ...observation,
+
+            networkEvents:
+              freshNetworkEvents,
+
+            consoleEvents:
+              freshConsoleEvents,
+
+            supportingArtifacts:
+              freshArtifacts,
+          },
+        );
+
+      for (
+        const event of
+        freshNetworkEvents
+      ) {
+        persistedNetworkEventIds
+          .add(
+            event.id,
+          );
+      }
+
+      for (
+        const event of
+        freshConsoleEvents
+      ) {
+        persistedConsoleEventKeys
+          .add(
+            [
+              event.timestamp,
+              event.type,
+              event.text,
+            ].join(
+              '\u0000',
+            ),
+          );
+      }
+
+      for (
+        const artifact of
+        freshArtifacts
+      ) {
+        persistedArtifactKeys
+          .add(
+            [
+              artifact.type,
+              artifact.path,
+            ].join(
+              '\u0000',
+            ),
+          );
+      }
+    };
+
   // --------------------------------
   // Preserve raw observation evidence
   // --------------------------------
@@ -553,12 +714,10 @@ export async function runExplorationLoop(
   if (
     !input.checkpoint
   ) {
-    await input.repository
-      .saveObservationEvidence(
-        input.runId,
-        currentPersistedState.id,
-        currentObservation,
-      );
+    await persistFreshObservationEvidence(
+      currentPersistedState.id,
+      currentObservation,
+    );
   }
 
   await input.repository
@@ -584,14 +743,158 @@ export async function runExplorationLoop(
             .toISOString(),
 
         completedExecutions,
+
+        frontier,
       },
     );
 
   let stopReason:
     string | null = null;
 
-    const seenNetworkEventIds =
-  new Set<string>();
+  const targetOrigin =
+    input.targetOrigin ??
+    new URL(
+      initialObservation.url,
+    ).origin;
+
+  const seenApiNetworkEventIds =
+    new Set<string>();
+
+  const restoreFromFrontier =
+    async (): Promise<boolean> => {
+      while (
+        frontier.length >
+        0
+      ) {
+        const next =
+          frontier.pop();
+
+        if (!next) {
+          return false;
+        }
+
+        try {
+          await input.session
+            .navigate(
+              next.url,
+            );
+
+          const restoredObservation =
+            await withRetry(
+              () =>
+                input.session
+                  .observe(),
+              retryAttempts,
+              () => {
+                failures +=
+                  1;
+              },
+            );
+
+          await input
+            .analyzeObservation?.(
+              restoredObservation,
+            );
+
+          // Never continue a saved frontier action against a different
+          // origin or a different structural state. URL-only restoration
+          // cannot recreate modal, form, or other transient UI state.
+          if (new URL(restoredObservation.url).origin !== targetOrigin) {
+            logger.warn({ requestedStateId: next.stateId, restoredUrl: restoredObservation.url },
+              'Discarded frontier restoration outside the target origin');
+            continue;
+          }
+
+          const restoredStateResult =
+            input.stateModel
+              .registerObservation(
+                restoredObservation,
+              );
+
+          if (restoredStateResult.state.id !== next.stateId) {
+            logger.warn({ requestedStateId: next.stateId,
+              restoredStateId: restoredStateResult.state.id,
+              restoredUrl: restoredObservation.url },
+              'Discarded frontier restoration with mismatched structural state');
+            continue;
+          }
+
+          const restoredPersistedState =
+            await input.repository
+              .saveState(
+                input.applicationId,
+                restoredStateResult
+                  .state,
+              );
+
+          await persistFreshObservationEvidence(
+            restoredPersistedState.id,
+            restoredObservation,
+          );
+
+          currentObservation =
+            restoredObservation;
+
+          currentState =
+            restoredStateResult
+              .state;
+
+          currentPersistedState =
+            restoredPersistedState;
+
+          failures =
+            0;
+
+          logger.info(
+            {
+              restoredUrl:
+                restoredObservation.url,
+
+              requestedStateId:
+                next.stateId,
+
+              restoredStateId:
+                restoredStateResult
+                  .state.id,
+
+              remainingFrontierStates:
+                frontier.length,
+            },
+            'Restored exploration frontier state',
+          );
+
+          return true;
+        } catch (
+          error:
+            unknown
+        ) {
+          failures +=
+            1;
+
+          logger.warn(
+            {
+              frontierStateId:
+                next.stateId,
+
+              frontierUrl:
+                next.url,
+
+              error:
+                error instanceof
+                  Error
+                  ? error.message
+                  : String(
+                      error,
+                    ),
+            },
+            'Failed to restore exploration frontier state; trying next frontier entry',
+          );
+        }
+      }
+
+      return false;
+    };
+
   // --------------------------------
   // Multi-step exploration loop
   // --------------------------------
@@ -617,6 +920,17 @@ export async function runExplorationLoop(
     if (
       runtimeStop
     ) {
+      const stateLocalStop =
+        runtimeStop ===
+          'max-visits-per-state-reached';
+
+      if (
+        stateLocalStop &&
+        await restoreFromFrontier()
+      ) {
+        continue;
+      }
+
       stopReason =
         runtimeStop;
 
@@ -630,7 +944,7 @@ export async function runExplorationLoop(
     getContextualApiOperationIds(
       currentObservation,
       input.knowledge,
-      seenNetworkEventIds,
+      seenApiNetworkEventIds,
     );
 
 const decision =
@@ -644,6 +958,8 @@ const decision =
     productContext: {
       priorityTerms:
         input.priorityTerms,
+
+      targetOrigin,
     },
 
     ...(input.knowledge
@@ -651,6 +967,16 @@ const decision =
           knowledge:
             input.knowledge,
         }
+      : {}),
+
+    ...(input.approvedFixture
+      ? { approvedFixtureFields: new Set(
+          Object.keys(input.approvedFixture.fields)
+            .filter((label) => resolveApprovedFormValue(
+              input.approvedFixture, currentObservation.url, label,
+            ) !== undefined)
+            .map((label) => label.toLowerCase().trim()),
+        ) }
       : {}),
 
     ...(apiOperationIds.length >
@@ -726,6 +1052,19 @@ const decision =
       decision.shouldStop ||
       !decision.selected
     ) {
+      const resumableStop =
+        decision.stopReason ===
+          'no-eligible-actions' ||
+        decision.stopReason ===
+          'max-actions-per-state-reached';
+
+      if (
+        resumableStop &&
+        await restoreFromFrontier()
+      ) {
+        continue;
+      }
+
       stopReason =
         decision.stopReason ??
         'no-selected-action';
@@ -768,13 +1107,22 @@ const decision =
                   selected.target,
 
                 formExecution:
-                  selected.formExecution,
+                  (() => {
+                    const fixtureValue = resolveApprovedFormValue(
+                      input.approvedFixture, currentObservation.url, selected.label);
+                    return fixtureValue !== undefined &&
+                      ['input', 'textarea', 'contenteditable'].includes(selected.action.type)
+                        ? { kind: 'fill' as const, value: fixtureValue, evidence: [] }
+                        : selected.formExecution;
+                  })(),
               },
             ),
           retryAttempts,
           () => {
-            failures +=
-              1;
+            // Retry attempts are not separate
+            // exploration failures. The
+            // candidate is counted once if
+            // all retries are exhausted.
           },
         );
     } catch (
@@ -783,6 +1131,9 @@ const decision =
     ) {
       executionError =
         error;
+
+      failures +=
+        1;
     }
 
     if (
@@ -863,6 +1214,8 @@ const decision =
                 .toISOString(),
 
             completedExecutions,
+
+            frontier,
           },
         );
 
@@ -879,6 +1232,9 @@ const decision =
 
       break;
     }
+
+    failures =
+      0;
 
     // ------------------------------
     // Record executed action
@@ -904,6 +1260,17 @@ const decision =
             1;
         },
       );
+
+    // A link can redirect or execute JavaScript navigation even when
+    // its original href passed the planner's same-origin check.
+    // Never register or explore an off-origin destination.
+    if (new URL(nextObservation.url).origin !== targetOrigin) {
+      logger.warn({ targetOrigin, destinationUrl: nextObservation.url,
+        action: selected.label },
+        'Exploration left the target origin; stopping before external discovery');
+      stopReason = 'external-origin-navigation';
+      break;
+    }
 
     await input.analyzeObservation?.(
       nextObservation,
@@ -1010,12 +1377,10 @@ const decision =
     // observation evidence
     // ------------------------------
 
-    await input.repository
-      .saveObservationEvidence(
-        input.runId,
-        persistedToState.id,
-        nextObservation,
-      );
+    await persistFreshObservationEvidence(
+      persistedToState.id,
+      nextObservation,
+    );
 
     // ------------------------------
     // Persist transition
@@ -1062,6 +1427,41 @@ const decision =
         selected.label,
     });
 
+    if (
+      currentObservation.url !==
+        nextObservation.url
+    ) {
+      const hasRemainingSourceActions =
+        decision
+          .rankedCandidates
+          .some(
+            (candidate) =>
+              !candidate.blocked &&
+              candidate.signature !==
+                selected.signature,
+          );
+
+      const alreadyQueued =
+        frontier.some(
+          (item) =>
+            item.stateId ===
+              currentState.id,
+        );
+
+      if (
+        hasRemainingSourceActions &&
+        !alreadyQueued
+      ) {
+        frontier.push({
+          stateId:
+            currentState.id,
+
+          url:
+            currentObservation.url,
+        });
+      }
+    }
+
     await input.repository
       .saveRunCheckpoint(
         input.runId,
@@ -1085,6 +1485,8 @@ const decision =
               .toISOString(),
 
           completedExecutions,
+
+          frontier,
         },
       );
 
@@ -1129,6 +1531,8 @@ const decision =
             .toISOString(),
 
         completedExecutions,
+
+        frontier,
 
         stopReason:
           (

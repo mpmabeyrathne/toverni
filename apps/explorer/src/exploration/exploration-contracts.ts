@@ -48,6 +48,12 @@ export interface ExplorationExecutionCheckpoint {
   label: string;
 }
 
+export interface ExplorationFrontierCheckpoint {
+  stateId: string;
+
+  url: string;
+}
+
 export interface ExplorationCheckpoint {
   version:
     1;
@@ -73,6 +79,9 @@ export interface ExplorationCheckpoint {
   completedExecutions:
     ExplorationExecutionCheckpoint[];
 
+  frontier?:
+    ExplorationFrontierCheckpoint[];
+
   stopReason?:
     ExplorationStopReason | null;
 }
@@ -81,6 +90,9 @@ export interface ExplorationProductContext {
   priorityTerms?: string[];
 
   avoidTerms?: string[];
+
+  targetOrigin?:
+    string;
 }
 
 export type ExplorationFormExecution =
@@ -183,7 +195,26 @@ export type ExplorationStopReason =
   | 'max-duration-reached'
   | 'no-eligible-actions';
 
+export type FunctionalBranchKind =
+  | 'validation'
+  | 'form-setup'
+  | 'submission'
+  | 'navigation'
+  | 'other';
+
+export interface FunctionalExplorationBranch {
+  kind: FunctionalBranchKind;
+  candidateIds: string[];
+  eligibleCandidateIds: string[];
+}
+
+export interface FunctionalExplorationTree {
+  stateId: string;
+  branches: FunctionalExplorationBranch[];
+}
+
 export interface ExplorationDecision {
+  functionalTree?: FunctionalExplorationTree;
   decidedAt: string;
 
   stateId: string;
@@ -203,6 +234,8 @@ export interface ExplorationDecision {
 }
 
 export interface PlanExplorationInput {
+  approvedFixtureFields?: ReadonlySet<string>;
+
   state:
     ApplicationStateNode;
 

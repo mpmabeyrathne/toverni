@@ -570,114 +570,144 @@ export class ExplorationRepository {
     observation:
       PageObservation,
   ): Promise<void> {
-    if (
+    const insertChunkSize =
+      250;
+
+    const networkRows =
       observation
         .networkEvents
-        .length > 0
+        .map(
+          (event) => ({
+            runId,
+
+            stateId,
+
+            requestId:
+              event.id,
+
+            method:
+              event.method,
+
+            url:
+              event.url,
+
+            resourceType:
+              event
+                .resourceType,
+
+            status:
+              event.status ??
+              null,
+
+            ok:
+              event.ok ??
+              null,
+
+            failed:
+              event.failed,
+
+            failureText:
+              event.failureText ??
+              null,
+          }),
+        );
+
+    for (
+      let offset = 0;
+      offset <
+        networkRows.length;
+      offset +=
+        insertChunkSize
     ) {
       await this.db
         .insert(
           networkEvents,
         )
         .values(
-          observation
-            .networkEvents
-            .map(
-              (event) => ({
-                runId,
-
-                stateId,
-
-                requestId:
-                  event.id,
-
-                method:
-                  event.method,
-
-                url:
-                  event.url,
-
-                resourceType:
-                  event
-                    .resourceType,
-
-                status:
-                  event.status ??
-                  null,
-
-                ok:
-                  event.ok ??
-                  null,
-
-                failed:
-                  event.failed,
-
-                failureText:
-                  event.failureText ??
-                  null,
-              }),
-            ),
+          networkRows.slice(
+            offset,
+            offset +
+              insertChunkSize,
+          ),
         );
     }
 
-    if (
+    const consoleRows =
       observation
         .consoleEvents
-        .length > 0
+        .map(
+          (event) => ({
+            runId,
+
+            stateId,
+
+            type:
+              event.type,
+
+            text:
+              event.text,
+
+            occurredAt:
+              new Date(
+                event.timestamp,
+              ),
+          }),
+        );
+
+    for (
+      let offset = 0;
+      offset <
+        consoleRows.length;
+      offset +=
+        insertChunkSize
     ) {
       await this.db
         .insert(
           consoleEvents,
         )
         .values(
-          observation
-            .consoleEvents
-            .map(
-              (event) => ({
-                runId,
-
-                stateId,
-
-                type:
-                  event.type,
-
-                text:
-                  event.text,
-
-                occurredAt:
-                  new Date(
-                    event.timestamp,
-                  ),
-              }),
-            ),
+          consoleRows.slice(
+            offset,
+            offset +
+              insertChunkSize,
+          ),
         );
     }
 
-    if (
+    const artifactRows =
       observation
         .supportingArtifacts
-        .length > 0
+        .map(
+          (artifact) => ({
+            runId,
+
+            stateId,
+
+            type:
+              artifact.type,
+
+            path:
+              artifact.path,
+          }),
+        );
+
+    for (
+      let offset = 0;
+      offset <
+        artifactRows.length;
+      offset +=
+        insertChunkSize
     ) {
       await this.db
         .insert(
           artifacts,
         )
         .values(
-          observation
-            .supportingArtifacts
-            .map(
-              (artifact) => ({
-                runId,
-
-                stateId,
-
-                type:
-                  artifact.type,
-
-                path:
-                  artifact.path,
-              }),
-            ),
+          artifactRows.slice(
+            offset,
+            offset +
+              insertChunkSize,
+          ),
         );
     }
   }
@@ -993,12 +1023,85 @@ export class ExplorationRepository {
           ),
       ]);
 
+    const runStateIds =
+      new Set(
+        [
+          ...actions.map(
+            (action) =>
+              action.stateId,
+          ),
+
+          ...storedTransitions
+            .flatMap(
+              (transition) => [
+                transition.fromStateId,
+                transition.toStateId,
+              ],
+            ),
+
+          ...decisions.map(
+            (decision) =>
+              decision.stateId,
+          ),
+
+          ...storedNetworkEvents
+            .map(
+              (event) =>
+                event.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+
+          ...storedConsoleEvents
+            .map(
+              (event) =>
+                event.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+
+          ...storedArtifacts
+            .map(
+              (artifact) =>
+                artifact.stateId,
+            )
+            .filter(
+              (
+                stateId,
+              ): stateId is string =>
+                typeof stateId ===
+                  'string',
+            ),
+        ],
+      );
+
+    const scopedStates =
+      runId
+        ? states.filter(
+            (state) =>
+              runStateIds.has(
+                state.id,
+              ),
+          )
+        : states;
+
     return {
       application,
 
       runs,
 
-      states,
+      states:
+        scopedStates,
 
       actions,
 

@@ -387,6 +387,58 @@ function uniqueSemanticText(
   ];
 }
 
+function isAmbiguousSemanticText(
+  value:
+    string,
+
+  observation:
+    PageObservation,
+): boolean {
+  const normalizedValue =
+    value
+      .trim()
+      .toLowerCase();
+
+  if (!normalizedValue) {
+    return true;
+  }
+
+  const semanticOccurrences =
+    observation
+      .semanticText
+      .filter(
+        (candidate) =>
+          candidate
+            .trim()
+            .toLowerCase() ===
+          normalizedValue,
+      )
+      .length;
+
+  if (
+    semanticOccurrences >
+    1
+  ) {
+    return true;
+  }
+
+  const normalizedAria =
+    observation
+      .ariaSnapshot
+      .toLowerCase();
+
+  const ariaOccurrences =
+    normalizedAria
+      .split(
+        normalizedValue,
+      )
+      .length -
+    1;
+
+  return ariaOccurrences >
+    1;
+}
+
 function semanticTextTarget(
   value:
     string,
@@ -757,6 +809,22 @@ export function buildEvidenceBackedAssertions(
       continue;
     }
 
+    // An empty post-action control snapshot may be a transient
+    // observer gap, not proof that every control disappeared.
+    // Keep affirmative outcome assertions (such as error text).
+    if (
+      after.actions.length === 0 &&
+      afterItems.length === 0 &&
+      // If the surrounding page text remains, losing every control
+      // is more likely an incomplete snapshot than a real DOM removal.
+      // Preserve legitimate removal assertions on emptied pages.
+      after.semanticText.some((text) =>
+        before.semanticText.includes(text)
+      )
+    ) {
+      continue;
+    }
+
     if (
       beforeItems.length !==
         afterItems.length &&
@@ -942,7 +1010,12 @@ export function buildEvidenceBackedAssertions(
   // --------------------------------
   // Semantic text deltas
   // --------------------------------
-
+  //
+  // Semantic text can represent a meaningful
+  // business outcome, but an exact-text
+  // assertion is unsafe when the observation
+  // itself contains multiple matching
+  // accessible occurrences.
   const beforeText =
     new Set(
       uniqueSemanticText(
@@ -983,6 +1056,10 @@ export function buildEvidenceBackedAssertions(
         !isActionChromeAggregate(
           value,
           after.actions,
+        ) &&
+        !isAmbiguousSemanticText(
+          value,
+          after,
         ),
     );
 
@@ -1015,6 +1092,10 @@ export function buildEvidenceBackedAssertions(
         !isActionChromeAggregate(
           value,
           before.actions,
+        ) &&
+        !isAmbiguousSemanticText(
+          value,
+          before,
         ),
     );
 

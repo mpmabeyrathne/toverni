@@ -28,6 +28,8 @@ import type {
   ExplorationProductContext,
   PlanExplorationInput,
   ExplorationFormExecution,
+  FunctionalExplorationTree,
+  FunctionalBranchKind,
 } from './exploration-contracts.js';
 
 const DEFAULT_BUDGET:
@@ -297,6 +299,7 @@ export class DeterministicExplorationPlanner {
               input.apiOperationIds,
               input.observation,
               validationProbeLabels,
+              input.approvedFixtureFields,
             ),
         )
         .sort(
@@ -305,11 +308,46 @@ export class DeterministicExplorationPlanner {
             first.score,
         );
 
-    const selected =
-      candidates.find(
-        (candidate) =>
-          !candidate.blocked,
-      ) ?? null;
+    // An inspectable functional tree complements (but does not replace)
+    // the observed state graph. Preserve existing candidate selection.
+    const branchOrder: FunctionalBranchKind[] = [
+      'validation', 'form-setup', 'submission', 'navigation', 'other',
+    ];
+    const functionalTree: FunctionalExplorationTree = {
+      stateId: input.state.id,
+      branches: branchOrder.map((kind) => {
+        const members = candidates.filter((candidate) => {
+          const label = candidate.label;
+          const type = candidate.action.type;
+          if (kind === 'validation') {
+            return validationProbeLabels.has(this.normalize(label));
+          }
+          if (kind === 'form-setup') {
+            if (validationProbeLabels.has(this.normalize(label))) return false;
+            return ['input', 'textarea', 'select', 'checkbox', 'radio',
+              'combobox', 'contenteditable'].includes(type);
+          }
+          if (kind === 'submission') {
+            return type === 'button' &&
+              /\b(?:login|log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(label);
+          }
+          if (kind === 'navigation') {
+            return type === 'link';
+          }
+          return kind === 'other' &&
+            !validationProbeLabels.has(this.normalize(label)) &&
+            !['input', 'textarea', 'select', 'checkbox', 'radio', 'combobox', 'contenteditable', 'link'].includes(type) &&
+            !(type === 'button' && /\b(?:login|log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(label));
+        });
+        return { kind, candidateIds: members.map((item) => item.id),
+          eligibleCandidateIds: members.filter((item) => !item.blocked).map((item) => item.id) };
+      }),
+    };
+
+    // Preserve evidence-based scores when they outrank generic form setup.
+    // The functional tree remains available for inspection and future
+    // workflow scheduling; it must not override grounded data priorities.
+    const selected = candidates.find((candidate) => !candidate.blocked) ?? null;
 
     if (!selected) {
       return this.recordDecision({
@@ -320,6 +358,8 @@ export class DeterministicExplorationPlanner {
           input.state.id,
 
         selected: null,
+
+        functionalTree,
 
         rankedCandidates:
           candidates,
@@ -339,6 +379,8 @@ export class DeterministicExplorationPlanner {
         input.state.id,
 
       selected,
+
+      functionalTree,
 
       rankedCandidates:
         candidates,
@@ -516,6 +558,7 @@ this.globalActionCounts.set(
 
     validationProbeLabels:
       Set<string>,
+    approvedFixtureFields?: ReadonlySet<string>,
   ): ExplorationCandidate {
     const signature =
       createActionSignature(
@@ -538,7 +581,7 @@ this.globalActionCounts.set(
         label,
       );
 
-    const formExecution =
+    let formExecution =
       this.createFormExecution(
         action,
         knowledge,
@@ -552,8 +595,12 @@ this.globalActionCounts.set(
         knowledge,
       );
 
+    const fixtureApproved = approvedFixtureFields?.has(label.toLowerCase().trim()) ?? false;
+    // Never store generated fallback values for operator-approved fields.
+    // The actual fixture value is resolved only at the browser boundary.
+    if (fixtureApproved) formExecution = null;
     const sensitiveFormGrounded =
-      !sensitiveFormAction ||
+      fixtureApproved || !sensitiveFormAction ||
       this.hasExplicitSensitiveValueEvidence(
         formExecution,
       );
@@ -609,6 +656,81 @@ this.globalActionCounts.set(
     }
 
     if (
+      action.href &&
+      productContext
+        ?.targetOrigin
+    ) {
+      try {
+        const actionOrigin =
+          new URL(
+            action.href,
+            observation.url,
+          ).origin;
+
+        if (
+          actionOrigin !==
+          productContext
+            .targetOrigin
+        ) {
+          blockReasons.push(
+            `External navigation is outside the autonomous exploration origin (${actionOrigin})`,
+          );
+        } else {
+          const actionUrl =
+            new URL(
+              action.href,
+              observation.url,
+            );
+
+          const currentUrl =
+            new URL(
+              observation.url,
+            );
+
+          if (
+            actionUrl.href ===
+            currentUrl.href
+          ) {
+            blockReasons.push(
+              'Navigation target is already the current page',
+            );
+          } else if (
+            actionUrl.origin ===
+              currentUrl.origin &&
+            actionUrl.pathname ===
+              currentUrl.pathname &&
+            actionUrl.search ===
+              currentUrl.search &&
+            actionUrl.hash !==
+              currentUrl.hash
+          ) {
+            score -=
+              40;
+
+            reasons.push(
+              'Same-document fragment navigation is deprioritized behind route exploration',
+            );
+          } else {
+            score +=
+              40;
+
+            reasons.push(
+              'Same-origin route navigation expands application coverage',
+            );
+          }
+
+          reasons.push(
+            'Navigation remains inside the autonomous exploration origin',
+          );
+        }
+      } catch {
+        blockReasons.push(
+          'Navigation target could not be resolved safely',
+        );
+      }
+    }
+
+    if (
       sensitiveFormAction &&
       !sensitiveFormGrounded
     ) {
@@ -629,7 +751,7 @@ this.globalActionCounts.set(
         action,
       )
     ) {
-      if (!formExecution) {
+      if (!formExecution && !fixtureApproved) {
         blockReasons.push(
           'Action requires grounded form data before it can be executed',
         );
@@ -779,6 +901,59 @@ this.globalActionCounts.set(
       reasons.push(
         'Requirement-grounded empty-field validation is probed before valid form setup',
       );
+    }
+
+    // The entry page's primary function should be explored before
+    // generic header/footer navigation. Do not make blocked inputs
+    // eligible: sensitive fields still require explicit trusted values.
+    const pagePath = new URL(observation.url).pathname.toLowerCase();
+    const authenticationPage = /\/(?:login|sign-in|signin)\/?$/.test(pagePath);
+    const authenticationSubmit = authenticationPage &&
+      action.type === 'button' &&
+      /^(?:log\s*in|sign\s*in|login)$/i.test(label.trim());
+
+    const hasFormSubmit = observation.actions.some((item) =>
+      item.visible && !item.disabled && item.type === 'button' &&
+      /\b(?:log\s*in|sign\s*in|submit|save|continue|register|search)\b/i.test(
+        item.name ?? item.text ?? ''
+      )
+    );
+    const unfilledGroundedField = Boolean(formExecution || fixtureApproved) &&
+      this.isUnfilledFormSetup(action) &&
+      (action.type === 'input' || action.type === 'textarea' || action.type === 'select');
+
+    // For explicitly approved authentication fixtures, complete all visible
+    // required fields before submitting. Do not mistake a public demo
+    // username fill for a complete login when Password is still empty.
+    const pendingApprovedFields = authenticationPage &&
+      (approvedFixtureFields?.size ?? 0) > 0 &&
+      observation.actions.some((field) =>
+        ['input', 'textarea'].includes(field.type) &&
+        field.visible && !field.disabled &&
+        (approvedFixtureFields?.has(getActionLabel(field).toLowerCase().trim()) ?? false) &&
+        this.isUnfilledFormSetup(field)
+      );
+
+    if (authenticationSubmit && pendingApprovedFields) {
+      blockReasons.push('Complete approved authentication fields before Login submission');
+    }
+    if (authenticationPage && fixtureApproved && unfilledGroundedField) {
+      score += 220;
+      reasons.push('Approved authentication fixture field must be filled before submission');
+    }
+
+    if (authenticationSubmit) {
+      score += 130;
+      reasons.push('Primary authentication action is prioritized over site navigation');
+    } else if (authenticationPage && unfilledGroundedField) {
+      // Fill safe, evidence-backed login fields before submitting.
+      // Blocked sensitive fields remain blocked regardless of score.
+      score += 180;
+      reasons.push('Grounded authentication form setup is prioritized before login submission and navigation');
+    }
+    else if (hasFormSubmit && unfilledGroundedField && validationProbeLabels.size === 0) {
+      score += 105;
+      reasons.push('Grounded form setup is prioritized before generic navigation');
     }
 
     const contextResult =

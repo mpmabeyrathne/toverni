@@ -480,6 +480,36 @@ describe(
     );
 
     it(
+      'accepts a configurable scenario budget from CLI',
+      async () => {
+        const command =
+          await parsePublicCli(
+            [
+              'generate',
+              'http://localhost:3000',
+              '--max-scenarios',
+              '25',
+            ],
+            process.cwd(),
+          );
+
+        expect(
+          command,
+        ).toMatchObject({
+          kind:
+            'generate',
+
+          config: {
+            exploration: {
+              maxScenarios:
+                25,
+            },
+          },
+        });
+      },
+    );
+
+    it(
       'accepts the future auth/session contract without silently converting it',
       async () => {
         const directory =

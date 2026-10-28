@@ -2681,6 +2681,256 @@ function setupWithObservation(
       );
 
 
+      it('prioritizes grounded login inputs ahead of submit and navigation', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          title: 'Login',
+          actions: [
+            { type: 'link', tagName: 'a', name: 'About', text: 'About',
+              href: 'https://example.com/about', disabled: false, visible: true },
+            { type: 'input', tagName: 'input', name: 'Email', inputType: 'email',
+              formField: { htmlName: 'email', inputType: 'email', required: true, value: '' },
+              disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Login', text: 'Login',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.selected?.label).toBe('Email');
+        expect(decision.selected?.formExecution?.kind).toBe('fill');
+      });
+
+      it('requires both approved login fields before enabling submission', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          actions: [
+            { type: 'input', tagName: 'input', name: 'Username', inputType: 'text',
+              formField: { inputType: 'text', value: 'practice', required: true },
+              disabled: false, visible: true },
+            { type: 'input', tagName: 'input', name: 'Password', inputType: 'password',
+              formField: { inputType: 'password', value: '', required: true },
+              disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Login', text: 'Login',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({
+          state, observation,
+          approvedFixtureFields: new Set(['username', 'password']),
+          productContext: { targetOrigin: 'https://example.com' },
+        });
+        expect(decision.selected?.label).toBe('Password');
+        expect(decision.selected?.blocked).toBe(false);
+        expect(decision.rankedCandidates.find(candidate =>
+          candidate.label === 'Login')?.blocked).toBe(true);
+        expect(decision.rankedCandidates.find(candidate =>
+          candidate.label === 'Password')?.formExecution).not.toMatchObject({
+          value: 'SuperSecretPassword!',
+        });
+      });
+
+      it('prioritizes grounded form fields over generic links on other form pages', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/contact',
+          actions: [
+            { type: 'link', tagName: 'a', name: 'About', text: 'About',
+              href: 'https://example.com/about', disabled: false, visible: true },
+            { type: 'input', tagName: 'input', name: 'Email', inputType: 'email',
+              formField: { htmlName: 'email', inputType: 'email', required: true, value: '' },
+              disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Submit', text: 'Submit',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.selected?.label).toBe('Email');
+        expect(decision.selected?.formExecution?.kind).toBe('fill');
+      });
+
+      it('organizes exploration candidates into inspectable functional branches', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          actions: [
+            { type: 'input', tagName: 'input', name: 'Username',
+              inputType: 'text', formField: { htmlName: 'username',
+                inputType: 'text', value: '', required: true },
+              visible: true, disabled: false },
+            { type: 'button', tagName: 'button', name: 'Login',
+              text: 'Login', visible: true, disabled: false },
+            { type: 'link', tagName: 'a', name: 'About',
+              href: 'https://example.com/about', visible: true, disabled: false },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.functionalTree?.stateId).toBe(state.id);
+        expect(decision.selected?.label).toBe('Username');
+        const branches = decision.functionalTree!.branches;
+        expect(branches.find(b => b.kind === 'form-setup')?.candidateIds).toHaveLength(1);
+        expect(branches.find(b => b.kind === 'submission')?.candidateIds).toHaveLength(1);
+        expect(branches.find(b => b.kind === 'navigation')?.candidateIds).toHaveLength(1);
+        const all = branches.flatMap(b => b.candidateIds);
+        expect(new Set(all).size).toBe(all.length);
+      });
+
+      it('prioritizes login submission over generic navigation', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          title: 'Login',
+          actions: [
+            { type: 'link', tagName: 'a', name: 'About', text: 'About',
+              href: 'https://example.com/about', disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Login', text: 'Login',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({ state, observation,
+          productContext: { targetOrigin: 'https://example.com' } });
+        expect(decision.selected?.label).toBe('Login');
+      });
+
+      it(
+        'blocks external navigation while keeping same-origin links eligible',
+        () => {
+          const observation:
+            PageObservation = {
+            ...createObservation(),
+
+            actions: [
+              {
+                type:
+                  'link',
+
+                tagName:
+                  'a',
+
+                name:
+                  'Register',
+
+                text:
+                  'Register',
+
+                href:
+                  'https://example.com/register',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+
+              {
+                type:
+                  'link',
+
+                tagName:
+                  'a',
+
+                name:
+                  'External Docs',
+
+                text:
+                  'External Docs',
+
+                href:
+                  'https://docs.example.net/start',
+
+                disabled:
+                  false,
+
+                visible:
+                  true,
+              },
+            ],
+          };
+
+          const stateModel =
+            new ApplicationStateModel();
+
+          const state =
+            stateModel
+              .registerObservation(
+                observation,
+              )
+              .state;
+
+          const planner =
+            new DeterministicExplorationPlanner(
+              stateModel,
+            );
+
+          const decision =
+            planner.plan({
+              state,
+
+              observation,
+
+              productContext: {
+                targetOrigin:
+                  'https://example.com',
+              },
+            });
+
+          const register =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'Register',
+              );
+
+          const external =
+            decision
+              .rankedCandidates
+              .find(
+                (candidate) =>
+                  candidate.label ===
+                    'External Docs',
+              );
+
+          expect(
+            register?.blocked,
+          ).toBe(false);
+
+          expect(
+            external?.blocked,
+          ).toBe(true);
+
+          expect(
+            external
+              ?.blockReasons
+              .some(
+                (reason) =>
+                  reason.includes(
+                    'outside the autonomous exploration origin',
+                  ),
+              ),
+          ).toBe(true);
+
+          expect(
+            decision.selected
+              ?.label,
+          ).toBe(
+            'Register',
+          );
+        },
+      );
+
+
       it(
         'treats sign out as reversible session navigation rather than destructive data mutation',
         () => {

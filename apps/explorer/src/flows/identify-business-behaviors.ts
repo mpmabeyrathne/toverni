@@ -768,6 +768,17 @@ function createBusinessBoundaryKey(
       negativeOutcome
         ? 'negative-outcome'
         : 'non-negative-outcome',
+
+      // Distinct visible errors and successes are different business
+      // outcomes, even when both submit the same form endpoint.
+      // Use only observed added text, never form input values.
+      outcome.addedSemanticText
+        .filter((value) =>
+          /\b(?:invalid|error|failed|failure|forbidden|denied|rejected|unauthorized|success|successful|logged\s+in)\b/i.test(value)
+        )
+        .map((value) => normalize(value))
+        .sort()
+        .join('|'),
     ].join(
       '|',
     );
