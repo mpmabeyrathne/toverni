@@ -278,6 +278,24 @@ import {
         },
       );
   
+      it('keeps distinct observed login error outcomes as separate business behaviors', () => {
+        const states = [createState('login'), createState('error-a'), createState('error-b')];
+        const invalidUsername = {
+          ...createTransition('login-username-error', 'login', 'error-a',
+            { type: 'click', target: 'Login' }, 1),
+        };
+        invalidUsername.afterObservation.semanticText = ['Invalid username.'];
+        const invalidPassword = {
+          ...createTransition('login-password-error', 'login', 'error-b',
+            { type: 'click', target: 'Login' }, 2),
+        };
+        invalidPassword.afterObservation.semanticText = ['Invalid password.'];
+        const transitions = [invalidUsername, invalidPassword];
+        const flows = reconstructBusinessFlows({ states, transitions });
+        const behaviors = identifyBusinessBehaviors({ states, transitions, flows });
+        expect(behaviors.filter(behavior => behavior.name === 'Login')).toHaveLength(2);
+      });
+
       it(
         'does not turn ordinary navigation clicks into one-click business behaviors',
         () => {
