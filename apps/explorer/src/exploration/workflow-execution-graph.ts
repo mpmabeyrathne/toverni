@@ -26,7 +26,7 @@ export function buildWorkflowExecutionGraph(results: WorkflowResult[]): Workflow
         id: prefix + ':state-' + (index + 1), url: step.url,
         ...(step.observedAt ? { observedAt: step.observedAt } : {}),
       }));
-      const states = [{ id: prefix + ':start', url: result.finalUrl ?? steps[0]?.url ?? '' }, ...observedStates];
+      const states = [{ id: prefix + ':start', url: result.startUrl ?? steps[0]?.url ?? '' }, ...observedStates];
       return {
         branchId: result.branchId, datasetId: result.datasetId,
         verified: result.verified, status: result.status,
