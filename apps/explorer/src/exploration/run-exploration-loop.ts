@@ -242,7 +242,13 @@ function createTransitionAction(
         };
       }
 
-      break;
+      // Approved fixture values are injected only at execution time and
+      // deliberately absent from persisted candidate formExecution.
+      // Preserve the observed fill action without persisting the secret.
+      return {
+        type: 'fill',
+        target,
+      };
 
     case 'select':
       if (
