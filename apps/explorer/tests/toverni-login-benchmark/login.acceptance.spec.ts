@@ -26,7 +26,7 @@ test('invalid username is rejected', async ({ page }) => {
   await page.getByLabel('Password', { exact: true }).fill(validPassword!);
   await page.getByRole('button', { name: 'Login', exact: true }).click();
   await expect(page).toHaveURL(`${baseUrl}/login`);
-  await expect(page.getByRole('alert')).toContainText(/invalid username/i);
+  await expect(page.getByRole('alert')).toContainText(/password\s+is\s+invalid/i);
 });
 
 test('invalid password is rejected', async ({ page }) => {
