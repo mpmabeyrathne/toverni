@@ -2729,7 +2729,9 @@ function setupWithObservation(
         expect(decision.rankedCandidates.find(candidate =>
           candidate.label === 'Login')?.blocked).toBe(true);
         expect(decision.rankedCandidates.find(candidate =>
-          candidate.label === 'Password')?.formExecution?.value).not.toBe('SuperSecretPassword!');
+          candidate.label === 'Password')?.formExecution).not.toMatchObject({
+          value: 'SuperSecretPassword!',
+        });
       });
 
       it('prioritizes grounded form fields over generic links on other form pages', () => {
