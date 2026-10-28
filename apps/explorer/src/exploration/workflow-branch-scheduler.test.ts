@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BrowserSession } from '../browser/browser-session.js';
 import type { PageObservation } from '../contracts/page-observation.js';
-import { executeWorkflowBranches, planWorkflowBranch, verifiedWorkflowPaths } from './workflow-branch-scheduler.js';
+import { discoverWorkflowBranches, executeWorkflowBranches, planWorkflowBranch, verifiedWorkflowPaths } from './workflow-branch-scheduler.js';
 
 const observation = (url: string, text: string[]): PageObservation => ({
   url, title: 'Login', capturedAt: '2026-10-28T00:00:00.000Z', semanticText: text,
@@ -25,6 +25,18 @@ describe('workflow branch scheduler', () => {
       { id: 'negative', expectedText: 'Your password is invalid!' },
     ],
   };
+  it('discovers observed submit branches without inventing datasets', () => {
+    const page = observation('https://example.com/login', []);
+    page.actions = page.actions.map((action) =>
+      action.type === 'input' ? { ...action, formField: {
+        inputType: action.inputType ?? 'text', required: true, value: '',
+      } } : action);
+    const branches = discoverWorkflowBranches(page);
+    expect(branches).toHaveLength(1);
+    expect(branches[0]?.requiredFields).toEqual(['Username', 'Password']);
+    expect(branches[0]?.datasets).toEqual([]);
+  });
+
   it('identifies missing required dependencies before execution', () => {
     const page = observation(branch.startUrl, []);
     page.actions = page.actions.filter((action) => action.name !== 'Password');
