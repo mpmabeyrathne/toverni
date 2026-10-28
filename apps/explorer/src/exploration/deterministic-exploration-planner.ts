@@ -299,6 +299,7 @@ export class DeterministicExplorationPlanner {
               input.apiOperationIds,
               input.observation,
               validationProbeLabels,
+              input.approvedFixtureFields,
             ),
         )
         .sort(
@@ -557,6 +558,7 @@ this.globalActionCounts.set(
 
     validationProbeLabels:
       Set<string>,
+    approvedFixtureFields?: ReadonlySet<string>,
   ): ExplorationCandidate {
     const signature =
       createActionSignature(
@@ -593,8 +595,9 @@ this.globalActionCounts.set(
         knowledge,
       );
 
+    const fixtureApproved = approvedFixtureFields?.has(label.toLowerCase().trim()) ?? false;
     const sensitiveFormGrounded =
-      !sensitiveFormAction ||
+      fixtureApproved || !sensitiveFormAction ||
       this.hasExplicitSensitiveValueEvidence(
         formExecution,
       );
@@ -745,7 +748,7 @@ this.globalActionCounts.set(
         action,
       )
     ) {
-      if (!formExecution) {
+      if (!formExecution && !fixtureApproved) {
         blockReasons.push(
           'Action requires grounded form data before it can be executed',
         );
