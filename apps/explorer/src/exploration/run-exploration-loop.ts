@@ -963,8 +963,14 @@ const decision =
         }
       : {}),
 
-    ...(input.approvedFixture && new URL(currentObservation.url).origin === new URL(input.approvedFixture.origin).origin
-      ? { approvedFixtureFields: new Set(Object.keys(input.approvedFixture.fields).map((label) => label.toLowerCase().trim())) }
+    ...(input.approvedFixture
+      ? { approvedFixtureFields: new Set(
+          Object.keys(input.approvedFixture.fields)
+            .filter((label) => resolveApprovedFormValue(
+              input.approvedFixture, currentObservation.url, label,
+            ) !== undefined)
+            .map((label) => label.toLowerCase().trim()),
+        ) }
       : {}),
 
     ...(apiOperationIds.length >
