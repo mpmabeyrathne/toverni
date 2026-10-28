@@ -914,6 +914,9 @@ export async function runExplorer(
                 await import('../exploration/workflow-model-validation.js');
             const integrity = validateExplorationModels(
                 artifacts.functionalTree, artifacts.stateGraph);
+            const { planGraphReexploration } =
+                await import('../exploration/graph-reexploration-planner.js');
+            const reexplorationPlan = planGraphReexploration(integrity);
             await mkdir(exportDirectory, { recursive: true });
             await Promise.all([
                 writeFile(join(exportDirectory, 'functional-tree.json'),
@@ -922,6 +925,8 @@ export async function runExplorer(
                     JSON.stringify(artifacts.stateGraph, null, 2), 'utf8'),
                 writeFile(join(exportDirectory, 'exploration-integrity.json'),
                     JSON.stringify(integrity, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'reexploration-plan.json'),
+                    JSON.stringify(reexplorationPlan, null, 2), 'utf8'),
             ]);
             if (!integrity.valid) {
                 logger.warn({ issueCount: integrity.issues.length },
