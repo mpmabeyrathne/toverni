@@ -31,4 +31,21 @@ describe('reviewable exploration artifacts', () => {
     expect(JSON.stringify(result)).not.toContain('secret-password');
     expect(JSON.stringify(result)).not.toContain('secret-username');
   });
+  it('merges login workflow observations and infers missing required metadata', () => {
+    const actions = [
+      { type: 'input', tagName: 'input', name: 'Username', visible: true, disabled: false },
+      { type: 'input', tagName: 'input', name: 'Password', visible: true, disabled: false },
+      { type: 'button', tagName: 'button', name: 'Login', visible: true, disabled: false },
+    ];
+    const states = ['first', 'second'].map((id) => ({
+      id, url: 'https://example.com/login', routePattern: '/login', visits: 1,
+      observation: { url: 'https://example.com/login', actions },
+    })) as unknown as ApplicationStateNode[];
+    const result = buildExplorationArtifacts(states, []);
+    expect(result.functionalTree.nodes).toHaveLength(1);
+    expect(result.functionalTree.nodes[0]?.observedStateIds).toEqual(['first', 'second']);
+    expect(result.functionalTree.nodes[0]?.requiredFields).toEqual(['Username', 'Password']);
+    expect(result.functionalTree.nodes[0]?.verification).toBe('not-verified');
+  });
+
 });
