@@ -57,11 +57,14 @@ describe('verified workflow integration', () => {
       expect(result.completed).toBe(1);
       expect(result.generatedSpecs).toBe(1);
       const files = await readdir(directory);
-      expect(files).toHaveLength(1);
-      const source = await readFile(join(directory, files[0]!), 'utf8');
+      expect(files).toHaveLength(2);
+      const source = await readFile(join(directory, files.find((file) => file.endsWith('.spec.ts'))!), 'utf8');
       expect(source).toContain('TOVERNI_TEST_PASSWORD');
       expect(source).toContain('getByLabel("Password"');
       expect(source).not.toContain('secret-fixture');
+      const graph = await readFile(join(directory, 'workflow-execution-graph.json'), 'utf8');
+      expect(graph).not.toContain('secret-fixture');
+      expect(graph).toContain('positive');
     } finally { await rm(directory, { recursive: true, force: true }); }
   });
 });
