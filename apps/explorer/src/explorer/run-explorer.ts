@@ -855,6 +855,29 @@ export async function runExplorer(
                             .getCallCount(),
             });
 
+        // Isolated verified-workflow pipeline. It runs only when the
+        // operator supplies explicit expected outcomes and approved fixtures.
+        // No scenario or credential is inferred from a successful click.
+        if (input.approvedFixture && process.env.TOVERNI_WORKFLOW_DATASETS) {
+            const { runVerifiedWorkflowPipeline } =
+                await import('../exploration/verified-workflow-pipeline.js');
+            const workflowResult = await runVerifiedWorkflowPipeline({
+                initialObservation: explorationResult.initialObservation,
+                fixture: input.approvedFixture,
+                openSession: () => browser.createSession(),
+                outputDirectory: generatedTestsDirectory,
+                datasetsJson: process.env.TOVERNI_WORKFLOW_DATASETS,
+                fieldEnvJson: process.env.TOVERNI_APPROVED_FIXTURE_FIELDS ?? '{}',
+            });
+            logger.info({
+                discoveredBranches: workflowResult.discoveredBranches,
+                completed: workflowResult.completed,
+                blocked: workflowResult.blocked,
+                failed: workflowResult.failed,
+                generatedSpecs: workflowResult.generatedSpecs,
+            }, 'Verified workflow pipeline completed');
+        }
+
         const initialObservation =
             explorationResult
                 .initialObservation;
