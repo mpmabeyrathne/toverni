@@ -2703,6 +2703,35 @@ function setupWithObservation(
         expect(decision.selected?.formExecution?.kind).toBe('fill');
       });
 
+      it('requires both approved login fields before enabling submission', () => {
+        const observation: PageObservation = {
+          ...createObservation(),
+          url: 'https://example.com/login',
+          actions: [
+            { type: 'input', tagName: 'input', name: 'Username', inputType: 'text',
+              formField: { inputType: 'text', value: 'practice', required: true },
+              disabled: false, visible: true },
+            { type: 'input', tagName: 'input', name: 'Password', inputType: 'password',
+              formField: { inputType: 'password', value: '', required: true },
+              disabled: false, visible: true },
+            { type: 'button', tagName: 'button', name: 'Login', text: 'Login',
+              disabled: false, visible: true },
+          ],
+        };
+        const { state, planner } = setupWithObservation(observation);
+        const decision = planner.plan({
+          state, observation,
+          approvedFixtureFields: new Set(['username', 'password']),
+          productContext: { targetOrigin: 'https://example.com' },
+        });
+        expect(decision.selected?.label).toBe('Password');
+        expect(decision.selected?.blocked).toBe(false);
+        expect(decision.rankedCandidates.find(candidate =>
+          candidate.label === 'Login')?.blocked).toBe(true);
+        expect(decision.rankedCandidates.find(candidate =>
+          candidate.label === 'Password')?.formExecution?.value).not.toBe('SuperSecretPassword!');
+      });
+
       it('prioritizes grounded form fields over generic links on other form pages', () => {
         const observation: PageObservation = {
           ...createObservation(),
