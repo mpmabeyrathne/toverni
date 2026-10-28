@@ -1085,6 +1085,10 @@ export async function runExplorer(
                     datasetsJson: process.env.TOVERNI_WORKFLOW_DATASETS,
                     fieldEnvJson: process.env.TOVERNI_APPROVED_FIXTURE_FIELDS ?? '{}',
                 });
+                const { writeFile } = await import('node:fs/promises');
+                const { join } = await import('node:path');
+                await writeFile(join(generatedTestsDirectory, 'verified-workflow-diagnostics.json'),
+                    JSON.stringify({ status: 'executed', ...workflowResult }, null, 2));
                 logger.info({
                     discoveredBranches: workflowResult.discoveredBranches,
                     completed: workflowResult.completed,
@@ -1095,6 +1099,11 @@ export async function runExplorer(
             } catch {
                 // Error details may contain user-supplied fixture values.
                 // Continue ordinary exploration generation independently.
+                const { mkdir, writeFile } = await import('node:fs/promises');
+                const { join } = await import('node:path');
+                await mkdir(generatedTestsDirectory, { recursive: true });
+                await writeFile(join(generatedTestsDirectory, 'verified-workflow-diagnostics.json'),
+                    JSON.stringify({ status: 'error', reason: 'Workflow pipeline did not complete; inspect input configuration and browser logs' }, null, 2));
                 logger.warn('Verified workflow pipeline failed; ordinary scenario generation will continue');
             }
         }
