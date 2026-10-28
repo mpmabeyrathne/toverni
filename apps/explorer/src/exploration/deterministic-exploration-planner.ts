@@ -581,7 +581,7 @@ this.globalActionCounts.set(
         label,
       );
 
-    const formExecution =
+    let formExecution =
       this.createFormExecution(
         action,
         knowledge,
@@ -596,6 +596,9 @@ this.globalActionCounts.set(
       );
 
     const fixtureApproved = approvedFixtureFields?.has(label.toLowerCase().trim()) ?? false;
+    // Never store generated fallback values for operator-approved fields.
+    // The actual fixture value is resolved only at the browser boundary.
+    if (fixtureApproved) formExecution = null;
     const sensitiveFormGrounded =
       fixtureApproved || !sensitiveFormAction ||
       this.hasExplicitSensitiveValueEvidence(
