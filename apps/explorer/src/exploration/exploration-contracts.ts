@@ -234,6 +234,8 @@ export interface ExplorationDecision {
 }
 
 export interface PlanExplorationInput {
+  approvedFixtureFields?: ReadonlySet<string>;
+
   state:
     ApplicationStateNode;
 
