@@ -60,13 +60,13 @@ function renderSpec(
     lines.push(`  const ${'value' + lines.length} = process.env[${quote(envName)}];`);
     const name = 'value' + (lines.length - 1);
     lines.push(`  if (!${name}) throw new Error(${quote('Missing approved fixture: ' + envName)});`);
-    lines.push(`  await page.getByRole('textbox', { name: ${quote(label)}, exact: true }).fill(${name});`);
+    lines.push(`  await page.getByLabel(${quote(label)}, { exact: true }).fill(${name});`);
   }
   lines.push(`  await page.getByRole('button', { name: ${quote(submitLabel)}, exact: true }).click();`);
   if (dataset.expectedUrl) lines.push(`  await expect(page).toHaveURL(${quote(dataset.expectedUrl)});`);
   if (dataset.expectedText) lines.push(`  await expect(page.getByText(${quote(dataset.expectedText)}, { exact: false }).first()).toBeVisible();`);
   lines.push('});', '');
-  return lines.join('\\n').replaceAll('\\n', '\n');
+  return lines.join('\n');
 }
 
 export async function runVerifiedWorkflowPipeline(
