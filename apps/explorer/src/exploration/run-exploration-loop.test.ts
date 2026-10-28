@@ -2092,6 +2092,51 @@ describe(
             },
           );
 
+          it('records approved runtime fixture fills without exposing their value', async () => {
+            const initial: Observation = {
+              ...createObservation({ semanticText: ['Login'], actionName: 'Unused' }),
+              url: 'https://example.test/login',
+              actions: [{
+                type: 'input', tagName: 'input', name: 'Username',
+                inputType: 'text', disabled: false, visible: true,
+                formField: { inputType: 'text', required: true, value: '' },
+              }],
+            };
+            const filled: Observation = {
+              ...initial,
+              semanticText: ['Login', 'Username entered'],
+              actions: [],
+            };
+            const observe = vi.fn()
+              .mockResolvedValueOnce(initial)
+              .mockResolvedValue(filled);
+            const fill = vi.fn(async () => {});
+            const session = { observe, fill } as unknown as BrowserSession;
+            const stateModel = new ApplicationStateModel();
+            const planner = new DeterministicExplorationPlanner(stateModel, TEST_BUDGET);
+            const saveTransition = vi.fn(async () => {});
+            const repository = {
+              saveState: vi.fn(async (_id: string, state: { id: string }) =>
+                ({ id: state.id })),
+              saveObservationEvidence: vi.fn(async () => {}),
+              saveDecision: vi.fn(async () => ({ selectedActionId: 'action-1' })),
+              saveTransition,
+              saveRunCheckpoint: vi.fn(async () => {}),
+            } as unknown as RunExplorationLoopInput['repository'];
+            await runExplorationLoop({
+              session, stateModel, planner, repository,
+              applicationId: 'app', runId: 'fixture-run', priorityTerms: [],
+              approvedFixture: { origin: 'https://example.test',
+                fields: { Username: 'private-demo-fixture' } },
+              budget: { ...TEST_BUDGET, maxActions: 1 },
+            });
+            expect(fill).toHaveBeenCalledTimes(1);
+            expect(fill.mock.calls[0]).toBeDefined();
+            const saved = saveTransition.mock.calls.map(call => call[0]);
+            expect(JSON.stringify(saved)).not.toContain('private-demo-fixture');
+            expect(JSON.stringify(saved)).toContain('"type":"fill"');
+          });
+
           it(
             'stops with an explainable runtime budget reason',
             async () => {
