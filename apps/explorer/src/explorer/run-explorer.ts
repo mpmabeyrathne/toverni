@@ -900,6 +900,25 @@ export async function runExplorer(
                 currentFlow,
             );
 
+        // Inspectable benchmark artifacts are based on the persisted graph.
+        // Candidate workflows remain explicitly unverified.
+        {
+            const { buildExplorationArtifacts } =
+                await import('../exploration/exploration-artifacts.js');
+            const { mkdir, writeFile } = await import('node:fs/promises');
+            const { join } = await import('node:path');
+            const exportDirectory = input.outputDirectory ??
+                'artifacts/exploration';
+            const artifacts = buildExplorationArtifacts(graphStates, graphTransitions);
+            await mkdir(exportDirectory, { recursive: true });
+            await Promise.all([
+                writeFile(join(exportDirectory, 'functional-tree.json'),
+                    JSON.stringify(artifacts.functionalTree, null, 2), 'utf8'),
+                writeFile(join(exportDirectory, 'state-graph.json'),
+                    JSON.stringify(artifacts.stateGraph, null, 2), 'utf8'),
+            ]);
+        }
+
         const reconstructedFlows =
             reconstructBusinessFlows({
                 states:
