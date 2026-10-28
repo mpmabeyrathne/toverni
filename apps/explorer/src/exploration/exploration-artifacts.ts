@@ -8,6 +8,7 @@ export interface FunctionalTreeExport {
   nodes: Array<{
     id: string;
     stateId: string;
+    observedStateIds: string[];
     url: string;
     submitLabel: string;
     requiredFields: string[];
@@ -38,18 +39,33 @@ export function buildExplorationArtifacts(
   transitions: ApplicationTransition[],
 ): { functionalTree: FunctionalTreeExport; stateGraph: StateGraphExport } {
   const stateIds = new Set(states.map((state) => state.id));
-  const nodes = states.flatMap((state) =>
-    discoverWorkflowBranches(state.observation).map((branch) => ({
-      id: state.id + ':' + branch.id,
-      stateId: state.id,
-      url: state.url,
-      submitLabel: branch.submitLabel,
-      requiredFields: branch.requiredFields,
-      dependencies: branch.requiredFields.map((field) =>
-        ({ field, kind: 'required-input' as const })),
-      status: 'discovered' as const,
-      verification: 'not-verified' as const,
-    })));
+  const grouped = new Map<string, FunctionalTreeExport['nodes'][number]>();
+  for (const state of states) {
+    for (const branch of discoverWorkflowBranches(state.observation)) {
+      const key = state.url + '::' + branch.submitLabel.toLowerCase().trim();
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.observedStateIds.push(state.id);
+        existing.requiredFields = [...new Set([...existing.requiredFields, ...branch.requiredFields])];
+        existing.dependencies = existing.requiredFields.map((field) =>
+          ({ field, kind: 'required-input' as const }));
+      } else {
+        grouped.set(key, {
+          id: 'workflow-' + grouped.size,
+          stateId: state.id,
+          observedStateIds: [state.id],
+          url: state.url,
+          submitLabel: branch.submitLabel,
+          requiredFields: [...branch.requiredFields],
+          dependencies: branch.requiredFields.map((field) =>
+            ({ field, kind: 'required-input' as const })),
+          status: 'discovered',
+          verification: 'not-verified',
+        });
+      }
+    }
+  }
+  const nodes = [...grouped.values()];
   const functionalTree: FunctionalTreeExport = {
     schemaVersion: 1, source: 'observed-ui', nodes,
   };
