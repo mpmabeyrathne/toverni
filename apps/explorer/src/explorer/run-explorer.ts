@@ -809,7 +809,7 @@ export async function runExplorer(
 
         const explorationResult =
             await runExplorationLoop({
-                approvedFixture: input.approvedFixture,
+                ...(input.approvedFixture ? { approvedFixture: input.approvedFixture } : {}),
                 session,
 
                 stateModel,
