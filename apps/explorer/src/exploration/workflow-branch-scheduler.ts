@@ -108,9 +108,13 @@ export async function executeWorkflowBranches(
             ['input', 'textarea', 'contenteditable'].includes(action.type));
           const target = field && createBrowserTarget(field);
           if (!target) throw Error('Required field is unavailable: ' + label);
+          const approvedValue = resolveApprovedFormValue(fixture, before.url, label);
           const envKey = dataset.fieldEnv?.[label];
-          const value = envKey ? (/^[A-Z][A-Z0-9_]*$/.test(envKey) ? env[envKey] : undefined)
-            : resolveApprovedFormValue(fixture, before.url, label);
+          // An override may change an already-approved field, never grant a
+          // new field permission or bypass the approved origin.
+          const value = approvedValue === undefined ? undefined :
+            envKey ? (/^[A-Z][A-Z0-9_]*$/.test(envKey) ? env[envKey] : undefined)
+              : approvedValue;
           if (!value) throw Error('Approved fixture unavailable for field: ' + label);
           await session.fill(target, value);
           const next = 'filled:' + normalize(label);
