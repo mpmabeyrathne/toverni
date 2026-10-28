@@ -44,6 +44,28 @@ export interface WorkflowPlan {
 
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
+/** Discover actionable form submissions and required input dependencies from UI evidence. */
+export function discoverWorkflowBranches(
+  observation: PageObservation,
+): WorkflowBranch[] {
+  const requiredFields = observation.actions.filter((action) =>
+    ['input', 'textarea', 'contenteditable'].includes(action.type) &&
+    action.visible && !action.disabled && action.formField?.required)
+    .map(getActionLabel);
+  return observation.actions
+    .filter((action) => action.type === 'button' && action.visible &&
+      !action.disabled && /\b(?:login|log\s*in|sign\s*in|submit|register|save|continue)\b/i
+        .test(getActionLabel(action)) && createBrowserTarget(action) !== null)
+    .map((action, index) => ({
+      id: 'observed-submit-' + index,
+      startUrl: observation.url,
+      submitLabel: getActionLabel(action),
+      requiredFields: [...new Set(requiredFields)],
+      // Discovery never invents expected outcomes or credential datasets.
+      datasets: [],
+    }));
+}
+
 export function planWorkflowBranch(
   observation: PageObservation,
   branch: WorkflowBranch,
