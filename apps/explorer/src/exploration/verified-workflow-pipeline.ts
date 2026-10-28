@@ -1,3 +1,4 @@
+import { buildWorkflowExecutionGraph } from './workflow-execution-graph.js';
 import type { BrowserSession } from '../browser/browser-session.js';
 import type { PageObservation } from '../contracts/page-observation.js';
 import { discoverWorkflowBranches, executeWorkflowBranches, verifiedWorkflowPaths, type WorkflowDataset } from './workflow-branch-scheduler.js';
@@ -95,6 +96,8 @@ export async function runVerifiedWorkflowPipeline(
   const results = await executeWorkflowBranches(input.openSession, branches, input.fixture);
   const verified = verifiedWorkflowPaths(results);
   await mkdir(input.outputDirectory, { recursive: true });
+  await writeFile(join(input.outputDirectory, 'workflow-execution-graph.json'),
+    JSON.stringify(buildWorkflowExecutionGraph(results), null, 2), 'utf8');
   let generatedSpecs = 0;
   for (const result of verified) {
     const branch = branches.find((candidate) => candidate.id === result.branchId);
