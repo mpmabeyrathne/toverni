@@ -20,6 +20,7 @@ export interface VerifiedWorkflowPipelineResult {
   blocked: number;
   failed: number;
   generatedSpecs: number;
+  diagnostic: string;
 }
 function parseDatasets(json: string): WorkflowDataset[] {
   const parsed: unknown = JSON.parse(json);
@@ -74,9 +75,23 @@ export async function runVerifiedWorkflowPipeline(
 ): Promise<VerifiedWorkflowPipelineResult> {
   const datasets = parseDatasets(input.datasetsJson);
   const envNames = JSON.parse(input.fieldEnvJson) as Record<string, string>;
-  const branches = discoverWorkflowBranches(input.initialObservation)
-    .filter((branch) => branch.requiredFields.length > 0)
-    .map((branch) => ({ ...branch, datasets }));
+  const observed = input.initialObservation;
+  const approvedLabels = Object.keys(input.fixture.fields);
+  const branches = discoverWorkflowBranches(observed)
+    .map((branch) => ({
+      ...branch,
+      // The browser observer may omit the HTML required attribute. Approved
+      // and observed input labels are also trusted setup dependencies.
+      requiredFields: [...new Set([
+        ...branch.requiredFields,
+        ...approvedLabels.filter((label) => observed.actions.some((action) =>
+          ['input', 'textarea', 'contenteditable'].includes(action.type) &&
+          action.visible && !action.disabled &&
+          (action.name ?? action.text ?? '').trim().toLowerCase() === label.trim().toLowerCase())),
+      ])],
+      datasets,
+    }))
+    .filter((branch) => branch.requiredFields.length > 0);
   const results = await executeWorkflowBranches(input.openSession, branches, input.fixture);
   const verified = verifiedWorkflowPaths(results);
   await mkdir(input.outputDirectory, { recursive: true });
@@ -93,5 +108,10 @@ export async function runVerifiedWorkflowPipeline(
     completed: results.filter((result) => result.status === 'completed').length,
     blocked: results.filter((result) => result.status === 'blocked').length,
     failed: results.filter((result) => result.status === 'failed').length,
-    generatedSpecs };
+    generatedSpecs,
+    diagnostic: branches.length === 0 ? 'No observed submission with approved fields' :
+      results.some((result) => result.status === 'failed') ? 'Some workflows failed browser verification' :
+      verified.length === 0 ? 'No workflow satisfied explicit outcome assertions' :
+      'Verified workflow specs written',
+  };
 }
