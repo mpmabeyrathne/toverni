@@ -1076,21 +1076,27 @@ export async function runExplorer(
         if (input.approvedFixture && process.env.TOVERNI_WORKFLOW_DATASETS) {
             const { runVerifiedWorkflowPipeline } =
                 await import('../exploration/verified-workflow-pipeline.js');
-            const workflowResult = await runVerifiedWorkflowPipeline({
-                initialObservation: explorationResult.initialObservation,
-                fixture: input.approvedFixture,
-                openSession: () => browser.createSession(),
-                outputDirectory: generatedTestsDirectory,
-                datasetsJson: process.env.TOVERNI_WORKFLOW_DATASETS,
-                fieldEnvJson: process.env.TOVERNI_APPROVED_FIXTURE_FIELDS ?? '{}',
-            });
-            logger.info({
-                discoveredBranches: workflowResult.discoveredBranches,
-                completed: workflowResult.completed,
-                blocked: workflowResult.blocked,
-                failed: workflowResult.failed,
-                generatedSpecs: workflowResult.generatedSpecs,
-            }, 'Verified workflow pipeline completed');
+            try {
+                const workflowResult = await runVerifiedWorkflowPipeline({
+                    initialObservation: explorationResult.initialObservation,
+                    fixture: input.approvedFixture,
+                    openSession: () => browser.createSession(),
+                    outputDirectory: generatedTestsDirectory,
+                    datasetsJson: process.env.TOVERNI_WORKFLOW_DATASETS,
+                    fieldEnvJson: process.env.TOVERNI_APPROVED_FIXTURE_FIELDS ?? '{}',
+                });
+                logger.info({
+                    discoveredBranches: workflowResult.discoveredBranches,
+                    completed: workflowResult.completed,
+                    blocked: workflowResult.blocked,
+                    failed: workflowResult.failed,
+                    generatedSpecs: workflowResult.generatedSpecs,
+                }, 'Verified workflow pipeline completed');
+            } catch {
+                // Error details may contain user-supplied fixture values.
+                // Continue ordinary exploration generation independently.
+                logger.warn('Verified workflow pipeline failed; ordinary scenario generation will continue');
+            }
         }
 
 
