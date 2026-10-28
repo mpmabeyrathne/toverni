@@ -34,6 +34,7 @@ export interface WorkflowResult {
   /** Only structural evidence. Never include input values. */
   trace: WorkflowEdge[];
   finalUrl?: string;
+  startUrl?: string;
   verified: boolean;
   observedSteps?: Array<{ action: 'fill' | 'submit'; label: string; url: string; observedAt: string }>;
 }
@@ -173,7 +174,7 @@ export async function executeWorkflowBranches(
         results.push({ branchId: branch.id, datasetId: dataset.id,
           status: verified ? 'completed' : 'failed',
           ...(!verified ? { reason: 'Observed outcome did not match expectations' } : {}),
-          finalUrl: after.url, trace, observedSteps, verified });
+          startUrl: before.url, finalUrl: after.url, trace, observedSteps, verified });
       } catch {
         // Browser errors and tool details can contain typed input values.
         results.push({ branchId: branch.id, datasetId: dataset.id,
